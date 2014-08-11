@@ -789,4 +789,5 @@ __SYSCALL(381, sys_sched_getattr)
 __SYSCALL(382, sys_ni_syscall)
 #define __NR_seccomp 383
 __SYSCALL(__NR_seccomp, sys_seccomp)
-__SYSCALL(384, sys_getrandom)
+#define __NR_getrandom 384
+__SYSCALL(__NR_getrandom, sys_getrandom)
