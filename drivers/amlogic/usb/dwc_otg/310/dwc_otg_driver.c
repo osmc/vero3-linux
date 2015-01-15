@@ -1243,6 +1243,11 @@ static int dwc_otg_driver_probe(struct platform_device *pdev)
 		dwc_otg_device->common_irq_installed = 1;
 	}
 
+        if (irq_set_affinity(irq, cpumask_of(3))) {
+                pr_warning("unable to set irq affinity (irq=%d, cpu=%u)\n",
+                                irq, 3);
+        }
+
 	switch (port_type) {
 	case USB_PORT_TYPE_OTG:
 		id_mode = FORCE_ID_CLEAR;

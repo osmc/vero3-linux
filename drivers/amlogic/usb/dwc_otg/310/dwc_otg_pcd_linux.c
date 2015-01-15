@@ -1314,6 +1314,11 @@ int pcd_init(struct platform_device *pdev)
 		return -EBUSY;
 	}
 
+        if (irq_set_affinity(irq, cpumask_of(3))) {
+                pr_warning("unable to set irq affinity (irq=%d, cpu=%u)\n",
+                                irq, 3);
+        }
+
 	dwc_otg_pcd_start(gadget_wrapper->pcd, &fops);
 	retval = usb_add_gadget_udc(&pdev->dev, &gadget_wrapper->gadget);
 	if (retval) {
