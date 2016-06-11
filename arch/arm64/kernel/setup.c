@@ -438,6 +438,7 @@ static const char *hwcap_str[] = {
 static int c_show(struct seq_file *m, void *v)
 {
 	int i;
+	int rev;
 
 	seq_printf(m, "Processor\t: %s rev %d (%s)\n",
 		   cpu_name, read_cpuid_id() & 15, ELF_PLATFORM);
@@ -484,6 +485,9 @@ static int c_show(struct seq_file *m, void *v)
 	seq_printf(m, "Serial\t\t: %08x%08x%08x%08x\n",
 		   system_serial_high1, system_serial_high0,
 		   system_serial_low1, system_serial_low0);
+
+	rev = 0x0200 | get_meson_cpu_version(MESON_CPU_VERSION_LVL_MINOR);
+	seq_printf(m, "Revision\t: %04x\n", rev);
 #endif
 	return 0;
 }
