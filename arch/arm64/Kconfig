@@ -71,6 +71,11 @@ config ARM64
 	select SPARSE_IRQ
 	select SYSCTL_EXCEPTION_TRACE
 	select HAVE_CONTEXT_TRACKING
+        select HAVE_KERNEL_GZIP
+        select HAVE_KERNEL_LZ4
+        select HAVE_KERNEL_LZMA
+        select HAVE_KERNEL_LZO
+        select HAVE_KERNEL_XZ
 	help
 	  ARM 64-bit (AArch64) Linux support.
 
