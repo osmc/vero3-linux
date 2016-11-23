@@ -1459,7 +1459,7 @@ static struct platform_device *ppmgr_dev0;
 static int ppmgr_driver_probe(struct platform_device *pdev)
 {
 	s32 r;
-	PPMGRDRV_ERR("ppmgr_driver_probe called\n");
+//	PPMGRDRV_ERR("ppmgr_driver_probe called\n");
 	r = of_reserved_mem_device_init(&pdev->dev);
 	ppmgr_device.pdev = pdev;
 	init_ppmgr_device();

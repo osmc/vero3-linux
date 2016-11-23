@@ -1146,7 +1146,7 @@ static int __init amlvideo_create_instance(int inst)
 	struct vivi_dev *dev;
 	struct video_device *vfd;
 	int ret, i;
-	AMLVIDEO_ERR("amlvideo_create_instance called\n");
+//	AMLVIDEO_ERR("amlvideo_create_instance called\n");
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
 	if (!dev)
 		return -ENOMEM;
@@ -1155,7 +1155,7 @@ static int __init amlvideo_create_instance(int inst)
 		sizeof(dev->v4l2_dev.name),
 		"%s-%03d", AVMLVIDEO_MODULE_NAME, inst);
 
-	AMLVIDEO_ERR("v4l2_dev.name=:%s\n", dev->v4l2_dev.name);
+//	AMLVIDEO_ERR("v4l2_dev.name=:%s\n", dev->v4l2_dev.name);
 	ret = v4l2_device_register(NULL, &dev->v4l2_dev);
 
 	if (ret)
@@ -1227,7 +1227,7 @@ static int __init amlvideo_init(void)
 {
 	int ret = 0, i;
 
-	AMLVIDEO_ERR("amlvideo_init called");
+//	AMLVIDEO_ERR("amlvideo_init called");
 	if (n_devs <= 0)
 		n_devs = 1;
 

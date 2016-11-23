@@ -3533,7 +3533,7 @@ static u32 get_storage_dev(void)
 		/*get storage media by clock reg */
 		ret = get_storage_dev_by_clk();
 	}
-	pr_err("%s return %d\n", __func__, ret);
+//	pr_err("%s return %d\n", __func__, ret);
 	return ret;
 }
 

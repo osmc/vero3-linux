@@ -2357,7 +2357,7 @@ static int aml_cec_probe(struct platform_device *pdev)
 		base = ioremap(res->start, res->end - res->start);
 		cec_dev->hdmi_rxreg = (void *)base;
 	} else {
-		CEC_ERR("no hdmirx reg resource\n");
+		CEC_INFO("no hdmirx reg resource\n");
 		cec_dev->hdmi_rxreg = NULL;
 	}
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 3);
@@ -2365,7 +2365,7 @@ static int aml_cec_probe(struct platform_device *pdev)
 		base = ioremap(res->start, res->end - res->start);
 		cec_dev->hhi_reg = (void *)base;
 	} else {
-		CEC_ERR("no hhi reg resource\n");
+		CEC_INFO("no hhi reg resource\n");
 		cec_dev->hhi_reg = NULL;
 	}
 
@@ -2405,7 +2405,7 @@ static int aml_cec_probe(struct platform_device *pdev)
 	/* get port sequence */
 	node = of_find_node_by_path("/hdmirx");
 	if (node == NULL) {
-		CEC_ERR("can't find hdmirx\n");
+		CEC_INFO("can't find hdmirx\n");
 		cec_dev->port_seq = 0;
 	} else {
 		r = of_property_read_u32(node, "rx_port_maps",

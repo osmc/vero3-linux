@@ -1630,7 +1630,7 @@ static int dia_init(void)
 	int ret;
 	struct proc_dir_entry *r;
 	pr_info("@@@@@@@@@@_____2______in %s()\n", __func__);
-	pr_err("ATVR driver - init called!");
+	pr_info("ATVR driver - init called!");
 	r = proc_create_data("dia-num-remotes", 0, NULL, &dia_proc_fops,
 			     NULL);
 	if (r == NULL)

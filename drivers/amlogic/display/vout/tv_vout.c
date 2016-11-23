@@ -1709,7 +1709,7 @@ static int tvout_probe(struct platform_device *pdev)
 	}
 	info->major = ret;
 	_init_vout();
-	vout_log_err("major number %d for disp\n", ret);
+	vout_log_info("major number %d for disp\n", ret);
 	if (vout_register_server(&tv_server))
 		vout_log_err("register tv module server fail\n");
 	else
