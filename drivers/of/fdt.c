@@ -845,29 +845,6 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 	return 0;
 }
 
-/*
- * Convert configs to something easy to use in C code
- */
-#if defined(CONFIG_CMDLINE_FORCE)
-static const int overwrite_incoming_cmdline = 1;
-static const int read_dt_cmdline;
-static const int concat_cmdline;
-#elif defined(CONFIG_CMDLINE_EXTEND)
-static const int overwrite_incoming_cmdline;
-static const int read_dt_cmdline = 1;
-static const int concat_cmdline = 1;
-#else /* CMDLINE_FROM_BOOTLOADER */
-static const int overwrite_incoming_cmdline;
-static const int read_dt_cmdline = 1;
-static const int concat_cmdline;
-#endif
-
-#ifdef CONFIG_CMDLINE
-static const char *config_cmdline = CONFIG_CMDLINE;
-#else
-static const char *config_cmdline = "";
-#endif
-
 int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 				     int depth, void *data)
 {
@@ -885,28 +862,21 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 
 	early_init_dt_check_for_instaboot(node);
 
-	/* Put CONFIG_CMDLINE in if forced or if data had nothing in it to start */
-	if (overwrite_incoming_cmdline || !cmdline[0])
-		strlcpy(cmdline, config_cmdline, COMMAND_LINE_SIZE);
+	/* Get command line from U-Boot */
+	#ifndef CONFIG_CMDLINE_FORCE
+		p = (char *) of_get_flat_dt_prop(node, "bootargs", &l);
+	#endif
 
-	/* Retrieve command line unless forcing */
-	if (read_dt_cmdline)
-		p = (char *)of_get_flat_dt_prop(node, "bootargs", &l);
-
-	if (p != NULL && l > 0) {
-		if (concat_cmdline) {
-			int cmdline_len;
-			int copy_len;
-			strlcat(cmdline, " ", COMMAND_LINE_SIZE);
-			cmdline_len = strlen(cmdline);
-			copy_len = COMMAND_LINE_SIZE - cmdline_len - 1;
-			copy_len = min((int)l, copy_len);
-			strncpy(cmdline + cmdline_len, p, copy_len);
-			cmdline[cmdline_len + copy_len] = '\0';
-		} else {
-			strlcpy(cmdline, p, min((int)l, COMMAND_LINE_SIZE));
+	#ifdef CONFIG_CMDLINE_EXTEND
+	    if (!((char *)data)[0]) {
+		if (p != NULL && l > 0) {
+		    strlcat(data, p, COMMAND_LINE_SIZE);
+		    strlcat(data, " ", COMMAND_LINE_SIZE);
 		}
-	}
+		strlcat(data, CONFIG_CMDLINE, COMMAND_LINE_SIZE);
+	    }
+
+	#endif
 
 	pr_debug("Command line is: %s\n", (char*)data);
 
