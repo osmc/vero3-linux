@@ -135,3 +135,5 @@ obj-$(CONFIG_CRYPTO_AML)	+= crypto/
 obj-$(CONFIG_AMLOGIC_WATCHPOINT) += watchpoint/
 
 obj-$(CONFIG_MESON_PWM) += pwm/
+
+obj-$(CONFIG_MALI400) += gpu/mali/
