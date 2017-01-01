@@ -1145,3 +1145,7 @@
 &defendkey {
 	status = "okay";
 };
+
+&meson_ir {
+	status = "okay";
+};
