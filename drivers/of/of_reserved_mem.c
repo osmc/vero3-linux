@@ -129,6 +129,15 @@ static int __init __reserved_mem_alloc_size(unsigned long node,
 	if (!nomap && multi_use)
 		*flags |= 1;
 
+       if (of_flat_dt_is_compatible(node,"shared-dma-pool")) {
+               phys_addr_t align_required = PAGE_SIZE << max(MAX_ORDER - 1, pageblock_order);
+                if (!align || align != ALIGN(align, align_required)) {
+                        pr_warn("Reserved memory: the alignment not set up correctly in '%s' node."
+                               "change from %pa to %pa \n", uname, &align, &align_required);
+                        align = align_required;
+                }
+        }
+
 
 	prop = of_get_flat_dt_prop(node, "alignment", &len);
 	if (prop) {
