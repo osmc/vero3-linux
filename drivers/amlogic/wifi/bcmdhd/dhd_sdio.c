@@ -8466,9 +8466,9 @@ dhdsdio_download_firmware(struct dhd_bus *bus, osl_t *osh, void *sdh)
 	dhd_conf_preinit(bus->dhd);
 	dhd_conf_read_config(bus->dhd, bus->dhd->conf_path);
 	dhd_conf_set_fw_name_by_chip(bus->dhd, bus->fw_path);
-	dhd_conf_set_nv_name_by_chip(bus->dhd, bus->nv_path);
+	nazarko_dhd_conf_set_nv_name_by_chip(bus->dhd, bus->nv_path);
 	dhd_conf_set_fw_name_by_mac(bus->dhd, bus->sdh, bus->fw_path);
-	dhd_conf_set_nv_name_by_mac(bus->dhd, bus->sdh, bus->nv_path);
+	//dhd_conf_set_nv_name_by_mac(bus->dhd, bus->sdh, bus->nv_path);
 	if (bus->dhd->conf->dhd_poll >= 0) {
 		printf("%s: set polling mode %d\n", __FUNCTION__, bus->dhd->conf->dhd_poll);
 		bus->poll = bus->dhd->conf->dhd_poll;
