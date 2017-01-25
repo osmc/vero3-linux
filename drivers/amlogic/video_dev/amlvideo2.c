@@ -4891,7 +4891,7 @@ static int amlvideo2_open(struct file *file)
 	if (AML_RECEIVER_NONE == node->r_type)
 		amlvideo2_start_thread(fh);
 
-	v4l2_vdin_ops_init(&node->vops);
+	//v4l2_vdin_ops_init(&node->vops);
 	fh->frm_save_time_us = 1000000 / DEF_FRAMERATE;
 	return 0;
 }
