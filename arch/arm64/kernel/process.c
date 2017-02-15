@@ -375,6 +375,8 @@ struct task_struct *__switch_to(struct task_struct *prev,
 	tls_thread_switch(next);
 	hw_breakpoint_thread_switch(next);
 	contextidr_thread_switch(next);
+	if (prev->mm)
+	    flush_tlb_mm(prev->mm);
 
 	/*
 	 * Complete any pending TLB or cache maintenance on this CPU in case
