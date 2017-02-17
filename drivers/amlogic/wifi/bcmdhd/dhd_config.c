@@ -2120,12 +2120,13 @@ dhd_conf_read_config(dhd_pub_t *dhd, char *conf_path)
 		}
 
 		/* Process PM parameters */
-		memset(pick, 0, MAXSZ_BUF);
+		/*memset(pick, 0, MAXSZ_BUF);
 		len_val = process_config_vars(bufp, len, pick, "PM=");
 		if (len_val) {
 			conf->pm = (int)simple_strtol(pick, NULL, 10);
 			printf("%s: PM = %d\n", __FUNCTION__, conf->pm);
-		}
+		*/
+			conf->pm = PM_OFF;
 
 		/* Process tcpack_sup_mode parameters */
 		memset(pick, 0, MAXSZ_BUF);
