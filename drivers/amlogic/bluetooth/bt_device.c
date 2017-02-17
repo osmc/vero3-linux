@@ -106,10 +106,10 @@ static int bt_set_block(void *data, bool blocked)
 	if (!blocked) {
 		pr_info("BCM_BT: going ON\n");
 		bt_device_on(pdata);
-	} else {
+	} /*else {
 		pr_info("BCM_BT: going OFF\n");
 	bt_device_off(pdata);
-	}
+	} */
 	return 0;
 }
 
