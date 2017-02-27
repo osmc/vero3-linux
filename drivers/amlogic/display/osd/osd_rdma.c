@@ -173,7 +173,7 @@ static int update_table_item(u32 addr, u32 val, u8 irq_mode)
 
 	if (item_count > 500) {
 		/* rdma table is full */
-		pr_info("update_table_item overflow!\n");
+		//pr_info("update_table_item overflow!\n");
 		return -1;
 	}
 	/* pr_debug("%02dth, ctrl: 0x%x, status: 0x%x, auto:0x%x, flag:0x%x\n",
