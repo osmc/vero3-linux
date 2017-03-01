@@ -259,6 +259,7 @@
 #include <linux/irq.h>
 #include <linux/syscalls.h>
 #include <linux/completion.h>
+#include <linux/hw_random.h>
 
 #include <asm/processor.h>
 #include <asm/uaccess.h>
@@ -1469,12 +1470,26 @@ const struct file_operations urandom_fops = {
 SYSCALL_DEFINE3(getrandom, char __user *, buf, size_t, count,
 		unsigned int, flags)
 {
-	if (flags & ~(GRND_NONBLOCK|GRND_RANDOM))
+	if (flags & ~(GRND_NONBLOCK|GRND_RANDOM|GRND_HWRANDOM))
 		return -EINVAL;
 
 	if (count > INT_MAX)
 		count = INT_MAX;
 
+#ifdef CONFIG_HW_RANDOM
+	if (flags & GRND_HWRANDOM) {
+		ssize_t ret = 0;
+		u8 t[4];
+		if (!(flags & GRND_NONBLOCK) || count > sizeof(t))
+			return -EINVAL;
+		ret = hwrng_get_data(t, count, 0);
+		if (ret > 0) {
+			if (copy_to_user(buf, t, count))
+				ret = -EFAULT;
+		}
+		return ret;
+	}
+#endif /*CONFIG_HW_RANDOM*/
 	if (flags & GRND_RANDOM)
 		return _random_read(flags & GRND_NONBLOCK, buf, count);
 

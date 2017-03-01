@@ -45,8 +45,10 @@ struct rand_pool_info {
  *
  * GRND_NONBLOCK	Don't block and return EAGAIN instead
  * GRND_RANDOM		Use the /dev/random pool instead of /dev/urandom
+ * GRND_HWRANDOM	Use /dev/hw_random instead of /dev/urandom
  */
 #define GRND_NONBLOCK	0x0001
 #define GRND_RANDOM	0x0002
+#define GRND_HWRANDOM	0x8000
 
 #endif /* _UAPI_LINUX_RANDOM_H */

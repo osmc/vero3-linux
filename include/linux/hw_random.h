@@ -43,6 +43,8 @@ struct hwrng {
 	struct list_head list;
 };
 
+/** Read from Hardware Random Number Generator */
+extern int hwrng_get_data(u8 *buffer, size_t size, int wait);
 /** Register a new Hardware Random Number Generator driver. */
 extern int hwrng_register(struct hwrng *rng);
 /** Unregister a Hardware Random Number Generator driver. */

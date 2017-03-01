@@ -300,6 +300,13 @@ err_misc_dereg:
 	goto out;
 }
 
+int hwrng_get_data(u8 *buffer, size_t size, int wait)
+{
+	if (!current_rng)
+		return -ENODEV;
+	return rng_get_data(current_rng, buffer, size, wait);
+}
+
 int hwrng_register(struct hwrng *rng)
 {
 	int must_register_misc;
