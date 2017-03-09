@@ -279,6 +279,10 @@ static  int  set_disp_mode(const char *mode)
 	enum hdmi_vic vic;
 
 	vic = hdmitx_edid_get_VIC(&hdmitx_device, mode, 1);
+
+	if (hdmitx_device.cur_VIC == vic)
+		return 0;
+
 	if (strncmp(mode, "2160p30hz", strlen("2160p30hz")) == 0)
 		vic = HDMI_4k2k_30;
 	else if (strncmp(mode, "2160p25hz", strlen("2160p25hz")) == 0)
