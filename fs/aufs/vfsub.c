@@ -361,14 +361,14 @@ int vfsub_rename(struct inode *src_dir, struct dentry *src_dentry,
 	d = path->dentry;
 	path->dentry = d->d_parent;
 	tmp.dentry = src_dentry->d_parent;
-	err = security_path_rename(&tmp, src_dentry, path, d, 0);
+	err = security_path_rename(&tmp, src_dentry, path, d);
 	path->dentry = d;
 	if (unlikely(err))
 		goto out;
 
 	lockdep_off();
 	err = vfs_rename(src_dir, src_dentry, dir, path->dentry,
-			 delegated_inode, 0);
+			 delegated_inode);
 	lockdep_on();
 	if (!err) {
 		int did;
