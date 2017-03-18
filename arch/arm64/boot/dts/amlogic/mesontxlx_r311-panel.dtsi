@@ -366,7 +366,7 @@
 
 			bl_ldim_region_row_col = <1 1>;
 			bl_ldim_mode = <1>; /* 1=single_side(top, bottom, left or right), 2=uniform(top/bottom, left/right) */
-			ldim_dev_index = <0>;
+			ldim_dev_index = <1>;
 		};
 	};
 
@@ -392,6 +392,16 @@
 			ldim_pwm_attr = <0 200 50>; /* pol, freq(Hz for pwm, v-freq mulit for pwm_vs), duty(%) */
 			dim_max_min = <100 20>; /* dim_max, dim_min */
 			en_gpio_on_off = <0 1 0>; /* ldim_dev-gpios index, on_level, off_level */
+		};
+		ldim_dev_1 {
+			index = <1>;
+			type = <0>; /* 0=normal,1=spi,2=i2c */
+			ldim_dev_name = "global";
+			ldim_pwm_pinmux_sel = "ldim_pwm0";
+			ldim_pwm_port = "PWM_B"; /* PWM_A, PWM_B, PWM_C, PWM_D, PWM_VS */
+			ldim_pwm_attr = <1 200 50>; /* pol, freq(Hz for pwm, v-freq mulit for pwm_vs), duty(%) */
+			dim_max_min = <100 20>; /* dim_max, dim_min */
+			en_gpio_on_off = <2 1 0>; /* ldim_dev-gpios index, on_level, off_level */
 		};
 	};
 }; /* end of / */

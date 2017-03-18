@@ -225,11 +225,21 @@ static unsigned int pwm_reg[6] = {
 	PWM_PWM_F,
 };
 
+static unsigned int pwm_reg_txlx[6] = {
+	PWM_PWM_A_TXLX,
+	PWM_PWM_B_TXLX,
+	PWM_PWM_C_TXLX,
+	PWM_PWM_D_TXLX,
+	PWM_PWM_E_TXLX,
+	PWM_PWM_F_TXLX,
+};
+
 void ldim_set_duty_pwm(struct bl_pwm_config_s *ld_pwm)
 {
 	unsigned int pwm_hi = 0, pwm_lo = 0;
 	unsigned int port = ld_pwm->pwm_port;
 	unsigned int vs[4], ve[4], sw, n, i;
+	enum bl_chip_type_e ldim_chip_type = aml_bl_check_chip();
 
 	if (ld_pwm->pwm_port >= BL_PWM_MAX)
 		return;
@@ -267,7 +277,11 @@ void ldim_set_duty_pwm(struct bl_pwm_config_s *ld_pwm)
 	case BL_PWM_D:
 	case BL_PWM_E:
 	case BL_PWM_F:
-		bl_cbus_write(pwm_reg[port], (pwm_hi << 16) | pwm_lo);
+		if (ldim_chip_type == BL_CHIP_TXLX)
+			bl_cbus_write(pwm_reg_txlx[port],
+				(pwm_hi << 16) | pwm_lo);
+		else
+			bl_cbus_write(pwm_reg[port], (pwm_hi << 16) | pwm_lo);
 		break;
 	case BL_PWM_VS:
 		n = ld_pwm->pwm_freq;
@@ -695,6 +709,9 @@ static int ldim_dev_add_driver(struct ldim_dev_config_s *ldev_conf, int index)
 	} else if (strcmp(ldev_conf->name, "ob3350") == 0) {
 		ret = ldim_dev_ob3350_probe();
 		goto ldim_dev_add_driver_next;
+	} else if (strcmp(ldev_conf->name, "global") == 0) {
+		ret = ldim_dev_global_probe();
+		goto ldim_dev_add_driver_next;
 	} else {
 		LDIMERR("invalid device name: %s\n", ldev_conf->name);
 		ret = -1;
@@ -724,6 +741,9 @@ static int ldim_dev_remove_driver(struct ldim_dev_config_s *ldev_conf,
 		goto ldim_dev_remove_driver_next;
 	} else if (strcmp(ldev_conf->name, "ob3350") == 0) {
 		ret = ldim_dev_ob3350_remove();
+		goto ldim_dev_remove_driver_next;
+	} else if (strcmp(ldev_conf->name, "global") == 0) {
+		ret = ldim_dev_global_remove();
 		goto ldim_dev_remove_driver_next;
 	} else {
 		LDIMERR("invalid device name: %s\n", ldev_conf->name);

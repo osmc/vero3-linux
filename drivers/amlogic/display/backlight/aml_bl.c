@@ -221,8 +221,6 @@ enum bl_chip_type_e aml_bl_check_chip(void)
 		bl_chip = BL_CHIP_MAX;
 	}
 
-	if (bl_debug_print_flag)
-		BLPR("BL driver check chip : %s\n", bl_chip_table[bl_chip]);
 	return bl_chip;
 }
 
