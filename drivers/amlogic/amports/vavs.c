@@ -605,7 +605,7 @@ static void vavs_vf_put(struct vframe_s *vf, void *op_arg)
 
 }
 
-int vavs_dec_status(struct vdec_status *vstatus)
+int vavs_dec_status(struct vdec_s *vdec, struct vdec_status *vstatus)
 {
 	vstatus->width = frame_width;	/* vavs_amstream_dec_info.width; */
 	vstatus->height = frame_height;	/* vavs_amstream_dec_info.height; */
@@ -763,11 +763,14 @@ void vavs_recover(void)
 
 	WRITE_VREG(DOS_SW_RESET0, (1 << 9) | (1 << 8));
 	WRITE_VREG(DOS_SW_RESET0, 0);
-	/*
-	WRITE_VREG(POWER_CTL_VLD, 0x10);
-	WRITE_VREG_BITS(VLD_MEM_VIFIFO_CONTROL, 2, MEM_FIFO_CNT_BIT, 2);
-	WRITE_VREG_BITS(VLD_MEM_VIFIFO_CONTROL, 8, MEM_LEVEL_CNT_BIT, 6);
-	*/
+
+	if (firmware_sel == 1) {
+		WRITE_VREG(POWER_CTL_VLD, 0x10);
+		WRITE_VREG_BITS(VLD_MEM_VIFIFO_CONTROL, 2,
+			MEM_FIFO_CNT_BIT, 2);
+		WRITE_VREG_BITS(VLD_MEM_VIFIFO_CONTROL, 8,
+			MEM_LEVEL_CNT_BIT, 6);
+	}
 	if (firmware_sel == 0)
 		WRITE_VREG(AV_SCRATCH_5, 0);
 
@@ -1234,17 +1237,17 @@ static s32 vavs_init(void)
 
 	vavs_local_init();
 
-	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_TXL) {
+	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXM) {
 		if (debug_flag & 2) {
 			if (amvdec_loadmc_ex(VFORMAT_AVS,
-				"txl_vavs_mc_debug", NULL) < 0) {
+				"gxm_vavs_mc_debug", NULL) < 0) {
 				amvdec_disable();
 				pr_info("failed\n");
 				return -EBUSY;
 			}
 		} else {
 			if (amvdec_loadmc_ex(VFORMAT_AVS,
-				"txl_vavs_mc", NULL) < 0) {
+				"gxm_vavs_mc", NULL) < 0) {
 				amvdec_disable();
 				pr_info("failed\n");
 				return -EBUSY;
@@ -1331,23 +1334,19 @@ static s32 vavs_init(void)
 
 	stat |= STAT_VDEC_RUN;
 
-	set_vdec_func(&vavs_dec_status);
-
 	return 0;
 }
 
 static int amvdec_avs_probe(struct platform_device *pdev)
 {
-	struct vdec_dev_reg_s *pdata =
-		(struct vdec_dev_reg_s *)pdev->dev.platform_data;
+	struct vdec_s *pdata = *(struct vdec_s **)pdev->dev.platform_data;
 
 	if (pdata == NULL) {
 		pr_info("amvdec_avs memory resource undefined.\n");
 		return -EFAULT;
 	}
-	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_TXL) {
+	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXM)
 		firmware_sel = 1;
-	}
 
 	if (firmware_sel == 1) {
 		vf_buf_num = 4;
@@ -1383,6 +1382,9 @@ static int amvdec_avs_probe(struct platform_device *pdev)
 
 	pr_info("%s (%d,%d) %d\n", __func__, vavs_amstream_dec_info.width,
 		   vavs_amstream_dec_info.height, vavs_amstream_dec_info.rate);
+
+	pdata->dec_status = vavs_dec_status;
+
 	if (vavs_init() < 0) {
 		pr_info("amvdec_avs init failed.\n");
 

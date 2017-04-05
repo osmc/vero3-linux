@@ -806,17 +806,34 @@ static void dvb_frontend_swzigzag(struct dvb_frontend *fe)
 		if (fe->ops.read_dtmb_fsm) {
 			LOCK_TIMEOUT = 10000;
 			has_singal = 0;
-			msleep(100);
+			msleep(200);
+			/*fsm status is 4,maybe analog signal*/
 			fe->ops.read_dtmb_fsm(fe, &dtmb_status);
 			for (i = 0 ; i < 8 ; i++) {
 				if (((dtmb_status >> (i*4)) & 0xf) > 4) {
 					/*has signal*/
 				/*	dprintk("has signal\n");*/
-					has_singal = 1;
+					has_singal = 0x1;
+				}
+			}
+			if (has_singal == 0x1) {
+				/*fsm status is 6,digital signal*/
+				/*fsm (1->4) 30ms,(4->5) 20ms,
+				(5->6) 10ms,(6->7) 75ms,
+				(7->8) 8ms,(8->9) 55ms, (9->a) 350ms*/
+				msleep(500);
+				fe->ops.read_dtmb_fsm(fe, &dtmb_status);
+				for (i = 0 ; i < 8 ; i++) {
+					if (((dtmb_status >> (i*4))
+						& 0xf) > 6) {
+						/*has signal*/
+					/*	dprintk("has signal\n");*/
+						has_singal = 0x3;
+					}
 				}
 			}
 			dprintk("[DTV]has_singal is %d\n", has_singal);
-			if (has_singal == 0) {
+			if ((has_singal == 0) || (has_singal == 0x1)) {
 				s = FE_TIMEDOUT;
 			dprintk(
 						"event s=%d,fepriv->status is %d\n",
@@ -952,8 +969,7 @@ static int dvb_frontend_thread(void *data)
 	unsigned long timeout;
 	fe_status_t s;
 	enum dvbfe_algo algo;
-
-	struct dvb_frontend_parameters *params = NULL;
+	bool re_tune = false;
 
 	dev_dbg(fe->dvb->device, "%s:\n", __func__);
 
@@ -1002,24 +1018,25 @@ restart:
 			switch (algo) {
 			case DVBFE_ALGO_HW:
 				dev_dbg(fe->dvb->device,
-				"%s: Frontend ALGO = DVBFE_ALGO_HW\n",
-				__func__);
+					"%s: Frontend ALGO = DVBFE_ALGO_HW\n",
+					__func__);
 
 				if (fepriv->state & FESTATE_RETUNE) {
-					dprintk(
-					"%s:Retune requested,FESTATE_RETUNE\n",
-					__func__);
-					params = &fepriv->parameters_in;
+					dev_dbg(fe->dvb->device,
+						"%s: Retune requested, FESTATE_RETUNE\n",
+						__func__);
+					re_tune = true;
 					fepriv->state = FESTATE_TUNED;
+				} else {
+					re_tune = false;
 				}
 
 				if (fe->ops.tune)
 					fe->ops.tune(fe,
-						params,
-						fepriv->tune_mode_flags,
-						&fepriv->delay, &s);
-				if (params)
-					fepriv->parameters_out = *params;
+							re_tune,
+							fepriv->tune_mode_flags,
+							&fepriv->delay,
+							&s);
 
 				if (s != fepriv->status && !(fepriv->tune_mode_flags & FE_TUNE_MODE_ONESHOT)) {
 					dev_dbg(fe->dvb->device, "%s: state changed, adding current state\n", __func__);
@@ -2510,7 +2527,7 @@ static int dvb_frontend_ioctl_properties(struct file *file,
 			goto out;
 		}
 #ifdef CONFIG_COMPAT
-		if (copy_from_user(tvp, compat_ptr((unsigned long)tvps->props),
+		if (copy_from_user(tvp, tvps->props,
 				tvps->num * sizeof(struct dtv_property))) {
 			err = -EFAULT;
 			goto out;
@@ -2549,7 +2566,7 @@ static int dvb_frontend_ioctl_properties(struct file *file,
 			goto out;
 		}
 #ifdef CONFIG_COMPAT
-		if (copy_from_user(tvp, compat_ptr((unsigned long)tvps->props),
+		if (copy_from_user(tvp, tvps->props,
 				tvps->num * sizeof(struct dtv_property))) {
 			err = -EFAULT;
 			goto out;
@@ -2577,7 +2594,7 @@ static int dvb_frontend_ioctl_properties(struct file *file,
 			(tvp + i)->result = err;
 		}
 #ifdef CONFIG_COMPAT
-		if (copy_to_user(compat_ptr((unsigned long)tvps->props), tvp,
+		if (copy_to_user(tvps->props, tvp,
 				tvps->num * sizeof(struct dtv_property))) {
 			err = -EFAULT;
 			goto out;
@@ -3291,8 +3308,19 @@ static long dvb_frontend_compat_ioctl(struct file *filp,
 			unsigned int cmd, unsigned long args)
 {
 	unsigned long ret;
+	struct dtv_properties tvps;
 
-	args = (unsigned long)compat_ptr(args);
+	args  = (unsigned long)compat_ptr(args);
+
+	if ((cmd == FE_SET_PROPERTY) || (cmd == FE_GET_PROPERTY)) {
+		if (copy_from_user(&tvps, (void *)args,
+			sizeof(struct dtv_properties)))
+			return -EFAULT;
+		tvps.props = compat_ptr((unsigned long)tvps.props);
+		if (copy_to_user((void *)args, (void *)&tvps,
+			sizeof(struct dtv_properties)))
+			return -EFAULT;
+	}
 	ret = dvb_generic_ioctl(filp, cmd, args);
 	return ret;
 }

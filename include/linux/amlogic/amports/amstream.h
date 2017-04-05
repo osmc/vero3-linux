@@ -30,21 +30,25 @@
 #define PORT_FLAG_VID       0x0008
 #define PORT_FLAG_AID       0x0010
 #define PORT_FLAG_SID       0x0020
-#define PORT_FLAG_UD       0x0040
+#define PORT_FLAG_UD        0x0040
 #define PORT_FLAG_DRM       0x0080
 #define PORT_FLAG_ID        (PORT_FLAG_VID | \
 		PORT_FLAG_AID | PORT_FLAG_SID | PORT_FLAG_UD)
 #define PORT_FLAG_INITED    0x100
-#define PORT_TYPE_VIDEO     0x01
-#define PORT_TYPE_AUDIO     0x02
-#define PORT_TYPE_MPTS      0x04
-#define PORT_TYPE_MPPS      0x08
-#define PORT_TYPE_ES        0x10
-#define PORT_TYPE_RM        0x20
-#define PORT_TYPE_SUB       0x40
-#define PORT_TYPE_SUB_RD    0x80
-#define PORT_TYPE_HEVC      0x100
-#define PORT_TYPE_USERDATA	0x200
+
+#define PORT_TYPE_VIDEO         0x01
+#define PORT_TYPE_AUDIO         0x02
+#define PORT_TYPE_MPTS          0x04
+#define PORT_TYPE_MPPS          0x08
+#define PORT_TYPE_ES            0x10
+#define PORT_TYPE_RM            0x20
+#define PORT_TYPE_SUB           0x40
+#define PORT_TYPE_SUB_RD        0x80
+#define PORT_TYPE_HEVC          0x100
+#define PORT_TYPE_USERDATA      0x200
+#define PORT_TYPE_FRAME         0x400
+#define PORT_TYPE_DECODER_SCHED 0x800
+#define PORT_TYPE_DUALDEC       0x1000
 #endif				/*
  */
 #define _A_M  'S'
@@ -155,6 +159,9 @@
 #define AMSTREAM_IOC_GET_TRICK_VPTS _IOR((_A_M), 0xf0, int)
 #define AMSTREAM_IOC_DISABLE_SLOW_SYNC _IOW((_A_M), 0xf1, int)
 
+#define AMSTREAM_IOC_GET_AUDIO_CHECKIN_BITRATE_BPS _IOR((_A_M), 0xf2, int)
+#define AMSTREAM_IOC_GET_VIDEO_CHECKIN_BITRATE_BPS _IOR((_A_M), 0xf3, int)
+#define AMSTREAM_IOC_VDEC_RESET _IO((_A_M), 0xf4)
 #define AMSTREAM_IOC_GET_VERSION _IOR((_A_M), 0xc0, int)
 #define AMSTREAM_IOC_GET _IOWR((_A_M), 0xc1, struct am_ioctl_parm)
 #define AMSTREAM_IOC_SET _IOW((_A_M), 0xc2, struct am_ioctl_parm)
@@ -195,6 +202,16 @@ enum VIDEO_DEC_TYPE {
 	VIDEO_DEC_FORMAT_WVC1,
 	VIDEO_DEC_FORMAT_SW,
 	VIDEO_DEC_FORMAT_MAX
+};
+
+enum FRAME_BASE_VIDEO_PATH {
+	FRAME_BASE_PATH_IONVIDEO = 0,
+	FRAME_BASE_PATH_AMLVIDEO_AMVIDEO,
+	FRAME_BASE_PATH_AMLVIDEO1_AMVIDEO2,
+	FRAME_BASE_PATH_DI_AMVIDEO,
+	FRAME_BASE_PATH_AMVIDEO,
+	FRAME_BASE_PATH_AMVIDEO2,
+	FRAME_BASE_PATH_MAX
 };
 
 struct buf_status {
@@ -390,11 +407,13 @@ struct userdata_poc_info_t {
 #define AMSTREAM_SET_3D_TYPE 0x171
 #define AMSTREAM_SET_VSYNC_UPINT 0x172
 #define AMSTREAM_SET_VSYNC_SLOW_FACTOR 0x173
+#define AMSTREAM_SET_FRAME_BASE_PATH 0x174
 /*  video set ex cmd */
 #define AMSTREAM_SET_EX_VIDEO_AXIS 0x260
 #define AMSTREAM_SET_EX_VIDEO_CROP 0x261
 /*  amstream set ptr cmd */
 #define AMSTREAM_SET_PTR_AUDIO_INFO 0x300
+#define AMSTREAM_SET_PTR_CONFIGS 0x301
 
 /*  amstream get cmd */
 #define AMSTREAM_GET_SUB_LENGTH 0x800
@@ -415,6 +434,7 @@ struct userdata_poc_info_t {
 #define AMSTREAM_GET_VIDEO_CUR_DELAY_MS 0x80F
 #define AMSTREAM_GET_AUDIO_AVG_BITRATE_BPS 0x810
 #define AMSTREAM_GET_VIDEO_AVG_BITRATE_BPS 0x811
+#define AMSTREAM_GET_ION_ID 0x812
 /*  video get cmd */
 #define AMSTREAM_GET_OMX_VPTS 0x860
 #define AMSTREAM_GET_TRICK_STAT 0x861
@@ -452,6 +472,7 @@ struct am_ioctl_parm {
 		u64 data_64;
 		enum vformat_e data_vformat;
 		enum aformat_e data_aformat;
+		enum FRAME_BASE_VIDEO_PATH frame_base_video_path;
 		char data[8];
 	};
 	u32 cmd;
@@ -480,7 +501,7 @@ struct am_ioctl_parm_ptr {
 		char data[8];
 	};
 	u32 cmd;
-	char reserved[4];
+	u32 len; /*char reserved[4]; */
 };
 
 
@@ -489,7 +510,7 @@ int vcodec_profile_register(const struct codec_profile_t *vdec_profile);
 ssize_t vcodec_profile_read(char *buf);
 
 #ifdef __KERNEL__
-#ifdef ENABLE_DEMUX_DRIVER
+#include <linux/interrupt.h>
 /*TS demux operation interface*/
 struct tsdemux_ops {
 
@@ -517,10 +538,7 @@ struct tsdemux_ops {
 void tsdemux_set_ops(struct tsdemux_ops *ops);
 int tsdemux_set_reset_flag(void);
 
-#endif				/*ENABLE_DEMUX_DRIVER */
-void set_vdec_func(int (*vdec_func)(struct vdec_status *));
 void set_adec_func(int (*adec_func)(struct adec_status *));
-void set_trickmode_func(int (*trickmode_func)(unsigned long trickmode));
 void wakeup_sub_poll(void);
 void set_userdata_poc(struct userdata_poc_info_t poc);
 void init_userdata_fifo(void);

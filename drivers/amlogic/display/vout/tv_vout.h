@@ -25,6 +25,14 @@
 #define TV_CLASS_NAME	"tv"
 #define	MAX_NUMBER_PARA  10
 
+#define _TM_V 'V'
+#ifdef CONFIG_AML_VOUT_CC_BYPASS
+#define MAX_RING_BUFF_LEN 128
+#define VOUT_IOC_CC_OPEN           _IO(_TM_V, 0x01)
+#define VOUT_IOC_CC_CLOSE          _IO(_TM_V, 0x02)
+#define VOUT_IOC_CC_DATA           _IOW(_TM_V, 0x03, struct vout_CCparm_s)
+#endif
+
 #define print_info(fmt, args...) pr_info(fmt, ##args)
 
 #define SHOW_INFO(name) \
@@ -55,13 +63,37 @@ __ATTR(name, S_IRUGO|S_IWUSR, \
 		aml_TV_attr_##name##_show, aml_TV_attr_##name##_store);
 
 struct disp_module_info_s {
-	unsigned int major;  /* dev major number */
+	/* unsigned int major;  dev major number */
 	struct vinfo_s *vinfo;
 	char name[20];
+	struct cdev   cdev;
+	dev_t         devno;
 	struct class  *base_class;
+	struct device *dev;
 };
 
 static  DEFINE_MUTEX(TV_mutex);
+
+#ifdef CONFIG_AML_VOUT_CC_BYPASS
+struct CCparm_s {
+	unsigned int type;
+	unsigned int data;
+};
+
+struct CCring_MGR_s {
+	unsigned int max_len;
+	unsigned int rp;
+	unsigned int wp;
+	int over_flag;
+	struct CCparm_s CCdata[MAX_RING_BUFF_LEN];
+};
+
+struct vout_CCparm_s {
+	unsigned int type;
+	unsigned char data1;
+	unsigned char data2;
+};
+#endif
 
 struct vmode_tvmode_tab_s {
 	enum tvmode_e tvmode;
@@ -99,13 +131,6 @@ static struct vmode_tvmode_tab_s mode_tab[] = {
 	{TVMODE_4K2K_SMPTE_60HZ_Y420, VMODE_4K2K_SMPTE_60HZ_Y420},
 	{TVMODE_4K2K_60HZ_Y420, VMODE_4K2K_60HZ_Y420},
 	{TVMODE_4K2K_50HZ_Y420, VMODE_4K2K_50HZ_Y420},
-	{TVMODE_4K2K_50HZ_Y420_10BIT, VMODE_4K2K_50HZ_Y420_10BIT},
-	{TVMODE_4K2K_60HZ_Y420_10BIT, VMODE_4K2K_60HZ_Y420_10BIT},
-	{TVMODE_4K2K_50HZ_Y422_10BIT, VMODE_4K2K_50HZ_Y422_10BIT},
-	{TVMODE_4K2K_60HZ_Y422_10BIT, VMODE_4K2K_60HZ_Y422_10BIT},
-	{TVMODE_4K2K_24HZ_Y444_10BIT, VMODE_4K2K_24HZ_Y444_10BIT},
-	{TVMODE_4K2K_25HZ_Y444_10BIT, VMODE_4K2K_25HZ_Y444_10BIT},
-	{TVMODE_4K2K_30HZ_Y444_10BIT, VMODE_4K2K_30HZ_Y444_10BIT},
 	{TVMODE_4K2K_60HZ, VMODE_4K2K_60HZ},
 	{TVMODE_4K2K_50HZ, VMODE_4K2K_50HZ},
 	{TVMODE_VGA, VMODE_VGA},
@@ -880,97 +905,6 @@ static struct vinfo_s tv_info[] = {
 		.video_clk         = 495000000,
 		.viu_color_fmt     = TVIN_YUV444,
 	},
-	{ /* VMODE_4K2K_60HZ_Y420_10BIT */
-		.name              = "2160p60hz42010bit",
-		.mode              = VMODE_4K2K_60HZ_Y420_10BIT,
-		.width             = 3840,
-		.height            = 2160,
-		.field_height      = 2160,
-		.aspect_ratio_num  = 16,
-		.aspect_ratio_den  = 9,
-		.sync_duration_num = 60,
-		.sync_duration_den = 1,
-		.video_clk         = 594000000,
-		.viu_color_fmt     = TVIN_YUV444,
-	},
-	{ /* VMODE_4K2K_50HZ_Y420_10BIT */
-		.name              = "2160p50hz42010bit",
-		.mode              = VMODE_4K2K_50HZ_Y420_10BIT,
-		.width             = 3840,
-		.height            = 2160,
-		.field_height      = 2160,
-		.aspect_ratio_num  = 16,
-		.aspect_ratio_den  = 9,
-		.sync_duration_num = 50,
-		.sync_duration_den = 1,
-		.video_clk         = 594000000,
-		.viu_color_fmt     = TVIN_YUV444,
-	},
-	{ /* VMODE_4K2K_60HZ_Y422_10BIT */
-		.name              = "2160p60hz42210bit",
-		.mode              = VMODE_4K2K_60HZ_Y422_10BIT,
-		.width             = 3840,
-		.height            = 2160,
-		.field_height      = 2160,
-		.aspect_ratio_num  = 16,
-		.aspect_ratio_den  = 9,
-		.sync_duration_num = 60,
-		.sync_duration_den = 1,
-		.video_clk         = 594000000,
-		.viu_color_fmt     = TVIN_YUV444,
-	},
-	{ /* VMODE_4K2K_50HZ_Y420_10BIT */
-		.name              = "2160p50hz42210bit",
-		.mode              = VMODE_4K2K_50HZ_Y422_10BIT,
-		.width             = 3840,
-		.height            = 2160,
-		.field_height      = 2160,
-		.aspect_ratio_num  = 16,
-		.aspect_ratio_den  = 9,
-		.sync_duration_num = 50,
-		.sync_duration_den = 1,
-		.video_clk         = 594000000,
-		.viu_color_fmt     = TVIN_YUV444,
-	},
-	{ /* VMODE_4K2K_24HZ_Y444_10BIT */
-		.name              = "2160p24hz44410bit",
-		.mode              = VMODE_4K2K_24HZ_Y444_10BIT,
-		.width             = 3840,
-		.height            = 2160,
-		.field_height      = 2160,
-		.aspect_ratio_num  = 16,
-		.aspect_ratio_den  = 9,
-		.sync_duration_num = 24,
-		.sync_duration_den = 1,
-		.video_clk         = 297000000,
-		.viu_color_fmt     = TVIN_YUV444,
-	},
-	{ /* VMODE_4K2K_25HZ_Y444_10BIT */
-		.name              = "2160p25hz44410bit",
-		.mode              = VMODE_4K2K_25HZ_Y444_10BIT,
-		.width             = 3840,
-		.height            = 2160,
-		.field_height      = 2160,
-		.aspect_ratio_num  = 16,
-		.aspect_ratio_den  = 9,
-		.sync_duration_num = 25,
-		.sync_duration_den = 1,
-		.video_clk         = 297000000,
-		.viu_color_fmt     = TVIN_YUV444,
-	},
-	{ /* VMODE_4K2K_30HZ_Y444_10BIT */
-		.name              = "2160p30hz44410bit",
-		.mode              = VMODE_4K2K_30HZ_Y444_10BIT,
-		.width             = 3840,
-		.height            = 2160,
-		.field_height      = 2160,
-		.aspect_ratio_num  = 16,
-		.aspect_ratio_den  = 9,
-		.sync_duration_num = 30,
-		.sync_duration_den = 1,
-		.video_clk         = 297000000,
-		.viu_color_fmt     = TVIN_YUV444,
-	},
 	{ /* VMODE_4K2K_60HZ_Y420 */
 		.name              = "2160p60hz420",
 		.mode              = VMODE_4K2K_60HZ_Y420,
@@ -1229,6 +1163,112 @@ static struct vinfo_s tv_info[] = {
 		.sync_duration_num = 60,
 		.sync_duration_den = 1,
 		.video_clk         = 148500000,
+		.viu_color_fmt     = TVIN_YUV444,
+	},
+/* VMODE for 3D Frame Packing */
+	{ /* VMODE_1080FP60HZ */
+		.name              = "1080fp60hz",
+		.mode              = VMODE_1080FP60HZ,
+		.width             = 1920,
+		.height            = 1080 + 1125,
+		.field_height      = 1080 + 1125,
+		.aspect_ratio_num  = 16,
+		.aspect_ratio_den  = 9,
+		.sync_duration_num = 60,
+		.sync_duration_den = 1,
+		.video_clk         = 297000000,
+		.viu_color_fmt     = TVIN_YUV444,
+	},
+	{ /* VMODE_1080FP50HZ */
+		.name              = "1080fp50hz",
+		.mode              = VMODE_1080FP50HZ,
+		.width             = 1920,
+		.height            = 1080 + 1125,
+		.field_height      = 1080 + 1125,
+		.aspect_ratio_num  = 16,
+		.aspect_ratio_den  = 9,
+		.sync_duration_num = 50,
+		.sync_duration_den = 1,
+		.video_clk         = 297000000,
+		.viu_color_fmt     = TVIN_YUV444,
+	},
+	{ /* VMODE_1080FP30HZ */
+		.name              = "1080fp30hz",
+		.mode              = VMODE_1080FP30HZ,
+		.width             = 1920,
+		.height            = 1080 + 1125,
+		.field_height      = 1080 + 1125,
+		.aspect_ratio_num  = 16,
+		.aspect_ratio_den  = 9,
+		.sync_duration_num = 30,
+		.sync_duration_den = 1,
+		.video_clk         = 148500000,
+		.viu_color_fmt     = TVIN_YUV444,
+	},
+	{ /* VMODE_1080FP25HZ */
+		.name              = "1080fp25hz",
+		.mode              = VMODE_1080FP25HZ,
+		.width             = 1920,
+		.height            = 1080 + 1125,
+		.field_height      = 1080 + 1125,
+		.aspect_ratio_num  = 16,
+		.aspect_ratio_den  = 9,
+		.sync_duration_num = 25,
+		.sync_duration_den = 1,
+		.video_clk         = 148500000,
+		.viu_color_fmt     = TVIN_YUV444,
+	},
+	{ /* VMODE_1080FP24HZ */
+		.name              = "1080fp24hz",
+		.mode              = VMODE_1080FP24HZ,
+		.width             = 1920,
+		.height            = 1080 + 1125,
+		.field_height      = 1080 + 1125,
+		.aspect_ratio_num  = 16,
+		.aspect_ratio_den  = 9,
+		.sync_duration_num = 24,
+		.sync_duration_den = 1,
+		.video_clk         = 148500000,
+		.viu_color_fmt     = TVIN_YUV444,
+	},
+	{ /* VMODE_720FP60HZ */
+		.name              = "720fp60hz",
+		.mode              = VMODE_720FP60HZ,
+		.width             = 1280,
+		.height            = 720 + 750,
+		.field_height      = 720 + 750,
+		.aspect_ratio_num  = 16,
+		.aspect_ratio_den  = 9,
+		.sync_duration_num = 60,
+		.sync_duration_den = 1,
+		.video_clk         = 148500000,
+		.viu_color_fmt     = TVIN_YUV444,
+	},
+	{ /* VMODE_720FP50HZ */
+		.name              = "720fp50hz",
+		.mode              = VMODE_720FP50HZ,
+		.width             = 1280,
+		.height            = 720 + 750,
+		.field_height      = 720 + 750,
+		.aspect_ratio_num  = 16,
+		.aspect_ratio_den  = 9,
+		.sync_duration_num = 50,
+		.sync_duration_den = 1,
+		.video_clk         = 148500000,
+		.viu_color_fmt     = TVIN_YUV444,
+	},
+/* VMODE for 3D Frame Packing END */
+	{ /* NULL mode, used as temporary witch mode state */
+		.name              = "null",
+		.mode              = VMODE_NULL,
+		.width             = 1920,
+		.height            = 1080,
+		.field_height      = 1080,
+		.aspect_ratio_num  = 16,
+		.aspect_ratio_den  = 9,
+		.sync_duration_num = 60,
+		.sync_duration_den = 1,
+		.video_clk         = 1485000000,
 		.viu_color_fmt     = TVIN_YUV444,
 	},
 };

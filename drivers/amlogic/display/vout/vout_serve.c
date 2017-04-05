@@ -83,8 +83,14 @@ static ssize_t axis_show(struct class *class, struct class_attribute *attr,
 			 char *buf);
 static ssize_t axis_store(struct class *class, struct class_attribute *attr,
 			  const char *buf, size_t count);
+static ssize_t fr_policy_show(struct class *class,
+		struct class_attribute *attr, char *buf);
+static ssize_t fr_policy_store(struct class *class,
+		struct class_attribute *attr, const char *buf, size_t count);
 static CLASS_ATTR(mode, S_IWUSR | S_IRUGO, mode_show, mode_store);
 static CLASS_ATTR(axis, S_IWUSR | S_IRUGO, axis_show, axis_store);
+static CLASS_ATTR(fr_policy, S_IWUSR | S_IRUGO,
+		fr_policy_show, fr_policy_store);
 
 static ssize_t mode_show(struct class *class, struct class_attribute *attr,
 			 char *buf)
@@ -123,6 +129,38 @@ static ssize_t axis_store(struct class *class, struct class_attribute *attr,
 	mutex_lock(&vout_mutex);
 	snprintf(vout_axis, 64, "%s", buf);
 	set_vout_axis(vout_axis);
+	mutex_unlock(&vout_mutex);
+	return count;
+}
+
+static ssize_t fr_policy_show(struct class *class,
+		struct class_attribute *attr, char *buf)
+{
+	int policy;
+	int ret = 0;
+
+	policy = get_vframe_rate_policy();
+	ret = sprintf(buf, "%d\n", policy);
+
+	return ret;
+}
+
+static ssize_t fr_policy_store(struct class *class,
+		struct class_attribute *attr, const char *buf, size_t count)
+{
+	int policy;
+	int ret = 0;
+
+	mutex_lock(&vout_mutex);
+	ret = sscanf(buf, "%d", &policy);
+	if (ret == 1) {
+		ret = set_vframe_rate_policy(policy);
+		if (ret)
+			pr_info("%s: %d failed\n", __func__, policy);
+	} else {
+		pr_info("%s: invalid data\n", __func__);
+		return -EINVAL;
+	}
 	mutex_unlock(&vout_mutex);
 	return count;
 }
@@ -318,6 +356,7 @@ static ssize_t vout_attr_vinfo_show(struct class *class,
 		struct class_attribute *attr, char *buf)
 {
 	const struct vinfo_s *info = NULL;
+	ssize_t len = 0;
 
 	info = get_current_vinfo();
 	if (info == NULL) {
@@ -325,7 +364,7 @@ static ssize_t vout_attr_vinfo_show(struct class *class,
 		return sprintf(buf, "\n");
 	}
 
-	pr_info("current vinfo:\n"
+	len = sprintf(buf, "current vinfo:\n"
 		"    name:                  %s\n"
 		"    mode:                  %d\n"
 		"    width:                 %d\n"
@@ -338,14 +377,34 @@ static ssize_t vout_attr_vinfo_show(struct class *class,
 		"    screen_real_width:     %d\n"
 		"    screen_real_height:    %d\n"
 		"    video_clk:             %d\n"
-		"    viu_color_fmt:         %d\n",
+		"    viu_color_fmt:         %d\n\n",
 		info->name, info->mode,
 		info->width, info->height, info->field_height,
 		info->aspect_ratio_num, info->aspect_ratio_den,
 		info->sync_duration_num, info->sync_duration_den,
 		info->screen_real_width, info->screen_real_height,
 		info->video_clk, info->viu_color_fmt);
-	return sprintf(buf, "\n");
+	len += sprintf(buf+len, "hdr_info:\n"
+		"    present_flag          %d\n"
+		"    features              0x%x\n"
+		"    primaries             0x%x, 0x%x\n"
+		"                          0x%x, 0x%x\n"
+		"                          0x%x, 0x%x\n"
+		"    white_point           0x%x, 0x%x\n"
+		"    luminance             %d, %d\n\n",
+		info->master_display_info.present_flag,
+		info->master_display_info.features,
+		info->master_display_info.primaries[0][0],
+		info->master_display_info.primaries[0][1],
+		info->master_display_info.primaries[1][0],
+		info->master_display_info.primaries[1][1],
+		info->master_display_info.primaries[2][0],
+		info->master_display_info.primaries[2][1],
+		info->master_display_info.white_point[0],
+		info->master_display_info.white_point[1],
+		info->master_display_info.luminance[0],
+		info->master_display_info.luminance[1]);
+	return len;
 }
 
 static struct  class_attribute  class_attr_vinfo =
@@ -365,18 +424,20 @@ static int create_vout_attr(void)
 
 	/* create vout class attr files */
 	ret = class_create_file(vout_class, &class_attr_mode);
-
 	if (ret != 0)
-		vout_log_err("create class attr failed!\n");
+		vout_log_err("create class attr mode failed!\n");
 
 	ret = class_create_file(vout_class, &class_attr_axis);
-
 	if (ret != 0)
-		vout_log_err("create class attr failed!\n");
+		vout_log_err("create class attr axis failed!\n");
+
+	ret = class_create_file(vout_class, &class_attr_fr_policy);
+	if (ret != 0)
+		vout_log_err("create class attr fr_policy failed!\n");
 
 	ret = class_create_file(vout_class, &class_attr_vinfo);
 	if (ret != 0)
-		vout_log_err("create class attr failed!\n");
+		vout_log_err("create class attr vinfo failed!\n");
 
 	/*
 	 * init /sys/class/display/mode
@@ -527,6 +588,7 @@ static int meson_vout_remove(struct platform_device *pdev)
 #endif
 	class_remove_file(vout_class, &class_attr_mode);
 	class_remove_file(vout_class, &class_attr_axis);
+	class_remove_file(vout_class, &class_attr_fr_policy);
 	class_remove_file(vout_class, &class_attr_vinfo);
 	class_destroy(vout_class);
 	return 0;

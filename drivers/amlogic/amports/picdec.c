@@ -641,7 +641,10 @@ static int picdec_start(void)
 
 	unsigned map_start, map_size = 0;
 
-	picdec_buffer_init();
+	if (picdec_buffer_init() < 0) {
+		aml_pr_info(0, "no memory, open fail\n");
+		return -1;
+	}
 
 	get_picdec_buf_info(&buf_start, &buf_size, NULL);
 
@@ -1435,9 +1438,9 @@ int picdec_fill_buffer(struct vframe_s *vf, struct ge2d_context_s *context,
 
 	ge2d_config->src_para.left = 0;
 
-	ge2d_config->src_para.width = frame_width;
+	ge2d_config->src_para.width = picdec_device.origin_width;
 
-	ge2d_config->src_para.height = frame_height;
+	ge2d_config->src_para.height = picdec_device.origin_height;
 
 	/* pr_info("vf_width is %d , vf_height is %d\n",
 	   vf->width ,vf->height); */
@@ -1767,7 +1770,7 @@ int picdec_cma_buf_uninit(void)
 int picdec_buffer_init(void)
 {
 	int i;
-
+	int ret = 0;
 	u32 canvas_width, canvas_height;
 
 	u32 decbuf_size;
@@ -1784,8 +1787,10 @@ int picdec_buffer_init(void)
 
 	sema_init(&pic_vb_done_sema, 1);/*init 1*/
 
-	if (!buf_start || !buf_size)
+	if (!buf_start || !buf_size) {
+		ret = -1;
 		goto exit;
+	}
 
 	picdec_device.vinfo = get_current_vinfo();
 
@@ -1830,7 +1835,7 @@ int picdec_buffer_init(void)
 	picdec_device.assit_buf_start =
 		buf_start + canvas_width * canvas_height * 3;
 exit:
-	return 0;
+	return ret;
 
 }
 

@@ -75,18 +75,31 @@ struct ion_client *meson_ion_client_create(unsigned int heap_mask,
 }
 EXPORT_SYMBOL(meson_ion_client_create);
 
-int meson_ion_share_fd_to_phys(struct ion_client *client,
-		int share_fd, ion_phys_addr_t *addr, size_t *len)
+int meson_ion_share_fd_to_phys(
+	struct ion_client *client, int share_fd,
+	ion_phys_addr_t *addr, size_t *len)
 {
-	struct ion_handle *handle = NULL;
+	struct ion_handle *handle;
+	int ret;
 
 	handle = ion_import_dma_buf(client, share_fd);
 	if (IS_ERR_OR_NULL(handle)) {
-		dprintk(0, "EINVAL, client=%p, share_fd=%d\n",
-				client, share_fd);
+		/* pr_err("%s,EINVAL, client=%p, share_fd=%d\n",
+		 *	 __func__, client, share_fd);
+		*/
+		return PTR_ERR(handle);
 	}
 
-	return ion_phys(client, handle, addr, len);
+	ret = ion_phys(client, handle, addr, (size_t *)len);
+	pr_debug("ion_phys ret=%d, phys=0x%lx\n", ret, *addr);
+	if (ret < 0) {
+		pr_err("ion_get_phys error, ret=%d\n", ret);
+		return ret;
+	}
+
+	ion_free(client, handle);
+
+	return 0;
 }
 EXPORT_SYMBOL(meson_ion_share_fd_to_phys);
 
@@ -117,6 +130,9 @@ static int meson_ion_get_phys(
 		dprintk(0, "meson_ion_get_phys error, ret=%d\n", ret);
 		return ret;
 	}
+
+	ion_free(client, handle);
+
 	data.phys_addr = (unsigned int)addr;
 	data.size = (unsigned int)len;
 	if (copy_to_user((void __user *)arg, &data,
@@ -153,7 +169,7 @@ int dev_ion_probe(struct platform_device *pdev)
 	my_ion_heap[num_heaps].id = ION_HEAP_TYPE_CUSTOM;
 	my_ion_heap[num_heaps].name = "codec_mm_ion";
 	my_ion_heap[num_heaps].base = (ion_phys_addr_t) NULL;
-	my_ion_heap[num_heaps].size = 16 * 1024 * 1024;
+	my_ion_heap[num_heaps].size = 32 * 1024 * 1024;
 	num_heaps++;
 
 	/* init reserved memory */
@@ -205,6 +221,9 @@ static int ion_dev_mem_init(struct reserved_mem *rmem, struct device *dev)
 	my_ion_heap[num_heaps].name = "carveout_ion";
 	my_ion_heap[num_heaps].base = (ion_phys_addr_t) rmem->base;
 	my_ion_heap[num_heaps].size = rmem->size;
+
+	pr_info("ion_dev_mem_init size=0x%llx\n", rmem->size);
+
 	num_heaps++;
 	heaps = kzalloc(sizeof(struct ion_heap *) * num_heaps, GFP_KERNEL);
 	/* idev = ion_device_create(NULL); */

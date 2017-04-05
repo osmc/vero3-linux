@@ -58,6 +58,7 @@
 #include <linux/reboot.h>
 #include <linux/amlogic/pm.h>
 #include <linux/of_address.h>
+#include <linux/random.h>
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 static struct early_suspend aocec_suspend_handler;
@@ -80,6 +81,7 @@ static struct early_suspend aocec_suspend_handler;
 #define CEC_EARLY_SUSPEND	(1 << 0)
 #define CEC_DEEP_SUSPEND	(1 << 1)
 
+#define HR_DELAY(n)		(ktime_set(0, n * 1000 * 1000))
 
 /* global struct for tx and rx */
 struct ao_cec_dev {
@@ -123,11 +125,15 @@ enum {
 static struct ao_cec_dev *cec_dev;
 static int cec_tx_result;
 
+static int cec_line_cnt;
+static struct hrtimer start_bit_check;
+
 static unsigned char rx_msg[MAX_MSG];
 static unsigned char rx_len;
 static unsigned int  new_msg;
 static bool wake_ok = 1;
 static bool ee_cec;
+static bool pin_status;
 bool cec_msg_dbg_en = 0;
 
 #define CEC_ERR(format, args...)                \
@@ -291,19 +297,40 @@ void cecrx_hw_reset(void)
 {
 	/* cec disable */
 	hdmirx_set_bits_dwc(DWC_DMI_DISABLE_IF, 0, 5, 1);
+	udelay(500);
+}
+
+static void cecrx_check_irq_enable(void)
+{
+	unsigned int reg32;
+
+	reg32 = hdmirx_rd_dwc(DWC_AUD_CLK_IEN);
+	if ((reg32 & EE_CEC_IRQ_EN_MASK) != EE_CEC_IRQ_EN_MASK) {
+		CEC_INFO("irq_en is wrong:%x, checker:%pf\n",
+			 reg32, (void *)_RET_IP_);
+		hdmirx_wr_dwc(DWC_AUD_CLK_IEN_SET, EE_CEC_IRQ_EN_MASK);
+	}
 }
 
 static int cecrx_trigle_tx(const unsigned char *msg, unsigned char len)
 {
 	int i = 0, size = 0;
+	int lock;
 
+	cecrx_check_irq_enable();
 	while (1) {
 		/* send is in process */
+		lock = hdmirx_rd_dwc(DWC_CEC_LOCK);
+		if (lock) {
+			CEC_ERR("recevie msg in tx\n");
+			cecrx_irq_handle();
+			return -1;
+		}
 		if (hdmirx_rd_dwc(DWC_CEC_CTRL) & 0x01)
 			i++;
 		else
 			break;
-		if (i > 10) {
+		if (i > 25) {
 			CEC_ERR("wating busy timeout\n");
 			return -1;
 		}
@@ -329,7 +356,7 @@ int cec_has_irq(void)
 {
 	unsigned int intr_cec;
 	intr_cec = hdmirx_rd_dwc(DWC_AUD_CLK_ISTS) &
-		   hdmirx_rd_dwc(DWC_AUD_CLK_IEN);
+		   EE_CEC_IRQ_EN_MASK;
 
 	if (intr_cec)
 		return 1;
@@ -357,29 +384,37 @@ static int cec_pick_msg(unsigned char *msg, unsigned char *out_len)
 	hdmirx_wr_dwc(DWC_CEC_LOCK, 0);
 	mod_delayed_work(cec_dev->cec_thread, dwork, 0);
 	CEC_INFO("%s", msg_log_buf);
-	*out_len = len;
+	if (((msg[0] & 0xf0) >> 4) == cec_dev->cec_info.log_addr) {
+		*out_len = 0;
+		CEC_ERR("bad iniator with self:%s", msg_log_buf);
+	} else
+		*out_len = len;
+	pin_status = 1;
 	return 0;
 }
 
-static irqreturn_t cecrx_isr(int irq, void *dev_instance)
+void cecrx_irq_handle(void)
 {
 	uint32_t intr_cec;
+	uint32_t lock;
 
-	intr_cec = hdmirx_rd_dwc(DWC_AUD_CLK_ISTS) &
-		   hdmirx_rd_dwc(DWC_AUD_CLK_IEN);
+	intr_cec = (hdmirx_rd_dwc(DWC_AUD_CLK_ISTS) & EE_CEC_IRQ_EN_MASK);
 
 	/* clear irq */
 	if (intr_cec != 0)
 		hdmirx_wr_dwc(DWC_AUD_CLK_ICLR, intr_cec);
+
+	if (!ee_cec)
+		return;
 
 	/* TX DONE irq, increase tx buffer pointer */
 	if (intr_cec & CEC_IRQ_TX_DONE) {
 		cec_tx_result = CEC_FAIL_NONE;
 		complete(&cec_dev->tx_ok);
 	}
-
+	lock = hdmirx_rd_dwc(DWC_CEC_LOCK);
 	/* EOM irq, message is comming */
-	if (intr_cec & CEC_IRQ_RX_EOM) {
+	if ((intr_cec & CEC_IRQ_RX_EOM) || lock) {
 		cec_pick_msg(rx_msg, &rx_len);
 		complete(&cec_dev->rx_ok);
 	}
@@ -392,8 +427,12 @@ static irqreturn_t cecrx_isr(int irq, void *dev_instance)
 			CEC_ERR("tx msg failed, flag:%08x\n", intr_cec);
 		if (intr_cec & CEC_IRQ_TX_NACK)
 			cec_tx_result = CEC_FAIL_NACK;
-		else if (intr_cec & CEC_IRQ_TX_ARB_LOST)
+		else if (intr_cec & CEC_IRQ_TX_ARB_LOST) {
 			cec_tx_result = CEC_FAIL_BUSY;
+			/* clear start */
+			hdmirx_wr_dwc(DWC_CEC_TX_CNT, 0);
+			hdmirx_set_bits_dwc(DWC_CEC_CTRL, 0, 0, 3);
+		}
 		else
 			cec_tx_result = CEC_FAIL_OTHER;
 		complete(&cec_dev->tx_ok);
@@ -407,9 +446,14 @@ static irqreturn_t cecrx_isr(int irq, void *dev_instance)
 
 	if (intr_cec & CEC_IRQ_RX_WAKEUP) {
 		CEC_INFO("rx wake up\n");
+		hdmirx_wr_dwc(DWC_CEC_WKUPCTRL, 0);
 		/* TODO: wake up system if needed */
 	}
+}
 
+static irqreturn_t cecrx_isr(int irq, void *dev_instance)
+{
+	cecrx_irq_handle();
 	return IRQ_HANDLED;
 }
 
@@ -419,6 +463,7 @@ int cecrx_hw_init(void)
 
 	if (!ee_cec)
 		return -1;
+	cecrx_hw_reset();
 	/* set cec clk 32768k */
 	data32  = readl(cec_dev->hhi_reg + HHI_32K_CLK_CNTL);
 	data32  = 0;
@@ -436,7 +481,7 @@ int cecrx_hw_init(void)
 	hdmirx_set_bits_top(TOP_EDID_GEN_CNTL, EDID_AUTO_CEC_EN, 11, 1);
 
 	/* enable all cec irq */
-	hdmirx_wr_dwc(DWC_AUD_CLK_IEN_SET, (0x7f << 16));
+	hdmirx_wr_dwc(DWC_AUD_CLK_IEN_SET, EE_CEC_IRQ_EN_MASK);
 	/* clear all wake up source */
 	hdmirx_wr_dwc(DWC_CEC_WKUPCTRL, 0);
 	/* cec enable */
@@ -574,8 +619,15 @@ void cec_rx_buf_clear(void)
 
 int cec_rx_buf_check(void)
 {
-	unsigned int rx_num_msg = aocec_rd_reg(CEC_RX_NUM_MSG);
+	unsigned int rx_num_msg;
 
+	if (ee_cec) {
+		cecrx_check_irq_enable();
+		cecrx_irq_handle();
+		return 0;
+	}
+
+	rx_num_msg = aocec_rd_reg(CEC_RX_NUM_MSG);
 	if (rx_num_msg)
 		CEC_INFO("rx msg num:0x%02x\n", rx_num_msg);
 
@@ -621,6 +673,7 @@ int cec_ll_rx(unsigned char *msg, unsigned char *len)
 	aocec_wr_reg(CEC_RX_MSG_CMD, RX_ACK_CURRENT);
 	aocec_wr_reg(CEC_RX_MSG_CMD, RX_NO_OP);
 	cec_rx_buf_clear();
+	pin_status = 1;
 	return ret;
 }
 
@@ -754,20 +807,94 @@ void tx_irq_handle(void)
 	complete(&cec_dev->tx_ok);
 }
 
+static int get_line(void)
+{
+	int reg, cpu_type, ret = -EINVAL;
+
+	reg = readl(cec_dev->cec_reg + AO_GPIO_I);
+	cpu_type = get_cpu_type();
+	switch (cpu_type) {
+	case MESON_CPU_MAJOR_ID_M8:
+	case MESON_CPU_MAJOR_ID_M8B:
+	case MESON_CPU_MAJOR_ID_MG9TV:
+	case MESON_CPU_MAJOR_ID_M8M2:
+	case MESON_CPU_MAJOR_ID_GXBB:
+		ret = (reg & (1 << 12));
+		break;
+	case MESON_CPU_MAJOR_ID_GXL:
+	case MESON_CPU_MAJOR_ID_GXM:
+		ret = (reg & (1 <<  8));
+		break;
+	case MESON_CPU_MAJOR_ID_GXTVBB:
+		ret = (reg & (1 <<  9));
+		break;
+	case MESON_CPU_MAJOR_ID_TXL:
+		ret = (reg & (1 <<  7));
+		break;
+	default:
+		CEC_ERR("unknow cpu type:%d\n", cpu_type);
+		break;
+	}
+	return ret;
+}
+
+static enum hrtimer_restart cec_line_check(struct hrtimer *timer)
+{
+	if (get_line() == 0)
+		cec_line_cnt++;
+	hrtimer_forward_now(timer, HR_DELAY(1));
+	return HRTIMER_RESTART;
+}
+
+static int check_confilct(void)
+{
+	int i;
+
+	for (i = 0; i < 200; i++) {
+		/*
+		 * sleep 20ms and using hrtimer to check cec line every 1ms
+		 */
+		cec_line_cnt = 0;
+		hrtimer_start(&start_bit_check, HR_DELAY(1), HRTIMER_MODE_REL);
+		msleep(20);
+		hrtimer_cancel(&start_bit_check);
+		if (cec_line_cnt == 0)
+			break;
+		else
+			CEC_INFO("line busy:%d\n", cec_line_cnt);
+	}
+	if (i >= 200)
+		return -EBUSY;
+	else
+		return 0;
+}
+
 /* Return value: < 0: fail, > 0: success */
 int cec_ll_tx(const unsigned char *msg, unsigned char len)
 {
 	int ret = -1;
 	int t = msecs_to_jiffies(2000);
+	int retry = 2;
 
 	if (len == 0)
 		return CEC_FAIL_NONE;
 
 	mutex_lock(&cec_dev->cec_mutex);
-	/*
-	 * do not send messanges if tv is not support CEC
-	 */
+
+try_again:
 	reinit_completion(&cec_dev->tx_ok);
+	/*
+	 * CEC controller won't ack message if it is going to send
+	 * state. If we detect cec line is low during wating signal
+	 * free time, that means a send is already started by other
+	 * device, we should wait it finished.
+	 */
+	if (check_confilct()) {
+		CEC_ERR("bus confilct too long\n");
+		mutex_unlock(&cec_dev->cec_mutex);
+		return CEC_FAIL_BUSY;
+	}
+
 	if (ee_cec)
 		ret = cecrx_trigle_tx(msg, len);
 	else
@@ -775,6 +902,11 @@ int cec_ll_tx(const unsigned char *msg, unsigned char len)
 	if (ret < 0) {
 		/* we should increase send idx if busy */
 		CEC_INFO("tx busy\n");
+		if (retry > 0) {
+			retry--;
+			msleep(100 + (prandom_u32() & 0x07) * 10);
+			goto try_again;
+		}
 		mutex_unlock(&cec_dev->cec_mutex);
 		return CEC_FAIL_BUSY;
 	}
@@ -789,6 +921,13 @@ int cec_ll_tx(const unsigned char *msg, unsigned char len)
 		ret = CEC_FAIL_OTHER;
 	} else {
 		ret = cec_tx_result;
+	}
+	if (ret != CEC_FAIL_NONE && ret != CEC_FAIL_NACK) {
+		if (retry > 0) {
+			retry--;
+			msleep(100 + (prandom_u32() & 0x07) * 10);
+			goto try_again;
+		}
 	}
 	mutex_unlock(&cec_dev->cec_mutex);
 
@@ -1539,7 +1678,7 @@ static void cec_task(struct work_struct *work)
 		}
 		cec_rx_process();
 	}
-	if (!ee_cec && !cec_late_check_rx_buffer())
+	if (!cec_late_check_rx_buffer())
 		queue_delayed_work(cec_dev->cec_thread, dwork, CEC_FRAME_DELAY);
 }
 
@@ -1726,6 +1865,31 @@ static ssize_t port_status_show(struct class *cla,
 	}
 }
 
+static ssize_t pin_status_show(struct class *cla,
+	struct class_attribute *attr, char *buf)
+{
+	unsigned int tx_hpd;
+	char p;
+
+	tx_hpd = cec_dev->tx_dev->hpd_state;
+	if (cec_dev->dev_type == DEV_TYPE_PLAYBACK) {
+		if (!tx_hpd) {
+			pin_status = 0;
+			return sprintf(buf, "%s\n", "disconnected");
+		}
+		if (pin_status == 0) {
+			p = (cec_dev->cec_info.log_addr << 4) | CEC_TV_ADDR;
+			if (cec_ll_tx(&p, 1) == CEC_FAIL_NONE)
+				return sprintf(buf, "%s\n", "ok");
+			else
+				return sprintf(buf, "%s\n", "fail");
+		} else
+			return sprintf(buf, "%s\n", "ok");
+	} else {
+		return sprintf(buf, "%s\n", pin_status ? "ok" : "fail");
+	}
+}
+
 static ssize_t physical_addr_show(struct class *cla,
 	struct class_attribute *attr, char *buf)
 {
@@ -1821,6 +1985,7 @@ static struct class_attribute aocec_class_attr[] = {
 	__ATTR_RO(osd_name),
 	__ATTR_RO(dump_reg),
 	__ATTR_RO(port_status),
+	__ATTR_RO(pin_status),
 	__ATTR_RO(arc_port),
 	__ATTR_RO(wake_up),
 	__ATTR(physical_addr, 0664, physical_addr_show, physical_addr_store),
@@ -2422,6 +2587,8 @@ static int aml_cec_probe(struct platform_device *pdev)
 	aocec_suspend_handler.param   = cec_dev;
 	register_early_suspend(&aocec_suspend_handler);
 #endif
+	hrtimer_init(&start_bit_check, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	start_bit_check.function = cec_line_check;
 	/* for init */
 	cec_pre_init();
 	queue_delayed_work(cec_dev->cec_thread, &cec_dev->cec_work, 0);
