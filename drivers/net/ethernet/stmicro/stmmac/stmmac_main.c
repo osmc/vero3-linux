@@ -3428,7 +3428,7 @@ static void moniter_tx_handler(struct work_struct *work)
 			if (c_phy_dev->link) {
 				if (priv->dirty_tx != priv->cur_tx &&
 						check_tx == 0) {
-					pr_info("tx queueing\n");
+					//pr_info("tx queueing\n");
 					check_tx = 1;
 					last_dirty_tx = priv->dirty_tx;
 				}
