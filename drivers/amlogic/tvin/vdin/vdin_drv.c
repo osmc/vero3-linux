@@ -1708,6 +1708,7 @@ irqreturn_t vdin_isr(int irq, void *dev_id)
 	stamp  = vdin_get_meas_vstamp(offset);
 	if (!devp->curr_wr_vfe) {
 		devp->curr_wr_vfe = provider_vf_get(devp->vfp);
+		devp->curr_wr_vfe->vf.ready_jiffies64 = jiffies_64;
 		/*save the first field stamp*/
 		devp->stamp = stamp;
 		vdin_irq_flag = 3;
@@ -1716,8 +1717,6 @@ irqreturn_t vdin_isr(int irq, void *dev_id)
 	}
 	if (devp->last_wr_vfe && (devp->flags&VDIN_FLAG_RDMA_ENABLE) &&
 		(devp->game_mode == false)) {
-		/* debug for video latency */
-		devp->last_wr_vfe->vf.ready_jiffies64 = jiffies_64;
 		/*dolby vision metadata process*/
 		if (dv_dbg_mask & DV_UPDATE_DATA_MODE_DELBY_WORK
 			&& devp->dv_config) {
@@ -1934,8 +1933,6 @@ irqreturn_t vdin_isr(int irq, void *dev_id)
 	if (devp->flags&VDIN_FLAG_RDMA_ENABLE && (devp->game_mode == false)) {
 		devp->last_wr_vfe = curr_wr_vfe;
 	} else {
-		/* debug for video latency */
-		curr_wr_vfe->vf.ready_jiffies64 = jiffies_64;
 		/*dolby vision metadata process*/
 		if (dv_dbg_mask & DV_UPDATE_DATA_MODE_DELBY_WORK
 			&& devp->dv_config) {
@@ -1974,6 +1971,9 @@ irqreturn_t vdin_isr(int irq, void *dev_id)
 			(next_wr_vfe->vf.canvas0Addr>>8)&0xff);
 
 	devp->curr_wr_vfe = next_wr_vfe;
+	/* debug for video latency */
+	next_wr_vfe->vf.ready_jiffies64 = jiffies_64;
+
 	if (!(devp->flags&VDIN_FLAG_RDMA_ENABLE) || (devp->game_mode == true)) {
 		if (((dolby_input & (1 << devp->index)) ||
 			(devp->dv_flag && is_dolby_vision_enable())) &&

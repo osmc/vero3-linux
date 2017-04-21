@@ -820,6 +820,8 @@ u32 trickmode_vpts = 0;
 /* last_playback_filename */
 char file_name[512];
 
+static int first_frame_latency;
+
 /* video freerun mode */
 #define FREERUN_NONE    0	/* no freerun mode */
 #define FREERUN_NODUR   1	/* freerun without duration */
@@ -2075,8 +2077,18 @@ static void vsync_toggle_frame(struct vframe_s *vf)
 			}
 		} else {
 			new_frame_count++;
-			if (new_frame_count == 1)
+			if (new_frame_count == 1) {
 				first_picture = 1;
+				first_frame_latency =
+					jiffies_to_msecs(jiffies_64 -
+					vf->ready_jiffies64);
+				if (first_frame_latency > 1000)
+					pr_err("video latency overt 1s.\n");
+				if (debug_flag & DEBUG_FLAG_LATENCY)
+					pr_info("first latency %dms first %llu.\n",
+						first_frame_latency,
+						vf->ready_jiffies64);
+			}
 #ifdef CONFIG_VSYNC_RDMA
 			if (is_vsync_rdma_enable()) {
 #ifdef RDMA_RECYCLE_ORDERED_VFRAMES
@@ -2371,6 +2383,7 @@ static void vsync_toggle_frame(struct vframe_s *vf)
 		last_process_3d_type = process_3d_type;
 		atomic_inc(&video_sizechange);
 		wake_up_interruptible(&amvideo_sizechange_wait);
+
 		amlog_mask(LOG_MASK_FRAMEINFO,
 			   "%s %dx%d  ar=0x%x\n",
 			   ((vf->type & VIDTYPE_TYPEMASK) ==
@@ -6505,7 +6518,12 @@ static long amvideo_ioctl(struct file *file, unsigned int cmd, ulong arg)
 	case AMSTREAM_IOC_SET_VSYNC_SLOW_FACTOR:
 		vsync_slow_factor = arg;
 		break;
-
+	case AMSTREAM_IOC_GET_FIRST_FRAME_LATENCY:
+		put_user(first_frame_latency, (s32 __user *)argp);
+		break;
+	case AMSTREAM_IOC_CLEAR_FIRST_FRAME_LATENCY:
+		first_frame_latency = 0;
+		break;
 	case AMSTREAM_IOC_GLOBAL_SET_VIDEO_OUTPUT:
 		if (arg != 0)
 			video_global_output = 1;
@@ -6554,6 +6572,8 @@ static long amvideo_compat_ioctl(struct file *file, unsigned int cmd, ulong arg)
 	case AMSTREAM_IOC_GET_SOURCE_VIDEO_3D_TYPE:
 	case AMSTREAM_IOC_GET_VSYNC_SLOW_FACTOR:
 	case AMSTREAM_IOC_GLOBAL_GET_VIDEO_OUTPUT:
+	case AMSTREAM_IOC_GET_FIRST_FRAME_LATENCY:
+	case AMSTREAM_IOC_CLEAR_FIRST_FRAME_LATENCY:
 		arg = (unsigned long) compat_ptr(arg);
 	case AMSTREAM_IOC_TRICKMODE:
 	case AMSTREAM_IOC_VPAUSE:
