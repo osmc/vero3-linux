@@ -223,15 +223,8 @@ int hdmitx_hdcp_opr(unsigned int val)
 			: : "r"(x0)
 		);
 	}
-	if (val == 2) { /* HDCP14_RESULT */
-		register long x0 asm("x0") = 0x82000011;
-		asm volatile(
-			__asmeq("%0", "x0")
-			"smc #0\n"
-			: "+r"(x0)
-		);
-		return (unsigned)(x0&0xffffffff);
-	}
+	if (val == 2) /* HDCP14_RESULT */
+		return hdmitx_rd_reg(HDMITX_DWC_A_HDCPOBS0) & 0x1;
 	if (val == 0) { /* HDCP14_INIT */
 		register long x0 asm("x0") = 0x82000012;
 		asm volatile(
@@ -272,15 +265,8 @@ int hdmitx_hdcp_opr(unsigned int val)
 			: : "r"(x0)
 		);
 	}
-	if (val == 7) { /* HDCP22_RESULT */
-		register long x0 asm("x0") = 0x82000017;
-		asm volatile(
-			__asmeq("%0", "x0")
-			"smc #0\n"
-			: "+r"(x0)
-		);
-		return (unsigned)(x0&0xffffffff);
-	}
+	if (val == 7)
+		return !!(hdmitx_rd_reg(HDMITX_DWC_HDCP22REG_STS) & (1 << 3));
 	if (val == 0xa) { /* HDCP14_KEY_LSTORE */
 		register long x0 asm("x0") = 0x8200001a;
 		asm volatile(
@@ -3727,7 +3713,10 @@ static void set_pkf_duk_nonce(void)
 static int hdmitx_cntl_ddc(struct hdmitx_dev *hdev, unsigned cmd,
 	unsigned long argv)
 {
+	struct hdcp_obs_val *obs;
 	int i = 0;
+	int ret = 0;
+	unsigned char tmp[5];
 
 	unsigned char *tmp_char = NULL;
 	if (!(cmd & CMD_DDC_OFFSET))
@@ -3736,6 +3725,37 @@ static int hdmitx_cntl_ddc(struct hdmitx_dev *hdev, unsigned cmd,
 		hdmi_print(LOW, "ddc: " "cmd 0x%x\n", cmd);
 
 	switch (cmd) {
+	case DDC_HDCP14_SAVE_OBS:
+		obs = (struct hdcp_obs_val *)hdev;
+		ret = 0;
+		tmp[0] = hdmitx_rd_reg(HDMITX_DWC_A_HDCPOBS0) & 0xff;
+		tmp[1] = hdmitx_rd_reg(HDMITX_DWC_A_HDCPOBS1) & 0xff;
+		tmp[2] = hdmitx_rd_reg(HDMITX_DWC_A_HDCPOBS2) & 0xff;
+		tmp[3] = hdmitx_rd_reg(HDMITX_DWC_A_HDCPOBS3) & 0xff;
+		tmp[4] = hdmitx_rd_reg(HDMITX_DWC_A_APIINTSTAT) & 0xff;
+		/* if current status is not equal last obs, then return 1 */
+		if (obs->obs0 != tmp[0]) {
+			obs->obs0 = tmp[0];
+			ret |= (1 << 0);
+		}
+		if (obs->obs1 != tmp[1]) {
+			obs->obs1 = tmp[1];
+			ret |= (1 << 1);
+		}
+		if (obs->obs2 != tmp[2]) {
+			obs->obs2 = tmp[2];
+			ret |= (1 << 2);
+		}
+		if (obs->obs3 != tmp[3]) {
+			obs->obs3 = tmp[3];
+			ret |= (1 << 3);
+		}
+		if (obs->intstat != tmp[4]) {
+			obs->intstat = tmp[4];
+			ret |= (1 << 4);
+		}
+		return ret;
+		break;
 	case DDC_RESET_EDID:
 		hdmitx_wr_reg(HDMITX_DWC_I2CM_SOFTRSTZ, 0);
 		memset(tmp_edid_buf, 0, ARRAY_SIZE(tmp_edid_buf));
@@ -4126,6 +4146,7 @@ static int hdmitx_tmds_rxsense(void)
 static int hdmitx_cntl_misc(struct hdmitx_dev *hdev, unsigned cmd,
 	unsigned argv)
 {
+	static unsigned int st;
 	if (!(cmd & CMD_MISC_OFFSET))
 		hdmi_print(ERR, "misc: " "hdmitx: w: invalid cmd 0x%x\n", cmd);
 	else
@@ -4175,7 +4196,10 @@ static int hdmitx_cntl_misc(struct hdmitx_dev *hdev, unsigned cmd,
 		config_avmute(argv);
 		break;
 	case MISC_HDCP_CLKDIS:
-		pr_info("set hdcp clkdis: %d\n", !!argv);
+		if (st != !!argv) {
+			st = !!argv;
+			pr_info("set hdcp clkdis: %d\n", !!argv);
+		}
 		hdmitx_set_reg_bits(HDMITX_DWC_MC_CLKDIS, !!argv, 6, 1);
 		break;
 	default:

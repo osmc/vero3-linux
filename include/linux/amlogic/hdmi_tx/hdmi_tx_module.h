@@ -161,6 +161,21 @@ struct frac_rate_table {
 	u32 sync_den_dec;
 };
 
+struct hdcp_obs_val {
+	unsigned char obs0;
+	unsigned char obs1;
+	unsigned char obs2;
+	unsigned char obs3;
+	unsigned char intstat;
+};
+
+/* 2kB should be enough to record */
+#define HDCP_LOG_SIZE (1024 * 2)
+struct hdcplog_buf {
+	int idx;
+	unsigned char buf[HDCP_LOG_SIZE + 64]; /* padding 8 bytes */
+};
+
 #define EDID_MAX_BLOCK              4
 #define HDMI_TMP_BUF_SIZE           1024
 struct hdmitx_dev {
@@ -329,6 +344,7 @@ struct hdmitx_dev {
 #define DDC_HDCP_22_LSTORE	(CMD_DDC_OFFSET + 0x10)
 #define DDC_SCDC_DIV40_SCRAMB	(CMD_DDC_OFFSET + 0x20)
 #define DDC_HDCP14_GET_BCAPS_RP	(CMD_DDC_OFFSET + 0x30)
+#define DDC_HDCP14_SAVE_OBS	(CMD_DDC_OFFSET + 0x40)
 
 /***********************************************************************
  *             CONFIG CONTROL //CntlConfig
