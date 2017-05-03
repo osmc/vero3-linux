@@ -83,4 +83,9 @@ struct aml_runtime_data {
 	unsigned int xrun_num;
 };
 
+extern int amaudio2_enable;
+extern int amaudio2_read_enable;
+extern int cache_pcm_write(char __user *buf, int size);
+extern int get_pcm_cache_space(void);
+
 #endif

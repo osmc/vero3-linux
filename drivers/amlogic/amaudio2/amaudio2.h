@@ -62,6 +62,9 @@ static long amaudio_ioctl(struct file *file,
 static long amaudio_utils_ioctl(struct file *file,
 				unsigned int cmd, unsigned long arg);
 
+static ssize_t amaudio_read(struct file *file, char __user *buf,
+				size_t count, loff_t *ppos);
+
 #ifdef CONFIG_COMPAT
 static long amaudio_compat_ioctl(struct file *file, unsigned int cmd,
 				ulong arg);
@@ -91,6 +94,9 @@ extern unsigned long aml_i2s_playback_phy_start_addr;
 extern unsigned long aml_i2s_alsa_write_addr;
 extern unsigned int aml_i2s_playback_channel;
 extern unsigned int aml_i2s_playback_format;
+extern unsigned int aml_i2s_playback_running_flag;
+
+extern int if_audio_out_enable(void);
 
 #define AMAUDIO_IOC_MAGIC  'A'
 
@@ -102,5 +108,9 @@ extern unsigned int aml_i2s_playback_format;
 #define AMAUDIO_IOC_MIC_LEFT_GAIN	_IOW(AMAUDIO_IOC_MAGIC, 0x05, int)
 #define AMAUDIO_IOC_MIC_RIGHT_GAIN	_IOW(AMAUDIO_IOC_MAGIC, 0x06, int)
 #define AMAUDIO_IOC_MUSIC_GAIN		_IOW(AMAUDIO_IOC_MAGIC, 0x07, int)
+#define AMAUDIO_IOC_GET_READY_SIZE	_IOW(AMAUDIO_IOC_MAGIC, 0x08, int)
+#define AMAUDIO_IOC_GET_HW_DELAY_SIZE	_IOW(AMAUDIO_IOC_MAGIC, 0x09, int)
+#define AMAUDIO_IOC_RESET_BUFFER	_IOW(AMAUDIO_IOC_MAGIC, 0x0a, int)
+#define AMAUDIO_IOC_RUNNING_FLAG	_IOW(AMAUDIO_IOC_MAGIC, 0x0b, int)
 
 #endif

@@ -75,10 +75,20 @@ static struct device *amaudio_dev;
 int direct_left_gain = 256;
 int direct_right_gain = 256;
 int music_gain = 0;
-int audio_out_mode = 0;
+int audio_out_mode = 2;
+
 int amaudio2_enable = 0;
-int output_device = 0;
-int input_device = 1;
+EXPORT_SYMBOL(amaudio2_enable);
+int amaudio2_read_enable = 0;
+EXPORT_SYMBOL(amaudio2_read_enable);
+
+static unsigned long playback_data_cache_start;
+static unsigned long playback_data_cache_buf_size;
+static unsigned long playback_data_cache_rp;
+static unsigned long playback_data_cache_wp;
+static void *playback_tmp_start;
+static unsigned amaudio_delay;
+struct mutex amaudio2_utils_lock;
 
 static int external_mute_flag;
 static int external_mute_enable = 1;
@@ -143,6 +153,7 @@ static const struct file_operations amaudio_utils_fops = {
 	.owner		= THIS_MODULE,
 	.open		= amaudio_open,
 	.release	= amaudio_release,
+	.read		= amaudio_read,
 	.unlocked_ioctl = amaudio_utils_ioctl,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl	= amaudio_compat_utils_ioctl,
@@ -280,6 +291,7 @@ static int amaudio_open(struct inode *inode, struct file *file)
 		aml_aiu_update_bits(AIU_MEM_I2S_MASKS, 0xffff << 16,
 				int_num << 16);
 
+		amaudio2_enable = 1;
 		/*pr_info("channel: %d, int_num = %d,"
 		"int_block = %d, amaudio->hw.size = %d\n",
 		aml_i2s_playback_channel, int_num,
@@ -295,6 +307,24 @@ static int amaudio_open(struct inode *inode, struct file *file)
 		pr_info("amaudio2_ctl opened\n");
 	} else if (iminor(inode) == 3) {
 		pr_info("amaudio2_utils opened\n");
+		playback_data_cache_start = (unsigned long)kmalloc(
+				(SOFT_BUFFER_SIZE), GFP_KERNEL);
+		if (!playback_data_cache_start) {
+			pr_err("malloc for the audio output cache buffer fail\n");
+			goto error;
+		}
+		playback_tmp_start = kmalloc(
+				(SOFT_BUFFER_SIZE), GFP_KERNEL);
+		if (!playback_tmp_start) {
+			pr_err("malloc for the audio output tmp buffer fail\n");
+			goto error;
+		}
+
+		playback_data_cache_buf_size = SOFT_BUFFER_SIZE;
+		playback_data_cache_rp = playback_data_cache_start;
+		playback_data_cache_wp = playback_data_cache_start;
+		amaudio2_read_enable = 1;
+		mutex_init(&amaudio2_utils_lock);
 	} else {
 		pr_err("BUG:%s,%d, please check\n", __FILE__, __LINE__);
 		res = -EINVAL;
@@ -318,6 +348,15 @@ static int amaudio_release(struct inode *inode, struct file *file)
 	if (iminor(inode) == 0) {
 		free_irq(IRQ_OUT, amaudio);
 		amaudio->sw.addr = 0;
+		amaudio2_enable = 0;
+	} else if (iminor(inode) == 3) {
+		if (playback_data_cache_start) {
+			kfree((void *)playback_data_cache_start);
+			playback_data_cache_start = 0;
+		}
+
+		kfree(playback_tmp_start);
+		amaudio2_read_enable = 0;
 	}
 
 	kfree(amaudio);
@@ -340,6 +379,183 @@ static int amaudio_mmap(struct file *file, struct vm_area_struct *vma)
 		return -ENODEV;
 	}
 
+	return 0;
+}
+
+int remap_8ch_to_2ch(int32_t *in_buf, int16_t *out_buf, size_t frames)
+{
+	uint i;
+	if (in_buf == NULL || out_buf == NULL || frames == 0)
+		return -EINVAL;
+
+	for (i = 0; i < frames; i++) {
+		out_buf[2*i + 0] = (int16_t)((in_buf[8*i + 2]) >> 16);
+		out_buf[2*i + 1] = (int16_t)((in_buf[8*i + 3]) >> 16);
+	}
+	return 0;
+}
+
+int get_pcm_cache_space(void)
+{
+	int space;
+	if (playback_data_cache_wp >= playback_data_cache_rp) {
+		space =  playback_data_cache_buf_size - (playback_data_cache_wp
+				 - playback_data_cache_rp);
+	} else {
+		space =  playback_data_cache_rp - playback_data_cache_wp;
+	}
+	return space;
+}
+EXPORT_SYMBOL(get_pcm_cache_space);
+
+static int get_pcm_cache_content(void)
+{
+	return playback_data_cache_buf_size - get_pcm_cache_space();
+}
+
+static unsigned int get_hw_delay_size(void)
+{
+	unsigned int size;
+	if (amaudio2_enable == 0) {
+		unsigned int i2s_out_ptr = get_i2s_out_ptr();
+		unsigned int buffer_size = get_i2s_out_size();
+		size = (aml_i2s_alsa_write_addr + buffer_size - i2s_out_ptr)
+				% buffer_size;
+	} else
+		size = amaudio_delay;
+
+	if (aml_i2s_playback_channel == 8)
+		size = size >> 3;
+
+	return size;
+}
+
+static void buffer_copy(int size)
+{
+	int tail;
+
+	mutex_lock(&amaudio2_utils_lock);
+	if ((playback_data_cache_wp + size) > (playback_data_cache_buf_size
+					+ playback_data_cache_start)) {
+		tail = playback_data_cache_buf_size + playback_data_cache_start
+					- playback_data_cache_wp;
+
+		memcpy((char *)playback_data_cache_wp,
+					playback_tmp_start, tail);
+		playback_data_cache_wp = playback_data_cache_start;
+
+		memcpy((char *)playback_data_cache_wp,
+					playback_tmp_start + tail, size - tail);
+		playback_data_cache_wp = playback_data_cache_start
+					+ size - tail;
+	} else {
+		memcpy((char *)playback_data_cache_wp,
+					playback_tmp_start, size);
+		playback_data_cache_wp += size;
+	}
+	mutex_unlock(&amaudio2_utils_lock);
+	return;
+}
+
+int cache_pcm_write(char __user *buf, int size)
+{
+	if (playback_data_cache_wp == 0 || playback_data_cache_rp == 0
+				   || playback_data_cache_buf_size == 0) {
+		pr_info("write ! check the audio cached buffer ptr\n");
+		return -1;
+	}
+
+	if (copy_from_user((char *)playback_tmp_start, buf, size)) {
+		pr_err("copy audio pcm from user failed\n");
+		return -EFAULT;
+	}
+
+	if (aml_i2s_playback_channel == 8) {
+		remap_8ch_to_2ch(playback_tmp_start,
+					playback_tmp_start, size >> 5);
+		size = size >> 3;
+	}
+
+	buffer_copy(size);
+
+	return size;
+}
+EXPORT_SYMBOL(cache_pcm_write);
+
+static int amaudio2_cache_pcm_write(char *buf, int size)
+{
+	if (playback_data_cache_wp == 0 || playback_data_cache_rp == 0
+				   || playback_data_cache_buf_size == 0) {
+		pr_info("write ! check the audio cached buffer ptr\n");
+		return -1;
+	}
+
+	memcpy((char *)playback_tmp_start, buf, size);
+	if (aml_i2s_playback_channel == 8) {
+		remap_8ch_to_2ch(playback_tmp_start,
+					playback_tmp_start, size >> 5);
+		size = size >> 3;
+	}
+
+	buffer_copy(size);
+
+	return size;
+}
+
+static int cache_pcm_read(char __user *buf, int size)
+{
+	int tail;
+	int data_left = get_pcm_cache_content();
+	if (data_left  <= 0)
+		return 0;
+	if (data_left < size)
+		size = data_left;
+	if (playback_data_cache_wp == 0 || playback_data_cache_rp == 0
+				   || playback_data_cache_buf_size == 0) {
+		pr_info("read!check the audio cached buffer ptr\n");
+		return -1;
+	}
+
+	mutex_lock(&amaudio2_utils_lock);
+	if ((playback_data_cache_rp + size) > (playback_data_cache_buf_size
+				+ playback_data_cache_start)) {
+		tail = playback_data_cache_buf_size + playback_data_cache_start
+				- playback_data_cache_rp;
+		if (copy_to_user(buf, (char *)playback_data_cache_rp, tail)) {
+			pr_err("copy audio pcm to user failed\n");
+			return -EFAULT;
+		}
+		playback_data_cache_rp = playback_data_cache_start;
+		if (copy_to_user(buf + tail, (char *)playback_data_cache_rp,
+				size - tail)) {
+			pr_err("copy audio pcm to user failed\n");
+			return -EFAULT;
+		}
+		playback_data_cache_rp = playback_data_cache_start
+				+ size - tail;
+	} else {
+		if (copy_to_user(buf, (char *)playback_data_cache_rp,  size)) {
+			pr_err("copy audio pcm to user failed\n");
+			return -EFAULT;
+		}
+		playback_data_cache_rp += size;
+	}
+	mutex_unlock(&amaudio2_utils_lock);
+	return size;
+}
+
+static ssize_t amaudio_read(struct file *file, char __user *buf,
+				size_t count, loff_t *ppos)
+{
+	struct amaudio_t *amaudio = (struct amaudio_t *)file->private_data;
+
+	/* just use the software buffer to temp store the output sample data */
+	if (amaudio->type == 3) {
+		if (if_audio_out_enable() == 0 || count == 0 ||
+				amaudio2_read_enable == 0)
+			return 0;
+		return cache_pcm_read(buf, count);
+	}
 	return 0;
 }
 
@@ -910,10 +1126,10 @@ static void i2s_copy(struct amaudio_t *amaudio)
 {
 	struct BUF *hw = &amaudio->hw;
 	struct BUF *sw = &amaudio->sw;
-	unsigned i2s_out_ptr = get_i2s_out_ptr();
-	unsigned alsa_delay =
+	unsigned int i2s_out_ptr = get_i2s_out_ptr();
+	unsigned int alsa_delay =
 		(aml_i2s_alsa_write_addr + hw->size - i2s_out_ptr) % hw->size;
-	unsigned amaudio_delay = (hw->wr + hw->size - i2s_out_ptr) % hw->size;
+	amaudio_delay = (hw->wr + hw->size - i2s_out_ptr) % hw->size;
 
 #ifdef AMAUDIO2_USE_IRQ
 	unsigned long swirqflags, hwirqflags;
@@ -965,6 +1181,14 @@ static void i2s_copy(struct amaudio_t *amaudio)
 		else if (audio_out_mode == 2)
 			(*aml_direct_mix_memcpy)
 					(hw, hw->wr, sw, sw->rd, int_block);
+
+#ifdef CONFIG_SND_AML_SPLIT_MODE
+		if (amaudio2_enable == 1 && amaudio2_read_enable == 1) {
+			char *read_buf = (char *)(hw->addr + hw->wr);
+			amaudio2_cache_pcm_write(read_buf, int_block);
+		}
+#endif
+
 	}
 
 	hw->wr = (hw->wr + int_block) % hw->size;
@@ -1190,7 +1414,30 @@ static long amaudio_ioctl(struct file *file, unsigned int cmd,
 static long amaudio_utils_ioctl(struct file *file, unsigned int cmd,
 				unsigned long arg)
 {
-	return 0;
+	int r = 0;
+
+	switch (cmd) {
+	case AMAUDIO_IOC_GET_READY_SIZE:
+		r = get_pcm_cache_content();
+		break;
+	case AMAUDIO_IOC_GET_HW_DELAY_SIZE:
+		r = get_hw_delay_size();
+		break;
+	case AMAUDIO_IOC_RESET_BUFFER:
+		mutex_lock(&amaudio2_utils_lock);
+		playback_data_cache_rp = playback_data_cache_start;
+		playback_data_cache_wp = playback_data_cache_start;
+		mutex_unlock(&amaudio2_utils_lock);
+		pr_info("amaudio_utils_ioctl: reset buffer!\n");
+		break;
+	case AMAUDIO_IOC_RUNNING_FLAG:
+		r = aml_i2s_playback_running_flag;
+		break;
+	default:
+		break;
+	}
+
+	return r;
 }
 
 /* -----------------class interface---------------- */
@@ -1292,80 +1539,6 @@ static ssize_t store_music_gain(struct class *class,
 	return count;
 }
 
-static ssize_t show_aml_amaudio2_enable(struct class *class,
-				struct class_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", amaudio2_enable);
-}
-
-static ssize_t store_aml_amaudio2_enable(struct class *class,
-				struct class_attribute *attr,
-				const char *buf, size_t count)
-{
-	if (buf[0] == '0') {
-		pr_info("amaudio2 is disable!\n");
-		amaudio2_enable = 0;
-	} else if (buf[0] == '1') {
-		pr_info("amaudio2 is enable!\n");
-		amaudio2_enable = 1;
-	} else {
-		pr_info("Invalid argument!\n");
-	}
-
-	return count;
-}
-
-static ssize_t show_aml_input_device(struct class *class,
-				struct class_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", input_device);
-}
-
-static ssize_t store_aml_input_device(struct class *class,
-				struct class_attribute *attr,
-				const char *buf, size_t count)
-{
-	if (buf[0] == '0') {
-		pr_info("i2s in as input device!\n");
-		input_device = 0;
-		set_hw_resample_source(0);
-	} else if (buf[0] == '1') {
-		pr_info("spdif in as input device!\n");
-		input_device = 1;
-		set_hw_resample_source(1);
-	} else {
-		pr_info("Invalid argument!\n");
-	}
-
-	return count;
-}
-
-static ssize_t show_aml_output_driver(struct class *class,
-				struct class_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", output_device);
-}
-
-static ssize_t store_aml_output_driver(struct class *class,
-				struct class_attribute *attr,
-				const char *buf, size_t count)
-{
-	if (buf[0] == '0') {
-		pr_info("amaudio2 as output driver!\n");
-		output_device = 0;
-	} else if (buf[0] == '1') {
-		pr_info("alsa out as output driver\n");
-		output_device = 1;
-	} else if (buf[0] == '2') {
-		pr_info("audiotrack as output driver\n");
-		output_device = 2;
-	} else {
-		pr_info("Invalid argument!\n");
-	}
-
-	return count;
-}
-
 static ssize_t show_aml_external_mute_enable(struct class *class,
 				struct class_attribute *attr, char *buf)
 {
@@ -1404,18 +1577,6 @@ static struct class_attribute amaudio_attrs[] = {
 	       S_IRUGO | S_IWUSR,
 	       show_music_gain,
 	       store_music_gain),
-	__ATTR(aml_amaudio2_enable,
-	       S_IRUGO | S_IWUSR | S_IWGRP,
-	       show_aml_amaudio2_enable,
-	       store_aml_amaudio2_enable),
-	__ATTR(aml_input_device,
-	       S_IRUGO | S_IWUSR | S_IWGRP,
-	       show_aml_input_device,
-	       store_aml_input_device),
-	__ATTR(aml_output_driver,
-	       S_IRUGO | S_IWUSR | S_IWGRP,
-	       show_aml_output_driver,
-	       store_aml_output_driver),
 	__ATTR(aml_external_mute_enable,
 	       S_IRUGO | S_IWUSR | S_IWGRP,
 	       show_aml_external_mute_enable,
@@ -1487,9 +1648,10 @@ static int amaudio2_init(struct platform_device *pdev)
 				GFP_KERNEL);
 
 	if (!amaudio_start_addr) {
-			pr_info("amaudio2 out soft DMA buffer alloc failed\n");
-			goto err4;
+		pr_err("amaudio2 out soft DMA buffer alloc failed\n");
+		goto err4;
 	}
+
 	pr_info("amaudio2: driver %s succuess!\n", AMAUDIO2_DRIVER_NAME);
 	return 0;
 
@@ -1523,7 +1685,7 @@ static int amaudio2_exit(struct platform_device *pdev)
 	device_destroy(&amaudio_class, MKDEV(AMAUDIO2_MAJOR, 10));
 	class_unregister(&amaudio_class);
 	for (ap = &amaudio_ports[0], i = 0; i < AMAUDIO2_DEVICE_COUNT;
-	     ap++, i++)
+			ap++, i++)
 		device_destroy(amaudio_classp, MKDEV(AMAUDIO2_MAJOR, i));
 	class_destroy(amaudio_classp);
 	unregister_chrdev(AMAUDIO2_MAJOR, AMAUDIO2_DRIVER_NAME);
@@ -1560,7 +1722,7 @@ static void __exit aml_amaudio2_modexit(void)
 module_init(aml_amaudio2_modinit);
 module_exit(aml_amaudio2_modexit);
 
-MODULE_DESCRIPTION("AMLOGIC TV Audio        driver");
+MODULE_DESCRIPTION("AMLOGIC TV Audio driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Amlogic Inc.");
 MODULE_VERSION("2.0.0");

@@ -67,6 +67,9 @@ EXPORT_SYMBOL(aml_i2s_playback_channel);
 unsigned int aml_i2s_playback_format = 16;
 EXPORT_SYMBOL(aml_i2s_playback_format);
 
+unsigned int aml_i2s_playback_running_flag = 0;
+EXPORT_SYMBOL(aml_i2s_playback_running_flag);
+
 static int trigger_underrun;
 void aml_audio_hw_trigger(void)
 {
@@ -593,7 +596,12 @@ static int aml_i2s_open(struct snd_pcm_substream *substream)
 static int aml_i2s_close(struct snd_pcm_substream *substream)
 {
 	struct aml_runtime_data *prtd = substream->runtime->private_data;
+	struct audio_stream *s = &prtd->s;
 
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		if (s->device_type == AML_AUDIO_I2SOUT)
+			aml_i2s_playback_running_flag = 0;
+	}
 #ifdef USE_HW_TIMER
 	snd_free_hw_timer_irq(prtd);
 #endif
@@ -672,8 +680,13 @@ static int aml_i2s_copy_playback(struct snd_pcm_runtime *runtime, int channel,
 	/*end of mask*/
 #endif
 
-	if (s->device_type == AML_AUDIO_I2SOUT)
+	if (s->device_type == AML_AUDIO_I2SOUT) {
 		aml_i2s_alsa_write_addr = offset;
+		if (amaudio2_read_enable == 1 && get_pcm_cache_space() > n
+				&& amaudio2_enable == 0)
+			cache_pcm_write(buf, n);
+		aml_i2s_playback_running_flag = 1;
+	}
 
 	if (access_ok(VERIFY_READ, buf, frames_to_bytes(runtime, count))) {
 #ifdef CONFIG_SND_AML_SPLIT_MODE
