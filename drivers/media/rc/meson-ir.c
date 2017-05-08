@@ -37,7 +37,7 @@
 /* only available on Meson 8b and newer */
 #define IR_DEC_REG2		0x20
 
-#define REG0_RATE_MASK		(BIT(11) - 1)
+#define REG0_RATE_MASK		(BIT(12) - 1)
 
 #define DECODE_MODE_NEC		0x0
 #define DECODE_MODE_RAW		0x2
