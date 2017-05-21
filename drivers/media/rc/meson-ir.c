@@ -87,19 +87,13 @@ static void meson_ir_set_mask(struct meson_ir *ir, unsigned int reg,
 static irqreturn_t meson_ir_irq(int irqno, void *dev_id)
 {
 	struct meson_ir *ir = dev_id;
-	u32 duration;
-	DEFINE_IR_RAW_EVENT(rawir);
 
 	spin_lock(&ir->lock);
 
-	duration = readl(ir->reg + IR_DEC_REG1);
-	duration = (duration & REG1_TIME_IV_MASK) >> REG1_TIME_IV_SHIFT;
-	rawir.duration = US_TO_NS(duration * MESON_TRATE);
-
-	rawir.pulse = !!(readl(ir->reg + IR_DEC_STATUS) & STATUS_IR_DEC_IN);
-
-	ir_raw_event_store(ir->rc, &rawir);
-	ir_raw_event_handle(ir->rc);
+        ir_raw_event_store_edge(ir->rc,
+                        (readl(ir->reg + IR_DEC_STATUS) & STATUS_IR_DEC_IN)
+                        ? IR_PULSE : IR_SPACE);
+        ir_raw_event_handle(ir->rc);
 
 	spin_unlock(&ir->lock);
 
