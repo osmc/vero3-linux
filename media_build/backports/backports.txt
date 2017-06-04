@@ -1,0 +1,159 @@
+#################################################
+# Backport patches needed for each kernel version
+#################################################
+# The patches for a given kernel version is calculated
+# by summing the patches needed to backport to all kernel
+# versions higher or equal to the desired one. For example,
+# if this file has:
+# [3.255.255]
+# add patch_for_upstream.patch
+# [2.6.38]
+# add patch_for_2.6.38.patch
+#
+# That means that both patch_for_2.6.38.patch and patch_for_upstream.patch
+# are needed for 2.6.38.
+#
+# It is possible to remove one patch from the accumulated series with
+# by adding a "delete foo.patch" line
+#
+# In order to test what patches will be applied for a given kernel version,
+# use linux/patches_for_kernel.pl <version>
+
+# All supported versions need those patches
+[9.255.255]
+add api_version.patch
+add pr_fmt.patch
+add debug.patch
+add drx39xxj.patch
+
+[4.10.255]
+add v4.10_sched_signal.patch
+add v4.10_fault_page.patch
+add v4.10_refcount.patch
+
+[4.9.255]
+add v4.9_mm_address.patch
+add v4.9_dvb_net_max_mtu.patch
+add v4.9_ktime_cleanups.patch
+
+[4.8.255]
+add v4.8_user_pages_flag.patch
+
+[4.7.255]
+add v4.7_dma_attrs.patch
+add v4.7_pci_alloc_irq_vectors.patch
+
+[4.6.255]
+add v4.6_i2c_mux.patch
+
+[4.5.255]
+add v4.5_gpiochip_data_pointer.patch
+add v4.5_get_user_pages.patch
+add v4.5_uvc_super_plus.patch
+
+[4.4.255]
+add v4.4_gpio_chip_parent.patch
+
+[4.2.255]
+add v4.2_atomic64.patch
+add v4.2_frame_vector.patch
+
+[4.1.255]
+add v4.1_pat_enabled.patch
+
+[4.0.255]
+add v4.0_dma_buf_export.patch
+add v4.0_drop_trace.patch
+add v4.0_fwnode.patch
+
+[3.19.255]
+add v3.19_get_user_pages_locked.patch
+
+[3.17.255]
+add v3.17_fix_clamp.patch
+
+[3.16.255]
+add v3.16_netdev.patch
+add v3.16_wait_on_bit.patch
+add v3.16_void_gpiochip_remove.patch
+
+[3.12.255]
+add v3.12_kfifo_in.patch
+
+[3.11.255]
+add v3.11_dev_groups.patch
+
+[3.10.255]
+add v3.10_fw_driver_probe.patch
+add v3.10_ir_hix5hd2.patch
+
+[3.9.255]
+add v3.9_drxj_warnings.patch
+
+[3.8.255]
+add v3.8_config_of.patch
+
+[3.6.255]
+add v3.6_pci_error_handlers.patch
+add v3.6_i2c_add_mux_adapter.patch
+
+[3.4.255]
+add v3.4_i2c_add_mux_adapter.patch
+
+[3.3.255]
+add v3.3_eprobe_defer.patch
+
+[3.2.255]
+add v3.2_devnode_uses_mode_t.patch
+add v3.2_alloc_ordered_workqueue.patch
+
+[3.1.255]
+add v3.1_no_export_h.patch
+add v3.1_no_dma_buf_h.patch
+add v3.1_no_pm_qos.patch
+
+[3.0.255]
+add no_atomic_include.patch
+add v4l2-compat-timespec.patch
+add v3.0_ida2bit.patch
+
+[2.6.38]
+add v2.6.38_use_getkeycode_new_setkeycode_new.patch
+add v2.6.38_config_of_for_of_node.patch
+
+[2.6.37]
+add v2.6.37_dont_use_alloc_ordered_workqueue.patch
+
+[2.6.36]
+delete v2.6.38_use_getkeycode_new_setkeycode_new.patch
+add v2.6.36_input_getkeycode.patch
+add v2.6.36_dvb_usb_input_getkeycode.patch
+add tda18271_debug_fix.patch
+add v2.6.36_kmap_atomic.patch
+add v2.6.36_fence.patch
+
+[2.6.35]
+add v2.6.35_firedtv_handle_fcp.patch
+add v2.6.35_i2c_new_probed_device.patch
+add v2.6.35_work_handler.patch
+add v2.6.35_kfifo.patch
+
+[2.6.34]
+add v2.6.34_dvb_net.patch
+add v2.6.34_fix_define_warnings.patch
+add v2.6.34_usb_ss_ep_comp.patch
+
+[2.6.33]
+add v2.6.33_input_handlers_are_int.patch
+add v2.6.33_pvrusb2_sysfs.patch
+add v2.6.33_no_gpio_request_one.patch
+
+[2.6.32]
+add v2.6.32_dvb_net.patch
+add v2.6.32_kfifo.patch
+add v2.6.32_request_firmware_nowait.patch
+
+[2.6.31]
+add v2.6.31_nodename.patch
+add v2.6.31_vm_ops.patch
+add v2.6.31_rc.patch

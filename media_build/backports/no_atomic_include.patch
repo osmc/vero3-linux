@@ -1,0 +1,143 @@
+diff --git a/drivers/media/pci/pt3/pt3.h b/drivers/media/pci/pt3/pt3.h
+index 1b3f2ad..44ba0f4 100644
+--- a/drivers/media/pci/pt3/pt3.h
++++ b/drivers/media/pci/pt3/pt3.h
+@@ -17,7 +17,6 @@
+ #ifndef PT3_H
+ #define PT3_H
+ 
+-#include <linux/atomic.h>
+ #include <linux/types.h>
+ 
+ #include "dvb_demux.h"
+diff --git a/drivers/media/pci/solo6x10/solo6x10.h b/drivers/media/pci/solo6x10/solo6x10.h
+index 1ca54b0..a6f4498 100644
+--- a/drivers/media/pci/solo6x10/solo6x10.h
++++ b/drivers/media/pci/solo6x10/solo6x10.h
+@@ -28,7 +28,6 @@
+ #include <linux/wait.h>
+ #include <linux/stringify.h>
+ #include <linux/io.h>
+-#include <linux/atomic.h>
+ #include <linux/slab.h>
+ #include <linux/videodev2.h>
+ 
+diff --git a/drivers/media/radio/radio-si476x.c b/drivers/media/radio/radio-si476x.c
+index dccf586..27d4caf 100644
+--- a/drivers/media/radio/radio-si476x.c
++++ b/drivers/media/radio/radio-si476x.c
+@@ -21,7 +21,6 @@
+ #include <linux/delay.h>
+ #include <linux/interrupt.h>
+ #include <linux/slab.h>
+-#include <linux/atomic.h>
+ #include <linux/videodev2.h>
+ #include <linux/mutex.h>
+ #include <linux/debugfs.h>
+diff --git a/drivers/media/usb/hdpvr/hdpvr-core.c b/drivers/media/usb/hdpvr/hdpvr-core.c
+index 3fc6419..9d2c37e 100644
+--- a/drivers/media/usb/hdpvr/hdpvr-core.c
++++ b/drivers/media/usb/hdpvr/hdpvr-core.c
+@@ -17,7 +17,6 @@
+ #include <linux/slab.h>
+ #include <linux/module.h>
+ #include <linux/uaccess.h>
+-#include <linux/atomic.h>
+ #include <linux/usb.h>
+ #include <linux/mutex.h>
+ #include <linux/i2c.h>
+diff --git a/drivers/media/usb/uvc/uvc_ctrl.c b/drivers/media/usb/uvc/uvc_ctrl.c
+index 3e59b28..b431d39 100644
+--- a/drivers/media/usb/uvc/uvc_ctrl.c
++++ b/drivers/media/usb/uvc/uvc_ctrl.c
+@@ -20,7 +20,6 @@
+ #include <linux/videodev2.h>
+ #include <linux/vmalloc.h>
+ #include <linux/wait.h>
+-#include <linux/atomic.h>
+ #include <media/v4l2-ctrls.h>
+ 
+ #include "uvcvideo.h"
+diff --git a/drivers/media/usb/uvc/uvc_driver.c b/drivers/media/usb/uvc/uvc_driver.c
+index fd79a1a..637ce0a 100644
+--- a/drivers/media/usb/uvc/uvc_driver.c
++++ b/drivers/media/usb/uvc/uvc_driver.c
+@@ -11,7 +11,6 @@
+  *
+  */
+ 
+-#include <linux/atomic.h>
+ #include <linux/kernel.h>
+ #include <linux/list.h>
+ #include <linux/module.h>
+diff --git a/drivers/media/usb/uvc/uvc_queue.c b/drivers/media/usb/uvc/uvc_queue.c
+index 87a19f3..0f7ea35 100644
+--- a/drivers/media/usb/uvc/uvc_queue.c
++++ b/drivers/media/usb/uvc/uvc_queue.c
+@@ -11,7 +11,6 @@
+  *
+  */
+ 
+-#include <linux/atomic.h>
+ #include <linux/kernel.h>
+ #include <linux/mm.h>
+ #include <linux/list.h>
+diff --git a/drivers/media/usb/uvc/uvc_v4l2.c b/drivers/media/usb/uvc/uvc_v4l2.c
+index 8d967fe..6a4743c 100644
+--- a/drivers/media/usb/uvc/uvc_v4l2.c
++++ b/drivers/media/usb/uvc/uvc_v4l2.c
+@@ -21,7 +21,6 @@
+ #include <linux/vmalloc.h>
+ #include <linux/mm.h>
+ #include <linux/wait.h>
+-#include <linux/atomic.h>
+ 
+ #include <media/v4l2-common.h>
+ #include <media/v4l2-ctrls.h>
+diff --git a/drivers/media/usb/uvc/uvc_video.c b/drivers/media/usb/uvc/uvc_video.c
+index 20ccc9d..e97e7a3 100644
+--- a/drivers/media/usb/uvc/uvc_video.c
++++ b/drivers/media/usb/uvc/uvc_video.c
+@@ -19,7 +19,6 @@
+ #include <linux/videodev2.h>
+ #include <linux/vmalloc.h>
+ #include <linux/wait.h>
+-#include <linux/atomic.h>
+ #include <asm/unaligned.h>
+ 
+ #include <media/v4l2-common.h>
+diff --git a/drivers/media/v4l2-core/v4l2-clk.c b/drivers/media/v4l2-core/v4l2-clk.c
+index 34e416a..a2b1449 100644
+--- a/drivers/media/v4l2-core/v4l2-clk.c
++++ b/drivers/media/v4l2-core/v4l2-clk.c
+@@ -8,7 +8,6 @@
+  * published by the Free Software Foundation.
+  */
+ 
+-#include <linux/atomic.h>
+ #include <linux/clk.h>
+ #include <linux/device.h>
+ #include <linux/errno.h>
+diff --git a/include/media/v4l2-clk.h b/include/media/v4l2-clk.h
+index 3ef6e3d..2f8426f 100644
+--- a/include/media/v4l2-clk.h
++++ b/include/media/v4l2-clk.h
+@@ -14,6 +14,5 @@
+ #ifndef MEDIA_V4L2_CLK_H
+ #define MEDIA_V4L2_CLK_H
+ 
+-#include <linux/atomic.h>
+ #include <linux/list.h>
+ #include <linux/mutex.h>
+diff --git a/drivers/media/rc/rc-main.c b/drivers/media/rc/rc-main.c
+index 4e9bbe7..1998369 100644
+--- a/drivers/media/rc/rc-main.c
++++ b/drivers/media/rc/rc-main.c
+@@ -13,7 +13,6 @@
+  */
+ 
+ #include <media/rc-core.h>
+-#include <linux/atomic.h>
+ #include <linux/spinlock.h>
+ #include <linux/delay.h>
+ #include <linux/input.h>
