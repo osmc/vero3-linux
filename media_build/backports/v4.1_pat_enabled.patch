@@ -1,0 +1,20 @@
+diff --git a/drivers/media/pci/ivtv/ivtvfb.c b/drivers/media/pci/ivtv/ivtvfb.c
+index 8b95eef..d3372ed 100644
+--- a/drivers/media/pci/ivtv/ivtvfb.c
++++ b/drivers/media/pci/ivtv/ivtvfb.c
+@@ -1174,11 +1174,13 @@ static int ivtvfb_init_card(struct ivtv *itv)
+ 	int rc;
+ 
+ #ifdef CONFIG_X86_64
+-	if (pat_enabled()) {
+-		pr_warn("ivtvfb needs PAT disabled, boot with nopat kernel parameter\n");
++#ifdef CONFIG_X86_PAT
++	if (WARN(pat_enabled,
++		"ivtvfb needs PAT disabled, boot with nopat kernel parameter\n")) {
+ 		return -ENODEV;
+ 	}
+ #endif
++#endif
+ 
+ 	if (itv->osd_info) {
+ 		IVTVFB_ERR("Card %d already initialised\n", ivtvfb_card_id);
