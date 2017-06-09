@@ -55,6 +55,7 @@
 #include "osd_log.h"
 #include "osd_sync.h"
 
+
 static __u32 var_screeninfo[5];
 
 struct osd_info_s osd_info = {
@@ -377,7 +378,7 @@ static int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
 		mutex_lock(&fbdev->lock);
 		osd_setpal_hw(fbdev->fb_info->node, regno, red, green,
 				blue, transp);
-		mutex_lock(&fbdev->lock);
+		mutex_unlock(&fbdev->lock);
 	}
 	if (info->fix.visual == FB_VISUAL_TRUECOLOR) {
 		u32 v, r, g, b, a;
@@ -866,11 +867,16 @@ static int osd_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 			ret = meson_ion_share_fd_to_phys(fb_ion_client,
 				sync_request_render.shared_fd, &addr, &len);
 			if (ret == 0) {
-				phys_addr = addr +
-					sync_request_render.yoffset
-					* info->fix.line_length;
+				if (sync_request_render.type ==
+					GE2D_COMPOSE_MODE) {
+					phys_addr = addr +
+						sync_request_render.yoffset
+						* info->fix.line_length;
+				} else
+					phys_addr = addr;
 			} else
 				phys_addr = 0;
+
 			sync_request_render.out_fen_fd =
 				osd_sync_request_render(info->node,
 				info->var.yres,
@@ -997,6 +1003,9 @@ static int osd_open(struct fb_info *info, int arg)
 	const struct vinfo_s *vinfo;
 
 	fbdev = (struct osd_fb_dev_s *)info->par;
+	fbdev->open_count++;
+	osd_log_info("osd_open index=%d,open_count=%d\n",
+		fbdev->fb_index, fbdev->open_count);
 	if (info->screen_base != NULL)
 		return 0;
 	pdev = fbdev->dev;
@@ -1192,6 +1201,28 @@ static int osd_open(struct fb_info *info, int arg)
 	return 0;
 }
 
+
+static int osd_release(struct fb_info *info, int arg)
+{
+	struct osd_fb_dev_s *fbdev;
+	int err = 0;
+
+	fbdev = (struct osd_fb_dev_s *)info->par;
+
+	if (!fbdev->open_count) {
+		err = -EINVAL;
+		osd_log_info("osd already released. index=%d\n",
+			fbdev->fb_index);
+		goto done;
+	}
+	osd_log_info("osd_release now.index=%d,open_count=%d\n",
+		fbdev->fb_index, fbdev->open_count);
+
+	fbdev->open_count--;
+done:
+	return err;
+}
+
 static ssize_t osd_clear(struct device *device, struct device_attribute *attr,
 		const char *buf, size_t count)
 {
@@ -1218,8 +1249,9 @@ static int osd_pan_display(struct fb_var_screeninfo *var,
 			   struct fb_info *fbi)
 {
 	osd_pan_display_hw(fbi->node, var->xoffset, var->yoffset);
-	osd_log_dbg("osd_pan_display:=>osd%d xoff=%d, yoff=%d\n",
+	/* osd_log_dbg("osd_pan_display:=>osd%d xoff=%d, yoff=%d\n",
 			fbi->node, var->xoffset, var->yoffset);
+	*/
 	return 0;
 }
 
@@ -1267,6 +1299,7 @@ static struct fb_ops osd_ops = {
 	.fb_blank       = osd_blank,
 	.fb_pan_display = osd_pan_display,
 	.fb_sync        = osd_sync,
+	.fb_release		= osd_release,
 };
 
 static void set_default_display_axis(struct fb_var_screeninfo *var,
@@ -2092,6 +2125,31 @@ static ssize_t free_scale_switch(struct device *device,
 	return count;
 }
 
+static ssize_t show_osd_deband(struct device *device,
+				struct device_attribute *attr,
+				char *buf)
+{
+	u32 osd_deband_enable;
+	osd_get_deband(&osd_deband_enable);
+	return snprintf(buf, 40, "%d\n",
+		osd_deband_enable);
+}
+
+static ssize_t store_osd_deband(struct device *device,
+			   struct device_attribute *attr,
+			   const char *buf, size_t count)
+{
+	int res = 0;
+	int ret = 0;
+
+	ret = kstrtoint(buf, 0, &res);
+	osd_set_deband(res);
+
+	return count;
+}
+
+
+
 static inline  int str2lower(char *str)
 {
 	while (*str != '\0') {
@@ -2270,6 +2328,8 @@ static struct device_attribute osd_attrs[] = {
 			show_reset_status, NULL),
 	__ATTR(free_scale_switch, S_IWUSR | S_IWGRP,
 			NULL, free_scale_switch),
+	__ATTR(osd_deband, S_IRUGO | S_IWUSR,
+			show_osd_deband, store_osd_deband),
 };
 
 #ifdef CONFIG_PM

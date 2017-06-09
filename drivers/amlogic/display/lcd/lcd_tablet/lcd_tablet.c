@@ -100,7 +100,7 @@ static int lcd_vmode_is_supported(enum vmode_e mode)
 
 static int lcd_vout_disable(enum vmode_e cur_vmod)
 {
-	aml_lcd_notifier_call_chain(LCD_EVENT_POWER_OFF, NULL);
+	aml_lcd_notifier_call_chain(LCD_EVENT_IF_POWER_OFF, NULL);
 	LCDPR("%s finished\n", __func__);
 	return 0;
 }
@@ -289,19 +289,22 @@ static int lcd_get_vframe_rate_policy(void)
 #ifdef CONFIG_PM
 static int lcd_suspend(void)
 {
+	mutex_lock(&lcd_power_mutex);
 	aml_lcd_notifier_call_chain(LCD_EVENT_POWER_OFF, NULL);
 	lcd_resume_flag = 0;
 	LCDPR("%s finished\n", __func__);
+	mutex_unlock(&lcd_power_mutex);
 	return 0;
 }
 static int lcd_resume(void)
 {
+	mutex_lock(&lcd_power_mutex);
 	if (lcd_resume_flag == 0) {
 		lcd_resume_flag = 1;
 		aml_lcd_notifier_call_chain(LCD_EVENT_POWER_ON, NULL);
 		LCDPR("%s finished\n", __func__);
 	}
-
+	mutex_unlock(&lcd_power_mutex);
 	return 0;
 }
 #endif

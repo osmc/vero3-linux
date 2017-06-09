@@ -110,6 +110,8 @@ const char *bl_chip_table[] = {
 	"G9TV",
 	"G9BB",
 	"GXTVBB",
+	"TXL",
+	"TXLX",
 	"invalid",
 };
 
@@ -160,7 +162,26 @@ static unsigned int pwm_reg[6] = {
 	PWM_PWM_F,
 };
 
-static enum bl_chip_type_e aml_bl_check_chip(void)
+static unsigned int pwm_misc_txlx[6][5] = {
+	/* pwm_reg,              div bit, clk_sel bit, clk_en bit, pwm_en bit*/
+	{PWM_MISC_REG_AB_TXLX,   8,       4,           15,         0,},
+	{PWM_MISC_REG_AB_TXLX,   16,      6,           23,         0,},
+	{PWM_MISC_REG_CD_TXLX,   8,       4,           15,         0,},
+	{PWM_MISC_REG_CD_TXLX,   16,      6,           23,         0,},
+	{PWM_MISC_REG_EF_TXLX,   8,       4,           15,         0,},
+	{PWM_MISC_REG_EF_TXLX,   16,      6,           23,         0,},
+};
+
+static unsigned int pwm_reg_txlx[6] = {
+	PWM_PWM_A_TXLX,
+	PWM_PWM_B_TXLX,
+	PWM_PWM_C_TXLX,
+	PWM_PWM_D_TXLX,
+	PWM_PWM_E_TXLX,
+	PWM_PWM_F_TXLX,
+};
+
+enum bl_chip_type_e aml_bl_check_chip(void)
 {
 	unsigned int cpu_type;
 	enum bl_chip_type_e bl_chip = BL_CHIP_MAX;
@@ -181,6 +202,12 @@ static enum bl_chip_type_e aml_bl_check_chip(void)
 		break;
 	case MESON_CPU_MAJOR_ID_GXTVBB:
 		bl_chip = BL_CHIP_GXTVBB;
+		break;
+	case MESON_CPU_MAJOR_ID_TXL:
+		bl_chip = BL_CHIP_TXL;
+		break;
+	case MESON_CPU_MAJOR_ID_TXLX:
+		bl_chip = BL_CHIP_TXLX;
 		break;
 	default:
 		bl_chip = BL_CHIP_MAX;
@@ -704,18 +731,33 @@ void bl_pwm_ctrl(struct bl_pwm_config_s *bl_pwm, int status)
 		case BL_PWM_D:
 		case BL_PWM_E:
 		case BL_PWM_F:
-			/* pwm clk_div */
-			bl_cbus_setb(pwm_misc[port][0], pre_div,
-				pwm_misc[port][1], 7);
-			/* pwm clk_sel */
-			bl_cbus_setb(pwm_misc[port][0], 0,
-				pwm_misc[port][2], 2);
-			/* pwm clk_en */
-			bl_cbus_setb(pwm_misc[port][0], 1,
-				pwm_misc[port][3], 1);
-			/* pwm enable */
-			bl_cbus_setb(pwm_misc[port][0], 0x3,
-				pwm_misc[port][4], 2);
+			if (bl_chip_type == BL_CHIP_TXLX) {
+				/* pwm clk_div */
+				bl_cbus_setb(pwm_misc_txlx[port][0], pre_div,
+					pwm_misc_txlx[port][1], 7);
+				/* pwm clk_sel */
+				bl_cbus_setb(pwm_misc_txlx[port][0], 0,
+					pwm_misc_txlx[port][2], 2);
+				/* pwm clk_en */
+				bl_cbus_setb(pwm_misc_txlx[port][0], 1,
+					pwm_misc_txlx[port][3], 1);
+				/* pwm enable */
+				bl_cbus_setb(pwm_misc_txlx[port][0], 0x3,
+					pwm_misc_txlx[port][4], 2);
+			} else {
+				/* pwm clk_div */
+				bl_cbus_setb(pwm_misc[port][0], pre_div,
+					pwm_misc[port][1], 7);
+				/* pwm clk_sel */
+				bl_cbus_setb(pwm_misc[port][0], 0,
+					pwm_misc[port][2], 2);
+				/* pwm clk_en */
+				bl_cbus_setb(pwm_misc[port][0], 1,
+					pwm_misc[port][3], 1);
+				/* pwm enable */
+				bl_cbus_setb(pwm_misc[port][0], 0x3,
+					pwm_misc[port][4], 2);
+			}
 			break;
 		default:
 			break;
@@ -729,9 +771,15 @@ void bl_pwm_ctrl(struct bl_pwm_config_s *bl_pwm, int status)
 		case BL_PWM_D:
 		case BL_PWM_E:
 		case BL_PWM_F:
-			/* pwm clk_disable */
-			bl_cbus_setb(pwm_misc[port][0], 0,
-				pwm_misc[port][3], 1);
+			if (bl_chip_type == BL_CHIP_TXLX) {
+				/* pwm clk_disable */
+				bl_cbus_setb(pwm_misc_txlx[port][0], 0,
+					pwm_misc[port][3], 1);
+			} else {
+				/* pwm clk_disable */
+				bl_cbus_setb(pwm_misc[port][0], 0,
+					pwm_misc[port][3], 1);
+			}
 			break;
 		default:
 			break;
@@ -1047,7 +1095,12 @@ static void bl_set_pwm(struct bl_pwm_config_s *bl_pwm)
 	case BL_PWM_D:
 	case BL_PWM_E:
 	case BL_PWM_F:
-		bl_cbus_write(pwm_reg[port], (pwm_hi << 16) | pwm_lo);
+		if (bl_chip_type == BL_CHIP_TXLX) {
+			bl_cbus_write(pwm_reg_txlx[port],
+				(pwm_hi << 16) | pwm_lo);
+		} else {
+			bl_cbus_write(pwm_reg[port], (pwm_hi << 16) | pwm_lo);
+		}
 		break;
 	case BL_PWM_VS:
 		pwm_hi = bl_pwm->pwm_level;
@@ -2382,6 +2435,8 @@ static const char *bl_debug_usage_str = {
 "    echo freq <index> <pwm_freq> > pwm ; set pwm frequency(unit in Hz for pwm, vfreq multiple for pwm_vs)\n"
 "    echo duty <index> <pwm_duty> > pwm ; set pwm duty cycle(unit: %)\n"
 "    echo pol <index> <pwm_pol> > pwm ; set pwm polarity(unit: %)\n"
+"	 echo max <index> <duty_max> > pwm ; set pwm duty_max(unit: %)\n"
+"	 echo min <index> <duty_min> > pwm ; set pwm duty_min(unit: %)\n"
 "    cat pwm ; dump pwm state\n"
 "	 echo free <0|1> > pwm ; set bl_pwm_duty_free enable or disable\n"
 "\n"
@@ -2549,7 +2604,13 @@ static ssize_t bl_debug_pwm_show(struct class *class,
 			case BL_PWM_D:
 			case BL_PWM_E:
 			case BL_PWM_F:
-				value = bl_cbus_read(pwm_reg[bl_pwm->pwm_port]);
+				if (bl_chip_type == BL_CHIP_TXLX) {
+					value = bl_cbus_read(
+						pwm_reg_txlx[bl_pwm->pwm_port]);
+				} else {
+					value = bl_cbus_read(
+						pwm_reg[bl_pwm->pwm_port]);
+				}
 				len += sprintf(buf+len,
 					"pwm_reg:            0x%08x\n",
 					value);
@@ -2597,7 +2658,13 @@ static ssize_t bl_debug_pwm_show(struct class *class,
 			case BL_PWM_D:
 			case BL_PWM_E:
 			case BL_PWM_F:
-				value = bl_cbus_read(pwm_reg[bl_pwm->pwm_port]);
+				if (bl_chip_type == BL_CHIP_TXLX) {
+					value = bl_cbus_read(
+						pwm_reg_txlx[bl_pwm->pwm_port]);
+				} else {
+					value = bl_cbus_read(
+						pwm_reg[bl_pwm->pwm_port]);
+				}
 				len += sprintf(buf+len,
 					"pwm_0_reg:          0x%08x\n",
 					value);
@@ -2639,7 +2706,13 @@ static ssize_t bl_debug_pwm_show(struct class *class,
 			case BL_PWM_D:
 			case BL_PWM_E:
 			case BL_PWM_F:
-				value = bl_cbus_read(pwm_reg[bl_pwm->pwm_port]);
+				if (bl_chip_type == BL_CHIP_TXLX) {
+					value = bl_cbus_read(
+						pwm_reg_txlx[bl_pwm->pwm_port]);
+				} else {
+					value = bl_cbus_read(
+						pwm_reg[bl_pwm->pwm_port]);
+				}
 				len += sprintf(buf+len,
 					"pwm_1_reg:          0x%08x\n",
 					value);
@@ -2670,6 +2743,8 @@ static ssize_t bl_debug_pwm_show(struct class *class,
 #define BL_DEBUG_PWM_FREQ    0
 #define BL_DEBUG_PWM_DUTY    1
 #define BL_DEBUG_PWM_POL     2
+#define BL_DEBUG_PWM_DUTY_MAX 3
+#define BL_DEBUG_PWM_DUTY_MIN 4
 static void bl_debug_pwm_set(unsigned int index, unsigned int value, int state)
 {
 	struct bl_config_s *bconf = bl_drv->bconf;
@@ -2721,6 +2796,22 @@ static void bl_debug_pwm_set(unsigned int index, unsigned int value, int state)
 				index, bl_pwm->pwm_port, bl_pwm->pwm_method);
 			}
 			break;
+		case BL_DEBUG_PWM_DUTY_MAX:
+			bl_pwm->pwm_duty_max = value;
+			bl_set_duty_pwm(bl_pwm);
+			if (bl_debug_print_flag) {
+				BLPR("set index(%d) pwm_port(%d) duty: %d%%\n",
+				index, bl_pwm->pwm_port, bl_pwm->pwm_duty_max);
+			}
+			break;
+		case BL_DEBUG_PWM_DUTY_MIN:
+			bl_pwm->pwm_duty_min = value;
+			bl_set_duty_pwm(bl_pwm);
+			if (bl_debug_print_flag) {
+				BLPR("set index(%d) pwm_port(%d) duty: %d%%\n",
+				index, bl_pwm->pwm_port, bl_pwm->pwm_duty_min);
+			}
+			break;
 		default:
 			break;
 		}
@@ -2756,6 +2847,15 @@ static ssize_t bl_debug_pwm_store(struct class *class,
 		ret = sscanf(buf, "bypass %d", &val);
 		bl_pwm_bypass = (unsigned char)val;
 		BLPR("set bl_pwm_bypass: %d\n", bl_pwm_bypass);
+		break;
+	case 'm':
+		if (buf[1] == 'a') { /* max */
+			ret = sscanf(buf, "max %d %d", &index, &val);
+			bl_debug_pwm_set(index, val, BL_DEBUG_PWM_DUTY_MAX);
+		} else if (buf[1] == 'i') { /* min */
+			ret = sscanf(buf, "min %d %d", &index, &val);
+			bl_debug_pwm_set(index, val, BL_DEBUG_PWM_DUTY_MIN);
+		}
 		break;
 	default:
 		BLERR("wrong command\n");

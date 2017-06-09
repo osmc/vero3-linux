@@ -27,6 +27,7 @@
 #include <linux/slab.h>
 #include <linux/stat.h>
 #include <linux/errno.h>
+#include <linux/delay.h>
 #include <linux/uaccess.h>
 #include <linux/amlogic/cpu_version.h>
 #include <linux/amlogic/vout/vout_notify.h>
@@ -164,7 +165,7 @@ void ana_ref_cntl0_bit9(bool on, unsigned int module_sel)
 			vdac_cntl0_bit9 &= ~VDAC_MODULE_CVBS_OUT;
 		break;
 	case VDAC_MODULE_AUDIO_OUT: /* audio out ctrl*/
-		if (get_cpu_type() >= MESON_CPU_MAJOR_ID_TXL) {
+		if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXL)) {
 			if (on)
 				vdac_cntl0_bit9 |= VDAC_MODULE_AUDIO_OUT;
 			else
@@ -182,7 +183,7 @@ void ana_ref_cntl0_bit9(bool on, unsigned int module_sel)
 	else
 		enable = 1;
 
-	if (is_meson_txl_cpu() || (is_meson_gxtvbb_cpu() &&
+	if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXL) || (is_meson_gxtvbb_cpu() &&
 		(0xa != get_meson_cpu_version(MESON_CPU_VERSION_LVL_MINOR))))
 		vdac_hiu_reg_setb(HHI_VDAC_CNTL0, enable, 9, 1);
 	else
@@ -335,7 +336,7 @@ void vdac_out_cntl1_bit3(bool on, unsigned int module_sel)
 	else
 		enable = 1;
 
-	if (is_meson_txl_cpu() || (is_meson_gxtvbb_cpu() &&
+	if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXL) || (is_meson_gxtvbb_cpu() &&
 		(0xa != get_meson_cpu_version(MESON_CPU_VERSION_LVL_MINOR))))
 		vdac_hiu_reg_setb(HHI_VDAC_CNTL1, enable, 3, 1);
 	else
@@ -445,6 +446,11 @@ void vdac_enable(bool on, unsigned int module_sel)
 	case VDAC_MODULE_TVAFE: /* av in demod */
 		if (on) {
 			ana_ref_cntl0_bit9(1, VDAC_MODULE_TVAFE);
+			if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXLX)) {
+				vdac_hiu_reg_setb(HHI_VDAC_CNTL0, 1, 13, 1);
+				udelay(5);
+				vdac_hiu_reg_setb(HHI_VDAC_CNTL0, 0, 13, 1);
+			}
 			pri_flag &= ~VDAC_MODULE_ATV_DEMOD;
 			pri_flag |= VDAC_MODULE_TVAFE;
 			if (pri_flag & VDAC_MODULE_CVBS_OUT)
@@ -486,7 +492,7 @@ void vdac_enable(bool on, unsigned int module_sel)
 		}
 		break;
 	case VDAC_MODULE_AUDIO_OUT: /* audio demod */
-		if (get_cpu_type() >= MESON_CPU_MAJOR_ID_TXL) {
+		if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXL)) {
 			if (on)
 				ana_ref_cntl0_bit9(1, VDAC_MODULE_AUDIO_OUT);
 			else
@@ -638,7 +644,10 @@ static int __init aml_vdac_init(void)
 
 	mutex_init(&vdac_mutex);
 	/* remap the hiu bus */
-	vdac_hiu_reg_base = ioremap(0xc883c000, 0x2000);
+	if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXLX))
+		vdac_hiu_reg_base = ioremap(0xff63c000, 0x2000);
+	else
+		vdac_hiu_reg_base = ioremap(0xc883c000, 0x2000);
 
 	if (platform_driver_register(&aml_vdac_driver)) {
 		pr_err("%s: failed to register vdac driver module\n", __func__);

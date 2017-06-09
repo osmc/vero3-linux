@@ -69,6 +69,7 @@ static const char *lcd_debug_usage_str = {
 "    echo info > debug ; show lcd infomation\n"
 "    echo reg > debug ; show lcd registers\n"
 "    echo dump > debug ; show lcd infomation & registers\n"
+"	 echo dith <dither_en> <rounding_en> <dither_md>  > debug ; set vpu_vencl_dith_ctrl\n"
 "    echo key > debug ; show lcd_key_valid config, and lcd unifykey raw data\n"
 "\n"
 "    echo reset > debug; reset lcd driver\n"
@@ -464,6 +465,16 @@ static void lcd_phy_analog_reg_print(void)
 		reg, lcd_hiu_read(reg));
 }
 
+static void lcd_dither_dubug(int dither_en, int round_en, int dither_md)
+{
+	int data;
+
+	data = lcd_vcbus_read(0x27e0) & 0xfffffff8;
+	data = (dither_en & 0x1) | ((round_en & 0x1) << 1) |
+		((dither_md & 0x1) << 2) | data;
+	lcd_vcbus_write(0x27e0, data);
+}
+
 static void lcd_reg_print(void)
 {
 	int i;
@@ -533,28 +544,30 @@ static void lcd_hdr_info_print(void)
 		pconf->hdr_info.luma_max, pconf->hdr_info.luma_min);
 }
 
-#define LCD_ENC_TST_NUM_MAX    8
+#define LCD_ENC_TST_NUM_MAX    9
 static char *lcd_enc_tst_str[] = {
 	"0-None",        /* 0 */
 	"1-Color Bar",   /* 1 */
 	"2-Thin Line",   /* 2 */
 	"3-Dot Grid",    /* 3 */
 	"4-Gray",        /* 4 */
-	"5-Blue",         /* 5 */
-	"6-Red",       /* 6 */
-	"7-Green",        /* 7 */
+	"5-Red",         /* 5 */
+	"6-Green",       /* 6 */
+	"7-Blue",        /* 7 */
+	"8-Black",       /* 8 */
 };
 
-static unsigned int lcd_enc_tst[][7] = {
+static unsigned int lcd_enc_tst[][8] = {
 /*tst_mode,    Y,       Cb,     Cr,     tst_en,  vfifo_en  rgbin*/
 	{0,    0x200,   0x200,  0x200,   0,      1,        3},  /* 0 */
 	{1,    0x200,   0x200,  0x200,   1,      0,        1},  /* 1 */
 	{2,    0x200,   0x200,  0x200,   1,      0,        1},  /* 2 */
 	{3,    0x200,   0x200,  0x200,   1,      0,        1},  /* 3 */
-	{0,    0x200,   0x200,  0x200,   1,      0,        1},  /* 4 */
-	{0,    0x130,   0x153,  0x3fd,   1,      0,        1},  /* 5 */
-	{0,    0x256,   0x0ae,  0x055,   1,      0,        1},  /* 6 */
-	{0,    0x074,   0x3fd,  0x1ad,   1,      0,        1},  /* 7 */
+	{0,    0x1ff,   0x1ff,  0x1ff,   1,      0,        3},  /* 4 */
+	{0,    0x3ff,     0x0,    0x0,   1,      0,        3},  /* 5 */
+	{0,      0x0,   0x3ff,    0x0,   1,      0,        3},  /* 6 */
+	{0,      0x0,     0x0,  0x3ff,   1,      0,        3},  /* 7 */
+	{0,      0x0,     0x0,    0x0,   1,      0,        3},  /* 8 */
 };
 
 static void lcd_debug_test(unsigned int num)
@@ -614,6 +627,30 @@ static void lcd_test_check(void)
 	}
 }
 
+static int lcd_black_screen_notifier(struct notifier_block *nb,
+		unsigned long event, void *data)
+{
+	if ((event & LCD_EVENT_BLACK_SCREEN) == 0)
+		return NOTIFY_DONE;
+	if (lcd_debug_print_flag)
+		LCDPR("%s: 0x%lx\n", __func__, event);
+
+	lcd_vcbus_write(ENCL_VIDEO_RGBIN_CTRL, 3);
+	lcd_vcbus_write(ENCL_TST_MDSEL, 0);
+	lcd_vcbus_write(ENCL_TST_Y, 0);
+	lcd_vcbus_write(ENCL_TST_CB, 0);
+	lcd_vcbus_write(ENCL_TST_CR, 0);
+	lcd_vcbus_write(ENCL_TST_EN, 1);
+	lcd_vcbus_setb(ENCL_VIDEO_MODE_ADV, 0, 3, 1);
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block lcd_black_screen_nb = {
+	.notifier_call = lcd_black_screen_notifier,
+	.priority = LCD_PRIORITY_BLACK_SCREEN,
+};
+
 static void lcd_debug_config_update(void)
 {
 	struct aml_lcd_drv_s *lcd_drv = aml_lcd_get_driver();
@@ -664,6 +701,7 @@ static ssize_t lcd_debug_store(struct class *class,
 {
 	int ret = 0;
 	unsigned int temp, val[6];
+	unsigned int dither_md, round_en, dither_en;
 	struct aml_lcd_drv_s *lcd_drv = aml_lcd_get_driver();
 	struct lcd_config_s *pconf;
 
@@ -771,7 +809,7 @@ static ssize_t lcd_debug_store(struct class *class,
 			lcd_reg_print();
 		} else if (buf[2] == 's') { /* reset */
 			lcd_drv->module_reset();
-		} else if (buf[2] == 'a') { /* range */
+		} else if (buf[2] == 'n') { /* range */
 			ret = sscanf(buf, "range %d %d %d %d %d %d",
 				&val[0], &val[1], &val[2], &val[3],
 				&val[4], &val[5]);
@@ -797,13 +835,27 @@ static ssize_t lcd_debug_store(struct class *class,
 			}
 		}
 		break;
-	case 'd': /* dump */
-		LCDPR("driver version: %s\n", lcd_drv->version);
-		lcd_info_print();
-		pr_info("\n");
-		lcd_reg_print();
-		pr_info("\n");
-		lcd_hdr_info_print();
+	case 'd':
+		if (buf[1] == 'i') { /* dith */
+			ret = sscanf(buf, "dith %d %d %d",
+				&val[0], &val[1], &val[2]);
+			if (ret == 3) {
+				dither_en = val[0];
+				round_en =  val[1];
+				dither_md = val[2];
+				pr_info("set dither_en=%d, round_en=%d, dither_md=%d\n",
+					val[0], val[1], val[2]);
+				lcd_dither_dubug(dither_en,
+					round_en, dither_md);
+				}
+		} else if (buf[1] == 'u') {/* dump */
+			LCDPR("driver version: %s\n", lcd_drv->version);
+			lcd_info_print();
+			pr_info("\n");
+			lcd_reg_print();
+			pr_info("\n");
+			lcd_hdr_info_print();
+		}
 		break;
 	case 'k': /* key */
 		LCDPR("key_valid: %d, config_load: %d\n",
@@ -817,8 +869,26 @@ static ssize_t lcd_debug_store(struct class *class,
 	case 'p': /* power */
 		ret = sscanf(buf, "power %d", &temp);
 		if (ret == 1) {
+			mutex_lock(&lcd_power_mutex);
 			LCDPR("power: %d\n", temp);
-			lcd_drv->power_tiny_ctrl(temp);
+			if (temp) {
+				aml_lcd_notifier_call_chain(
+					LCD_EVENT_IF_POWER_ON, NULL);
+			} else {
+				aml_lcd_notifier_call_chain(
+					LCD_EVENT_POWER_OFF, NULL);
+			}
+			mutex_unlock(&lcd_power_mutex);
+		} else {
+			LCDERR("invalid data\n");
+			return -EINVAL;
+		}
+		break;
+	case 'v':
+		ret = sscanf(buf, "vout %d", &temp);
+		if (ret == 1) {
+			LCDPR("vout_serve bypass: %d\n", temp);
+			lcd_vout_serve_bypass = temp;
 		} else {
 			LCDERR("invalid data\n");
 			return -EINVAL;
@@ -833,6 +903,15 @@ static ssize_t lcd_debug_store(struct class *class,
 	return count;
 }
 
+static ssize_t lcd_debug_enable_show(struct class *class,
+		struct class_attribute *attr, char *buf)
+{
+	struct aml_lcd_drv_s *lcd_drv = aml_lcd_get_driver();
+
+	return sprintf(buf, "lcd_status: %d\n",
+		lcd_drv->lcd_status);
+}
+
 static ssize_t lcd_debug_enable_store(struct class *class,
 		struct class_attribute *attr, const char *buf, size_t count)
 {
@@ -841,10 +920,15 @@ static ssize_t lcd_debug_enable_store(struct class *class,
 
 	ret = sscanf(buf, "%d", &temp);
 	if (ret == 1) {
-		if (temp)
+		if (temp) {
+			mutex_lock(&lcd_power_mutex);
 			aml_lcd_notifier_call_chain(LCD_EVENT_POWER_ON, NULL);
-		else
+			mutex_unlock(&lcd_power_mutex);
+		} else {
+			mutex_lock(&lcd_power_mutex);
 			aml_lcd_notifier_call_chain(LCD_EVENT_POWER_OFF, NULL);
+			mutex_unlock(&lcd_power_mutex);
+		}
 	} else {
 		LCDERR("invalid data\n");
 		return -EINVAL;
@@ -1259,7 +1343,8 @@ static ssize_t lcd_debug_print_store(struct class *class,
 static struct class_attribute lcd_debug_class_attrs[] = {
 	__ATTR(help,        S_IRUGO | S_IWUSR, lcd_debug_common_help, NULL),
 	__ATTR(debug,       S_IRUGO | S_IWUSR, lcd_debug_show, lcd_debug_store),
-	__ATTR(enable,      S_IRUGO | S_IWUSR, NULL, lcd_debug_enable_store),
+	__ATTR(enable,      S_IRUGO | S_IWUSR, lcd_debug_enable_show,
+		lcd_debug_enable_store),
 	__ATTR(power,       S_IRUGO | S_IWUSR,
 		lcd_debug_power_show, lcd_debug_power_store),
 	__ATTR(frame_rate,  S_IRUGO | S_IWUSR,
@@ -1697,8 +1782,13 @@ static struct class_attribute lcd_phy_debug_class_attrs[] = {
 int lcd_class_creat(void)
 {
 	int i;
+	int ret;
 	struct aml_lcd_drv_s *lcd_drv = aml_lcd_get_driver();
 	int type;
+
+	ret = aml_lcd_notifier_register(&lcd_black_screen_nb);
+	if (ret)
+		LCDERR("register lcd_black_screen_notifier failed\n");
 
 	lcd_drv->lcd_test_check = lcd_test_check;
 

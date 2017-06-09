@@ -29,6 +29,7 @@
 #include <linux/platform_device.h>
 #include <linux/of.h>
 #include <linux/of_fdt.h>
+#include <linux/of_address.h>
 #include <linux/reset.h>
 #include <linux/clk.h>
 #ifdef CONFIG_COMPAT
@@ -37,6 +38,7 @@
 /* Amlogic Headers */
 #include <linux/amlogic/ge2d/ge2d.h>
 #include <linux/amlogic/ge2d/ge2d_cmd.h>
+#include <linux/amlogic/vpu.h>
 #include <linux/amlogic/cpu_version.h>
 #ifdef CONFIG_AMLOGIC_ION
 #include <meson_ion.h>
@@ -47,6 +49,7 @@
 #include "ge2d_wq.h"
 
 #define GE2D_CLASS_NAME "ge2d"
+#define MAX_GE2D_CLK 400000000
 
 struct ge2d_device_s {
 	char name[20];
@@ -57,6 +60,7 @@ struct ge2d_device_s {
 	struct device *dev;
 };
 
+void __iomem *ge2d_reg_map;
 static struct ge2d_device_s ge2d_device;
 static DEFINE_MUTEX(ge2d_mutex);
 unsigned int ge2d_log_level;
@@ -752,6 +756,7 @@ static int ge2d_probe(struct platform_device *pdev)
 	int irq = 0;
 	struct reset_control *rstc = NULL;
 	struct clk *clk;
+	struct resource res;
 	/* get interrupt resource */
 	irq = platform_get_irq_byname(pdev, "ge2d");
 	if (irq == -ENXIO) {
@@ -778,15 +783,69 @@ static int ge2d_probe(struct platform_device *pdev)
 	}
 	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXBB) {
 		struct clk *clk_vapb0;
-		int vapb_rate;
+		int vapb_rate, vpu_rate;
 		clk_vapb0 = clk_get(&pdev->dev, "clk_vapb_0");
 		if (!IS_ERR(clk_vapb0)) {
 			vapb_rate = clk_get_rate(clk_vapb0);
 			clk_put(clk_vapb0);
+
+			vpu_rate = get_vpu_clk();
+			ge2d_log_info("vpu clock is %d HZ\n",
+					vpu_rate);
+			if (vpu_rate >= MAX_GE2D_CLK)
+				clk_set_rate(clk_vapb0, MAX_GE2D_CLK);
+			else {
+				if ((vpu_rate == 250000000) ||
+					(vpu_rate == 166660000)) {
+					struct clk *fixdiv4;
+					fixdiv4 = clk_get_sys("fclk_div4",
+						"fclk_div4");
+					if ((!IS_ERR(clk_vapb0)) &&
+						(!IS_ERR(fixdiv4))) {
+						clk_set_parent(clk_vapb0,
+							fixdiv4);
+						clk_set_rate(clk_vapb0,
+							vpu_rate);
+					}
+				} else if (vpu_rate == 333330000) {
+					struct clk *fixdiv3;
+					fixdiv3 = clk_get_sys("fclk_div3",
+						"fclk_div3");
+					if ((!IS_ERR(clk_vapb0)) &&
+						(!IS_ERR(fixdiv3))) {
+						clk_set_parent(clk_vapb0,
+							fixdiv3);
+						clk_set_rate(clk_vapb0,
+							333333333);
+					}
+				} else
+					clk_set_rate(clk_vapb0, vpu_rate);
+			}
+			vapb_rate = clk_get_rate(clk_vapb0);
 			ge2d_log_info("ge2d clock is %d MHZ\n",
-				vapb_rate/1000000);
+					vapb_rate/1000000);
 		}
 	}
+
+	ret = of_address_to_resource(pdev->dev.of_node, 0, &res);
+	if (ret == 0) {
+		ge2d_log_info("find address resource\n");
+		if (res.start != 0) {
+			ge2d_reg_map =
+				ioremap(res.start, resource_size(&res));
+			if (ge2d_reg_map) {
+				ge2d_log_info("map io source 0x%p,size=%d to 0x%p\n",
+					(void *)res.start,
+					(int)resource_size(&res),
+					ge2d_reg_map);
+			}
+		} else {
+			ge2d_reg_map = 0;
+			ge2d_log_info("ignore io source start %p,size=%d\n",
+			(void *)res.start, (int)resource_size(&res));
+		}
+	}
+
 	ret = ge2d_wq_init(pdev, irq, rstc, clk);
 #ifdef CONFIG_AMLOGIC_ION
 	if (!ge2d_ion_client)
