@@ -69,7 +69,6 @@ static void hdmi_phy_suspend(void);
 static void hdmi_phy_wakeup(struct hdmitx_dev *hdev);
 static void hdmitx_set_phy(struct hdmitx_dev *hdev);
 static void hdmitx_set_hw(struct hdmitx_dev *hdev);
-static void set_hdmi_audio_source(unsigned int src);
 static void hdmitx_csc_config(unsigned char input_color_format,
 	unsigned char output_color_format, unsigned char color_depth);
 static int hdmitx_hdmi_dvi_config(struct hdmitx_dev *hdev,
@@ -159,6 +158,9 @@ static int hdmitx_hpd_hw_op(enum hpd_op cmd)
 	case MESON_CPU_MAJOR_ID_GXM:
 		return hdmitx_hpd_hw_op_gxl(cmd);
 		break;
+	case MESON_CPU_MAJOR_ID_TXLX:
+		return hdmitx_hpd_hw_op_txlx(cmd);
+		break;
 	default:
 		break;
 	}
@@ -177,6 +179,9 @@ int read_hpd_gpio(void)
 	case MESON_CPU_MAJOR_ID_GXL:
 	case MESON_CPU_MAJOR_ID_GXM:
 		return read_hpd_gpio_gxl();
+		break;
+	case MESON_CPU_MAJOR_ID_TXLX:
+		return read_hpd_gpio_txlx();
 		break;
 	default:
 		break;
@@ -197,6 +202,9 @@ int hdmitx_ddc_hw_op(enum ddc_op cmd)
 	case MESON_CPU_MAJOR_ID_GXL:
 	case MESON_CPU_MAJOR_ID_GXM:
 		return hdmitx_ddc_hw_op_gxl(cmd);
+		break;
+	case MESON_CPU_MAJOR_ID_TXLX:
+		return hdmitx_ddc_hw_op_txlx(cmd);
 		break;
 	default:
 		break;
@@ -477,8 +485,63 @@ static void hdmi_hwp_init(struct hdmitx_dev *hdev)
 	/* assign phy_clk_en = control[1]; */
 /* Bring HDMITX MEM output of power down */
 	hd_set_reg_bits(P_HHI_MEM_PD_REG0, 0, 8, 8);
-	if (hdmitx_uboot_already_display())
+	if (hdmitx_uboot_already_display()) {
+		/* Get uboot output color space from AVI */
+		switch (hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF0) & 0x3) {
+		case 0:
+			hdev->para->cs = COLORSPACE_RGB444;
+			break;
+		case 1:
+			hdev->para->cs = COLORSPACE_YUV422;
+			break;
+		case 2:
+			hdev->para->cs = COLORSPACE_YUV444;
+			break;
+		case 3:
+			hdev->para->cs = COLORSPACE_YUV420;
+			break;
+		default:
+			break;
+		}
+		/* If color space is not 422, then get depth from VP_PR_CD */
+		if (hdev->para->cs != COLORSPACE_YUV422) {
+			switch ((hdmitx_rd_reg(HDMITX_DWC_VP_PR_CD) >> 4) &
+				0xf) {
+			case 5:
+				hdev->para->cd = COLORDEPTH_30B;
+				break;
+			case 6:
+				hdev->para->cd = COLORDEPTH_36B;
+				break;
+			case 7:
+				hdev->para->cd = COLORDEPTH_48B;
+				break;
+			case 0:
+			case 4:
+			default:
+				hdev->para->cd = COLORDEPTH_24B;
+				break;
+			}
+		} else {
+			/* If colorspace is 422, then get depth from VP_REMAP */
+			switch (hdmitx_rd_reg(HDMITX_DWC_VP_REMAP) & 0x3) {
+			case 1:
+				hdev->para->cd = COLORDEPTH_30B;
+				break;
+			case 2:
+				hdev->para->cd = COLORDEPTH_36B;
+				break;
+			case 0:
+			default:
+				hdev->para->cd = COLORDEPTH_24B;
+				break;
+			}
+		}
 		return;
+	} else {
+		hdev->para->cd = COLORDEPTH_RESERVED;
+		hdev->para->cs = COLORSPACE_RESERVED;
+	}
 	/* reset HDMITX APB & TX & PHY */
 	hd_set_reg_bits(P_RESET0_REGISTER, 1, 19, 1);
 	hd_set_reg_bits(P_RESET2_REGISTER, 1, 15, 1);
@@ -563,7 +626,7 @@ void HDMITX_Meson_Init(struct hdmitx_dev *hdev)
 	hdev->HWOp.CntlPacket = hdmitx_cntl;
 	hdev->HWOp.CntlConfig = hdmitx_cntl_config;
 	hdev->HWOp.CntlMisc = hdmitx_cntl_misc;
-	init_reg_map();
+	init_reg_map(hdev->chip_type);
 	digital_clk_on(0xff);
 	hdmi_hwp_init(hdev);
 	hdmi_hwi_init(hdev);
@@ -641,7 +704,8 @@ next:
 			hdmitx_rd_reg(HDMITX_DWC_HDCP22REG_STAT));
 		hdmitx_wr_reg(HDMITX_DWC_HDCP22REG_STAT, 0xff);
 	}
-	hdmitx_wr_reg(HDMITX_TOP_INTR_STAT_CLR, data32 | 0x6);
+	/* ack INTERNAL_INTR or else we stuck with no interrupts at all */
+	hdmitx_wr_reg(HDMITX_TOP_INTR_STAT_CLR, data32 | 0x7);
 	return IRQ_HANDLED;
 }
 
@@ -1696,8 +1760,7 @@ static void hdmitx_config_tvenc_reg(int vic, unsigned reg, unsigned val)
 
 static void hdmitx_set_pll(struct hdmitx_dev *hdev)
 {
-	hdmi_print(IMP, SYS "set pll\n");
-	hdmi_print(IMP, SYS "param->VIC:%d\n", hdev->cur_video_param->VIC);
+	hdmi_print(IMP, SYS "set pll VIC:%d\n", hdev->cur_video_param->VIC);
 
 	cur_vout_index = get_cur_vout_index();
 	set_vmode_clk(hdev);
@@ -1817,7 +1880,6 @@ do { \
 			set_phy_by_mode(4);
 		break;
 	}
-	hdmi_print(IMP, SYS "PHY Setting Done\n");
 }
 
 static void set_tmds_clk_div40(unsigned int div40)
@@ -1845,10 +1907,6 @@ static int hdmitx_set_dispmode(struct hdmitx_dev *hdev)
 		if (!hdmitx_edid_VIC_support(hdev->cur_video_param->VIC))
 			return -1;
 	hdev->cur_VIC = hdev->cur_video_param->VIC;
-	if (hdev->RXCap.scdc_present)
-		pr_info("hdmitx: rx has SCDC present indicator\n");
-	else
-		pr_info("hdmitx: rx no SCDC present indicator\n");
 
 	scdc_rd_sink(SINK_VER, &rx_ver);
 	if (rx_ver != 1)
@@ -2137,29 +2195,6 @@ static void hdmitx_setaudioinfoframe(unsigned char *AUD_DB,
 	}
 }
 
-
-/* set_hdmi_audio_source(unsigned int src) */
-/* Description: */
-/* Select HDMI audio clock source, and I2S input data source. */
-/* Parameters: */
-/* src -- 0=no audio clock to HDMI; 1=pcmout to HDMI; 2=Aiu I2S out to HDMI. */
-static void set_hdmi_audio_source(unsigned int src)
-{
-	unsigned long data32;
-
-	/* Disable HDMI audio clock input and its I2S input */
-	data32 = 0;
-	data32 |= (0 << 4);
-	data32 |= (0 << 0);
-	hd_write_reg(P_AIU_HDMI_CLK_DATA_CTRL, data32);
-
-	/* Enable HDMI I2S input from the selected source */
-	data32 = 0;
-	data32 |= (src  << 4);
-	data32 |= (src  << 0);
-	hd_write_reg(P_AIU_HDMI_CLK_DATA_CTRL, data32);
-} /* set_hdmi_audio_source */
-
 #if 0
 static Cts_conf_tab cts_table_192k[] = {
 	{24576,  27000,  27000},
@@ -2289,7 +2324,7 @@ static void set_aud_chnls(struct hdmitx_dev *hdev,
 	struct hdmitx_audpara *audio_param)
 {
 	int i;
-	pr_info("hdmitx set channel status\n");
+
 	for (i = 0; i < 9; i++)
 		/* First, set all status to 0 */
 		hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS0+i, 0x00);
@@ -2532,9 +2567,6 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 		tx_aud_src = 1;
 
 	pr_info("hdmitx tx_aud_src = %d\n", tx_aud_src);
-
-	/* set_hdmi_audio_source(tx_aud_src ? 1 : 2); */
-	set_hdmi_audio_source(2);
 
 /* config IP */
 /* Configure audio */
@@ -3644,6 +3676,9 @@ static int hdmitx_cntl_ddc(struct hdmitx_dev *hdev, unsigned cmd,
 			hdmitx_wr_reg(HDMITX_DWC_FC_SCRAMBLER_CTRL, 0);
 		}
 		break;
+	case DDC_HDCP14_GET_BCAPS_RP:
+		return !!(hdmitx_rd_reg(HDMITX_DWC_A_HDCPOBS3) & (1 << 6));
+		break;
 	default:
 		hdmi_print(INF, "ddc: " "unknown cmd: 0x%x\n", cmd);
 	}
@@ -3888,6 +3923,41 @@ static int hdmitx_cntl_config(struct hdmitx_dev *hdev, unsigned cmd,
 	return ret;
 }
 
+static int hdmitx_tmds_rxsense(void)
+{
+	unsigned int curr0, curr3;
+	int ret = 0;
+
+	switch (get_cpu_type()) {
+	case MESON_CPU_MAJOR_ID_GXBB:
+		curr0 = hd_read_reg(P_HHI_HDMI_PHY_CNTL0);
+		curr3 = hd_read_reg(P_HHI_HDMI_PHY_CNTL3);
+		if (curr0 == 0)
+			hd_write_reg(P_HHI_HDMI_PHY_CNTL0, 0x33632122);
+		hd_set_reg_bits(P_HHI_HDMI_PHY_CNTL3, 0x9a, 16, 8);
+		ret = hd_read_reg(P_HHI_HDMI_PHY_CNTL2) & 0x1;
+		hd_write_reg(P_HHI_HDMI_PHY_CNTL3, curr3);
+		if (curr0 == 0)
+			hd_write_reg(P_HHI_HDMI_PHY_CNTL0, 0);
+		break;
+	case MESON_CPU_MAJOR_ID_GXL:
+	case MESON_CPU_MAJOR_ID_GXM:
+	default:
+		curr0 = hd_read_reg(P_HHI_HDMI_PHY_CNTL0);
+		curr3 = hd_read_reg(P_HHI_HDMI_PHY_CNTL3);
+		if (curr0 == 0)
+			hd_write_reg(P_HHI_HDMI_PHY_CNTL0, 0x33604142);
+		hd_set_reg_bits(P_HHI_HDMI_PHY_CNTL3, 0x1, 4, 1);
+		ret = hd_read_reg(P_HHI_HDMI_PHY_CNTL2) & 0x1;
+		hd_write_reg(P_HHI_HDMI_PHY_CNTL3, curr3);
+		if (curr0 == 0)
+			hd_write_reg(P_HHI_HDMI_PHY_CNTL0, 0);
+		break;
+	}
+
+	return ret;
+}
+
 static int hdmitx_cntl_misc(struct hdmitx_dev *hdev, unsigned cmd,
 	unsigned argv)
 {
@@ -3922,6 +3992,8 @@ static int hdmitx_cntl_misc(struct hdmitx_dev *hdev, unsigned cmd,
 		if (argv == TMDS_PHY_DISABLE)
 			hdmi_phy_suspend();
 		break;
+	case MISC_TMDS_RXSENSE:
+		return hdmitx_tmds_rxsense();
 	case MISC_ESM_RESET:
 		if (hdev->hdcp_hpd_stick == 1) {
 			pr_info("hdcp: stick mode\n");
@@ -4938,7 +5010,6 @@ static void hdmitx_set_hw(struct hdmitx_dev *hdev)
 		return;
 	}
 
-	pr_info("%s[%d] set VIC = %d\n", __func__, __LINE__, para->vic);
 	config_hdmi20_tx(vic, hdev,
 			hdev->para->cd,
 			TX_INPUT_COLOR_FORMAT,

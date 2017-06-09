@@ -169,9 +169,11 @@ struct hdmitx_dev {
 	struct task_struct *task_cec;
 	struct notifier_block nb;
 	struct workqueue_struct *hdmi_wq;
+	struct workqueue_struct *rxsense_wq;
 	struct device *hdtx_dev;
 	struct delayed_work work_hpd_plugin;
 	struct delayed_work work_hpd_plugout;
+	struct delayed_work work_rxsense;
 	struct work_struct work_internal_intr;
 	struct work_struct work_hdr;
 	struct delayed_work work_do_hdcp;
@@ -179,9 +181,11 @@ struct hdmitx_dev {
 	struct delayed_work cec_work;
 #endif
 	struct timer_list hdcp_timer;
+	int chip_type;
 	int hdcp_try_times;
 	/* -1, no hdcp; 0, NULL; 1, 1.4; 2, 2.2 */
 	int hdcp_mode;
+	int hdcp_bcaps_repeater;
 	int ready;	/* 1, hdmi stable output, others are 0 */
 	int hdcp_hpd_stick;	/* 1 not init & reset at plugout */
 #ifdef CONFIG_AML_HDMI_TX_14
@@ -277,6 +281,7 @@ struct hdmitx_dev {
 	unsigned int gpio_i2c_enable;
 	/* 0.1% clock shift, 1080p60hz->59.94hz */
 	unsigned int frac_rate_policy;
+	unsigned int rxsense_policy;
 	/* configure for I2S: 8ch in, 2ch out */
 	/* 0: default setting  1:ch0/1  2:ch2/3  3:ch4/5  4:ch6/7 */
 	unsigned int aud_output_ch;
@@ -318,6 +323,7 @@ struct hdmitx_dev {
 #define DDC_HDCP_14_LSTORE	(CMD_DDC_OFFSET + 0x0f)
 #define DDC_HDCP_22_LSTORE	(CMD_DDC_OFFSET + 0x10)
 #define DDC_SCDC_DIV40_SCRAMB	(CMD_DDC_OFFSET + 0x20)
+#define DDC_HDCP14_GET_BCAPS_RP	(CMD_DDC_OFFSET + 0x30)
 
 /***********************************************************************
  *             CONFIG CONTROL //CntlConfig
@@ -384,6 +390,7 @@ struct hdmitx_dev {
 #define MISC_HPLL_FAKE			(CMD_MISC_OFFSET + 0x0c)
 #define MISC_ESM_RESET		(CMD_MISC_OFFSET + 0x0d)
 #define MISC_HDCP_CLKDIS	(CMD_MISC_OFFSET + 0x0e)
+#define MISC_TMDS_RXSENSE	(CMD_MISC_OFFSET + 0x0f)
 
 /***********************************************************************
  *                          Get State //GetState
