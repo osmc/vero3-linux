@@ -76,6 +76,9 @@ int amaudio2_enable = 0;
 int output_device = 0;
 int input_device = 1;
 
+static int external_mute_flag;
+static int external_mute_enable = 1;
+
 static int int_num = INT_NUM;
 static int i2s_num = I2S_BLOCK;
 static int int_block = INT_BLOCK;
@@ -180,6 +183,19 @@ static inline int clip24(int x)
 
 	return x;
 }
+
+int External_Mute(int mute_flag)
+{
+        if (mute_flag == 1) {
+                external_mute_flag = 1;
+                pr_info("amaudio2_out external mute!\n");
+        } else {
+                external_mute_flag = 0;
+                pr_info("amaudio2_out external unmute!\n");
+        }
+        return 0;
+}
+EXPORT_SYMBOL(External_Mute);
 
 static int amaudio_open(struct inode *inode, struct file *file)
 {
