@@ -25,6 +25,7 @@
 #include "arch/cm_regs.h"
 #include "amcm.h"
 #include "amcm_regmap.h"
+#include "bitdepth.h"
 
 #define pr_amcm_dbg(fmt, args...)\
 	do {\
@@ -144,6 +145,17 @@ void am_set_regmap(struct am_regs_s *p)
 					__func__, p->am_reg[i].addr);
 				break;
 			}
+
+			if (cm_en) {
+				if (p->am_reg[i].addr == 0x208)
+					p->am_reg[i].val =
+						p->am_reg[i].val | 0x2;
+			} else {
+				if (p->am_reg[i].addr == 0x208)
+					p->am_reg[i].val =
+						p->am_reg[i].val & 0xfffffffd;
+			}
+
 			WRITE_VPP_REG(VPP_CHROMA_ADDR_PORT,
 					p->am_reg[i].addr);
 			if (p->am_reg[i].mask == 0xffffffff)
@@ -357,6 +369,7 @@ void cm_latch_process(void)
 	} else if ((cm_en == 0) && (cm_level_last != 0xff)) {
 		cm_level_last = 0xff;
 		amcm_disable();/* CM manage disable */
+		pr_amcm_dbg("\n[amcm..] set cm disable!!!\n");
 	}
 }
 

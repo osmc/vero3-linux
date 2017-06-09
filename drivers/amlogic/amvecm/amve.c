@@ -51,7 +51,7 @@ unsigned long flags;
 #define NEW_DNLP_IN_SHARPNESS 2
 #define NEW_DNLP_IN_VPP 1
 
-unsigned int dnlp_sel = NEW_DNLP_IN_VPP;
+unsigned int dnlp_sel = NEW_DNLP_IN_SHARPNESS;
 module_param(dnlp_sel, int, 0664);
 MODULE_PARM_DESC(dnlp_sel, "dnlp_sel");
 /* #endif */
@@ -207,7 +207,7 @@ module_param(video_rgb_ogo_mode_sw, int, 0664);
 MODULE_PARM_DESC(video_rgb_ogo_mode_sw,
 		"enable/disable video_rgb_ogo_mode_sw");
 
-static int video_rgb_ogo_xvy_mtx = 1;
+int video_rgb_ogo_xvy_mtx = 1;
 module_param(video_rgb_ogo_xvy_mtx, int, 0664);
 MODULE_PARM_DESC(video_rgb_ogo_xvy_mtx,
 		"enable/disable video_rgb_ogo_xvy_mtx");
@@ -3532,10 +3532,7 @@ static void ve_dnlp_calculate_reg(void)
 
 static void ve_dnlp_load_reg(void)
 {
-/* #ifdef NEW_DNLP_IN_SHARPNESS */
-	/* if(dnlp_sel == NEW_DNLP_IN_SHARPNESS){ */
-	if (is_meson_gxtvbb_cpu() &&
-		(dnlp_sel == NEW_DNLP_IN_SHARPNESS)) {
+	if  (dnlp_sel == NEW_DNLP_IN_SHARPNESS) {
 		WRITE_VPP_REG(SRSHARP0_DNLP_00, ve_dnlp_reg[0]);
 		WRITE_VPP_REG(SRSHARP0_DNLP_01, ve_dnlp_reg[1]);
 		WRITE_VPP_REG(SRSHARP0_DNLP_02, ve_dnlp_reg[2]);
@@ -3553,7 +3550,6 @@ static void ve_dnlp_load_reg(void)
 		WRITE_VPP_REG(SRSHARP0_DNLP_14, ve_dnlp_reg[14]);
 		WRITE_VPP_REG(SRSHARP0_DNLP_15, ve_dnlp_reg[15]);
 	} else {
-		/* #endif */
 		WRITE_VPP_REG(VPP_DNLP_CTRL_00, ve_dnlp_reg[0]);
 		WRITE_VPP_REG(VPP_DNLP_CTRL_01, ve_dnlp_reg[1]);
 		WRITE_VPP_REG(VPP_DNLP_CTRL_02, ve_dnlp_reg[2]);
@@ -3664,6 +3660,50 @@ void vpp_set_lcd_gamma_table(u16 *data, u32 rgb_mask)
 
 	spin_lock_irqsave(&vpp_lcd_gamma_lock, flags);
 
+	WRITE_VPP_REG_BITS(L_GAMMA_CNTL_PORT,
+				0, GAMMA_EN, 1);
+
+	while (!(READ_VPP_REG(L_GAMMA_CNTL_PORT) & (0x1 << ADR_RDY))) {
+		udelay(10);
+		if (cnt++ > GAMMA_RETRY)
+			break;
+	}
+	cnt = 0;
+	WRITE_VPP_REG(L_GAMMA_ADDR_PORT, (0x1 << H_AUTO_INC) |
+				    (0x1 << rgb_mask)   |
+				    (0x0 << HADR));
+	for (i = 0; i < 256; i++) {
+		while (!(READ_VPP_REG(L_GAMMA_CNTL_PORT) & (0x1 << WR_RDY))) {
+			udelay(10);
+			if (cnt++ > GAMMA_RETRY)
+				break;
+		}
+		cnt = 0;
+		WRITE_VPP_REG(L_GAMMA_DATA_PORT, data[i]);
+	}
+	while (!(READ_VPP_REG(L_GAMMA_CNTL_PORT) & (0x1 << ADR_RDY))) {
+		udelay(10);
+		if (cnt++ > GAMMA_RETRY)
+			break;
+	}
+	WRITE_VPP_REG(L_GAMMA_ADDR_PORT, (0x1 << H_AUTO_INC) |
+				    (0x1 << rgb_mask)   |
+				    (0x23 << HADR));
+
+	WRITE_VPP_REG_BITS(L_GAMMA_CNTL_PORT,
+					gamma_en, GAMMA_EN, 1);
+
+	spin_unlock_irqrestore(&vpp_lcd_gamma_lock, flags);
+}
+
+void init_write_gamma_table(u16 *data, u32 rgb_mask)
+{
+	int i;
+	int cnt = 0;
+	unsigned long flags = 0;
+
+	spin_lock_irqsave(&vpp_lcd_gamma_lock, flags);
+
 	while (!(READ_VPP_REG(L_GAMMA_CNTL_PORT) & (0x1 << ADR_RDY))) {
 		udelay(10);
 		if (cnt++ > GAMMA_RETRY)
@@ -3762,7 +3802,7 @@ void vpp_set_rgb_ogo(struct tcon_rgb_ogo_s *p)
 		}
 
 		WRITE_VPP_REG_BITS(VPP_MATRIX_CTRL, p->en, 6, 1);
-		WRITE_VPP_REG_BITS(VPP_MATRIX_CTRL, 3, 8, 2);
+		WRITE_VPP_REG_BITS(VPP_MATRIX_CTRL, 3, 8, 3);
 
 		WRITE_VPP_REG(VPP_MATRIX_PRE_OFFSET0_1,
 			((m[0] & 0xfff) << 16)
@@ -3827,8 +3867,7 @@ void ve_enable_dnlp(void)
 	ve_en = 1;
 /* #ifdef NEW_DNLP_IN_SHARPNESS */
 /* if(dnlp_sel == NEW_DNLP_IN_SHARPNESS){ */
-	if (is_meson_gxtvbb_cpu() &&
-		(dnlp_sel == NEW_DNLP_IN_SHARPNESS))
+	if (dnlp_sel == NEW_DNLP_IN_SHARPNESS)
 		WRITE_VPP_REG_BITS(SRSHARP0_DNLP_EN, 1, 0, 1);
 	else
 		/* #endif */
@@ -3841,8 +3880,7 @@ void ve_disable_dnlp(void)
 	ve_en = 0;
 /* #ifdef NEW_DNLP_IN_SHARPNESS */
 /* if(dnlp_sel == NEW_DNLP_IN_SHARPNESS){ */
-	if (is_meson_gxtvbb_cpu() &&
-		(dnlp_sel == NEW_DNLP_IN_SHARPNESS))
+	if (dnlp_sel == NEW_DNLP_IN_SHARPNESS)
 		WRITE_VPP_REG_BITS(SRSHARP0_DNLP_EN, 0, 0, 1);
 	else
 /* #endif */

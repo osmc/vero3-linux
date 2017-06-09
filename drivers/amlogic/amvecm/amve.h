@@ -101,6 +101,7 @@ extern void ve_disable_dnlp(void);
 extern void vpp_enable_lcd_gamma_table(void);
 extern void vpp_disable_lcd_gamma_table(void);
 extern void vpp_set_lcd_gamma_table(u16 *data, u32 rgb_mask);
+extern void init_write_gamma_table(u16 *data, u32 rgb_mask);
 extern void vpp_set_rgb_ogo(struct tcon_rgb_ogo_s *p);
 extern void vpp_phase_lock_on_vs(unsigned int cycle,
 				 unsigned int stamp,
@@ -153,6 +154,7 @@ extern u32 VSYNC_RD_MPEG_REG(u32 adr);
 /* #if defined(CONFIG_ARCH_MESON2) */
 /* unsigned long long ve_get_vs_cnt(void); */
 /* #endif */
+extern int video_rgb_ogo_xvy_mtx;
 
 #define VLOCK_STATE_NULL 0
 #define VLOCK_STATE_ENABLE_STEP1_DONE 1
