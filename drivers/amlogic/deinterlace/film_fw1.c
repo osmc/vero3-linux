@@ -7,6 +7,8 @@
 #include <linux/module.h>
 #include "film_vof_soft.h"
 
+static int DIweavedetec(struct sFlmSftPar *pPar, int nDif01);
+
 /* Software parameters (registers) */
 UINT8 FlmVOFSftInt(struct sFlmSftPar *pPar)
 {
@@ -39,9 +41,19 @@ UINT8 FlmVOFSftInt(struct sFlmSftPar *pPar)
 	No RTL,default=1 */
 	pPar->mNxtDlySft = 1;
 
-	pPar->sF32Dif02M0 = 4096;	/* mpeg-4096, cvbs-8192 */
+	pPar->cmb22_nocmb_num = 30;
+	pPar->flm22_en = 1;
+	pPar->flm32_en = 1;
+	pPar->flm22_flag = 1;
+	pPar->flm2224_flag = 1;
+	pPar->flm22_comlev = 20;
+	pPar->flm22_comlev1 = 10;
+	pPar->flm22_comnum = 100;
+	pPar->dif01rate = 20;
+	pPar->flag_di01th = 0;
+	pPar->numthd = 60;
+	pPar->sF32Dif02M0 = 4096;/* mpeg-4096, cvbs-8192 */
 	pPar->sF32Dif02M1 = 4096;
-
 	field_count = 0;
 
 	return 0;
@@ -204,14 +216,16 @@ MODULE_PARM_DESC(dif01_ratio, "dif01_ratio");
 
 
 unsigned int frame_diff_avg = 0;
+int comsum = 0;
 
 int FlmVOFSftTop(UINT8 *rCmb32Spcl, unsigned short *rPstCYWnd0,
-		 unsigned short *rPstCYWnd1, unsigned short *rPstCYWnd2,
-		 unsigned short *rPstCYWnd3, unsigned short *rPstCYWnd4,
-		 UINT8 *rFlmPstGCm, UINT8 *rFlmSltPre, UINT8 *rFlmPstMod,
-		 UINT32 *rROFldDif01, UINT32 *rROFrmDif02, UINT32 *rROCmbInf,
-		 UINT32 glb_frame_mot_num, UINT32 glb_field_mot_num, int *tTCNm,
-		 struct sFlmSftPar *pPar, int nROW, int nCOL, bool reverse)
+		unsigned short *rPstCYWnd1, unsigned short *rPstCYWnd2,
+		unsigned short *rPstCYWnd3, unsigned short *rPstCYWnd4,
+		UINT8 *rFlmPstGCm, UINT8 *rFlmSltPre, UINT8 *rFlmPstMod,
+		UINT8 *dif01flag, UINT32 *rROFldDif01, UINT32 *rROFrmDif02,
+		UINT32 *rROCmbInf, UINT32 glb_frame_mot_num,
+		UINT32 glb_field_mot_num, int *tTCNm,
+		struct sFlmSftPar *pPar, int nROW, int nCOL, bool reverse)
 {
 	static UINT32 DIF01[HISDIFNUM]; /* Last one is global */
 	static UINT32 DIF02[HISDIFNUM]; /* Last one is global */
@@ -236,6 +250,10 @@ int FlmVOFSftTop(UINT8 *rCmb32Spcl, unsigned short *rPstCYWnd0,
 	/* int nRCMB[ROWCMBNUM]; */
 	int mDly = pPar->mPstDlyPre;
 	int mNDly = pPar->mNxtDlySft;
+	int flm22 = pPar->flm22_en;
+	int flm32 = pPar->flm32_en;
+	int flm22_flag = pPar->flm22_flag;
+	int flm2224_flag = pPar->flm2224_flag;
 
 	int nT0 = 0;
 	int nT1 = 0;
@@ -397,7 +415,8 @@ int FlmVOFSftTop(UINT8 *rCmb32Spcl, unsigned short *rPstCYWnd0,
 		01: 2-2 film, 10: 2-3 film, 11:-others */
 		*rFlmPstMod = 2;
 		/* param: at least 5 field+5 */
-		if (pRDat.mNum32[HISDETNUM - 1] < flm32_mim_frms) {
+		if (pRDat.mNum32[HISDETNUM - 1] < flm32_mim_frms ||
+				flm32 == 0) {
 			*rFlmSltPre = 0;
 			*rFlmPstMod = 0;
 		}
@@ -449,9 +468,9 @@ int FlmVOFSftTop(UINT8 *rCmb32Spcl, unsigned short *rPstCYWnd0,
 					pRDat.mNum22[HISDETNUM - 1] = 0;
 			}
 		}
-
 		/* param: at least 60 field+4 */
-		if (pRDat.mNum22[HISDETNUM - 1] < flm22_mim_numb) {
+		if (pRDat.mNum22[HISDETNUM - 1] < flm22_mim_numb ||
+				flm22 == 0) {
 			*rFlmSltPre = 0;
 			*rFlmPstMod = 0;
 			if (pr_pd)
@@ -467,24 +486,30 @@ int FlmVOFSftTop(UINT8 *rCmb32Spcl, unsigned short *rPstCYWnd0,
 	}
 	pre_fld_motnum = glb_field_mot_num;
 
-	VOFSftTop(rFlmPstGCm, rFlmSltPre, rFlmPstMod,
+	comsum = VOFSftTop(rFlmPstGCm, rFlmSltPre, rFlmPstMod,
 		rPstCYWnd0, rPstCYWnd1, rPstCYWnd2, rPstCYWnd3,
 		nMod, rROCmbInf, &pRDat, pPar, nROW, nCOL, reverse);
+	if (*rFlmPstMod == 1 && *rFlmPstGCm && flm22_flag)
+		*rFlmPstMod = 0;
 
 	nT1 = pRDat.pLvlXx[HISDETNUM - 1 - mDly];
 	if ((*rFlmPstMod == 0) && (nT1 > flmxx_maybe_num)
-		&& (nS0 != 6) && (pRDat.pMod22[HISDETNUM - 1 - mDly] != 2)) {
+		&& (nS0 != 6) &&
+		(pRDat.pMod22[HISDETNUM - 1 - mDly] != 2 || flm2224_flag)) {
 		*rFlmSltPre = pRDat.pFlgXx[HISDETNUM - 1 - mDly];
 		*rFlmPstMod = 4 + pRDat.pModXx[HISDETNUM - 1 - mDly];
 		nS1 = pRDat.pLvlXx[HISDETNUM - 1 - mDly];
 	}
+	*dif01flag = 2;
+	if (*rFlmPstMod == 0)
+		*dif01flag = DIweavedetec(pPar, rROFldDif01[0]);
 	if (num32 > 0 && *rFlmPstMod != 2)
 		num32 = num32-1;
 	if (pRDat.pFlg32[HISDETNUM - 1 - mDly] == 3) {
 		if (DIF01[HISDIFNUM - 2] > DIF01[HISDIFNUM - 1])
 			num32 = num32 + 1;
 		else if (num32 > 0)
-			num32 = num32-1;
+			num32 = num32 - 1;
 	}
 	if (modpre != *rFlmPstMod && modpre != 0 && *rFlmPstMod != 0 &&
 		num32 == 0) {
@@ -1074,6 +1099,10 @@ int Flm22DetSft(struct sFlmDatSt *pRDat, int *nDif02,
 	int sFlm20ftAlpha = pPar->sFlm20ftAlpha;	/* 16; // [0~63] */
 	int sFlm2LgDifThd = pPar->sFlm2LgDifThd;	/* 4096; */
 	int sFlm2LgFlgThd = pPar->sFlm2LgFlgThd;	/* 8; */
+	int flm22_flag = pPar->flm22_flag;
+	int flm22_comlev = pPar->flm22_comlev;
+	int flm22_comlev1 = pPar->flm22_comlev1;
+	int flm22_comnum = pPar->flm22_comnum;
 
 	int cFlg = pFlg[HISDETNUM - 1];
 	int rFlg[4] = { 2, 3, 4, 1 };
@@ -1100,6 +1129,7 @@ int Flm22DetSft(struct sFlmDatSt *pRDat, int *nDif02,
 	int nOfst = 0;
 	int tMgn = 0;
 	int BtMn = 0;
+	static int num22;
 
 	int FdTg[6];
 
@@ -1473,6 +1503,32 @@ int Flm22DetSft(struct sFlmDatSt *pRDat, int *nDif02,
 
 		nFlm22Lvl -= nT1;
 	}
+	if (flm22_flag) {
+		if (pFlg[HISDETNUM-1] == 3
+				|| pFlg[HISDETNUM-1] == 1) {
+			if (comsum > flm22_comnum) {
+				if (num22 < 30)
+					num22 = num22 + 1;
+				else
+					nFlm22Lvl = nFlm22Lvl + flm22_comlev;
+			} else {
+				num22 = 0;
+				nFlm22Lvl = nFlm22Lvl - flm22_comlev;
+			}
+			/* if(prt_flg)
+			   pr_info("nFlm22Lvl = %d, comsum=%d,num22=%d,"
+			   "flm22_comnum=%d,flm22_flag=%d\n",
+			   nFlm22Lvl,comsum,num22,flm22_comnum,flm22_flag); */
+		}
+		if (nFlgCk20 < flm22_chk20_sml)
+			nFlm22Lvl = nFlm22Lvl + flm22_comlev1 - nFlgCk20;
+		if (nFlgCk21 < flm22_chk21_sml)
+			nFlm22Lvl = nFlm22Lvl + flm22_comlev1 - nFlgCk20;
+		if (prt_flg) {
+			pr_info("nFlm22Lvl=%d, nFlgCk20=%d, nFlgCk21=%d\n",
+				nFlm22Lvl, nFlgCk20, nFlgCk21);
+		}
+	}
 	/* for sony-mp3 */
 
 	nFlm22Lvl -= nFlgChk5;
@@ -1491,4 +1547,39 @@ int Flm22DetSft(struct sFlmDatSt *pRDat, int *nDif02,
 	}
 
 	return nFlm22Lvl;
+}
+static int DIweavedetec(struct sFlmSftPar *pPar, int nDif01)
+{
+	int dif01th = 0;
+	int dif01rate = pPar->dif01rate;
+	int flag_di01th = pPar->flag_di01th;
+	int numthd = pPar->numthd;
+	static int numdif;
+	static int predifflag;
+	static int predif01;
+	static int difflag;
+
+	dif01th	= (predif01+nDif01)/dif01rate;
+	if (abs(predif01 - nDif01) < dif01th && flag_di01th)
+		difflag = 2;
+	else {
+		if (predif01 < nDif01)
+			difflag = 1;
+		else
+			difflag = 0;
+		if (difflag^predifflag) {
+			if (numdif > 255)
+				numdif = numdif;
+			else
+				numdif = numdif + 1;
+			predifflag = difflag;
+		} else if (numdif > numthd) {
+			numdif = 0;
+			difflag = difflag^1;
+			predifflag = difflag;
+		} else
+			difflag = 2;
+	}
+	predif01 = nDif01;
+	return difflag;
 }

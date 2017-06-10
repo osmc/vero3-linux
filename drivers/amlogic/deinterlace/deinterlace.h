@@ -4,6 +4,7 @@
 #include <linux/amlogic/amports/vframe.h>
 #include <linux/amlogic/amports/video.h>
 #include <linux/atomic.h>
+#include <linux/clk.h>
 
 /* di hardware version m8m2*/
 #define NEW_DI_V1 0x00000002 /* from m6tvc */
@@ -126,6 +127,7 @@ enum pulldown_mode_e {
 	PULL_DOWN_BUF1	  = 3,/* do wave with dup[0] */
 	PULL_DOWN_EI	  = 4,/* ei only */
 	PULL_DOWN_NORMAL  = 5,/* normal di */
+	PULL_DOWN_NORMAL_2  = 6,/* di */
 };
 
 enum canvas_idx_e {
@@ -226,7 +228,6 @@ extern void di_hw_init(void);
 
 extern void di_hw_uninit(void);
 
-extern void enable_di_pre_mif(int enable);
 
 extern int di_vscale_skip_count;
 
@@ -283,6 +284,7 @@ struct DI_SIM_MIF_s {
 struct DI_MC_MIF_s {
 	unsigned short start_x;
 	unsigned short start_y;
+	unsigned short end_y;
 	unsigned short size_x;
 	unsigned short size_y;
 	unsigned short canvas_num;
@@ -360,7 +362,8 @@ void enable_di_post_2(
 	struct DI_SIM_MIF_s	*di_mtnprd_mif,
 	int ei_en, int blend_en, int blend_mtn_en, int blend_mode,
 	int di_vpp_en, int di_ddr_en,
-	int post_field_num, int hold_line , int urgent
+	int post_field_num, int hold_line , int urgent,
+	int invert_mv
 	#ifndef NEW_DI_V1
 	, unsigned long *reg_mtn_info
 	#endif
@@ -378,7 +381,8 @@ void di_post_switch_buffer(
 	struct DI_MC_MIF_s		*di_mcvecrd_mif,
 	int ei_en, int blend_en, int blend_mtn_en, int blend_mode,
 	int di_vpp_en, int di_ddr_en,
-	int post_field_num, int hold_line, int urgent
+	int post_field_num, int hold_line, int urgent,
+	int invert_mv
 	#ifndef NEW_DI_V1
 	, unsigned long *reg_mtn_info
 	#endif
@@ -408,8 +412,6 @@ extern void recycle_keep_buffer(void);
 extern unsigned int di_log_flag;
 extern unsigned int di_debug_flag;
 extern bool mcpre_en;
-extern bool dnr_reg_update;
-extern bool dnr_dm_en;
 extern int mpeg2vdin_flag;
 extern int di_vscale_skip_count_real;
 extern unsigned int pulldown_enable;
@@ -472,6 +474,7 @@ struct di_dev_s {
 	struct device	   *dev;
 	struct platform_device	*pdev;
 	struct task_struct *task;
+	struct clk	*vpu_clkb;
 	unsigned char	   di_event;
 	unsigned int	   di_irq;
 	unsigned int	   flags;
