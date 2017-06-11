@@ -92,7 +92,7 @@ static irqreturn_t meson_ir_irq(int irqno, void *dev_id)
 
         ir_raw_event_store_edge(ir->rc,
                         (readl(ir->reg + IR_DEC_STATUS) & STATUS_IR_DEC_IN)
-                        ? IR_PULSE : IR_SPACE);
+                        ? IR_SPACE : IR_PULSE);
         ir_raw_event_handle(ir->rc);
 
 	spin_unlock(&ir->lock);
