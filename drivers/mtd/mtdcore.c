@@ -994,7 +994,7 @@ int mtd_block_isbad(struct mtd_info *mtd, loff_t ofs)
 		return 0;
 	if (ofs < 0 || ofs > mtd->size)
 		return -EINVAL;
-	return mtd->_block_isbad(mtd, ofs);
+	return mtd->_block_isbad(mtd, ofs) == 0 ? 0 : 1;
 }
 EXPORT_SYMBOL_GPL(mtd_block_isbad);
 
