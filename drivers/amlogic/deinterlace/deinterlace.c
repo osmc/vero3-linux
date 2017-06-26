@@ -8851,7 +8851,6 @@ static int di_receiver_event_fun(int type, void *data, void *arg)
 		pr_dbg("%s , is_bypass() %d trick_mode %d bypass_all %d\n",
 			__func__, is_bypass(NULL), trick_mode, bypass_all);
 		pr_info("%s: vf_notify_receiver unreg\n", __func__);
-
 		di_pre_stru.unreg_req_flag = 1;
 		provider_vframe_level = 0;
 		bypass_dynamic_flag = 0;
@@ -10063,6 +10062,35 @@ static int di_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void di_shutdown(struct platform_device *pdev)
+{
+	struct di_dev_s *di_devp = NULL;
+	int ret = 0;
+	di_devp = platform_get_drvdata(pdev);
+	#ifdef USE_HRTIMER
+	ret = hrtimer_cancel(&di_pre_hrtimer);
+	pr_info("di pre hrtimer canel %d.\n", ret);
+	tasklet_disable(&di_pre_tasklet);
+	tasklet_kill(&di_pre_tasklet);
+	#else
+	aml_cbus_update_bits(ISA_TIMER_MUX, 1 << 18, 0 << 18);
+	del_timer(&di_pre_timer);
+	#endif
+	init_flag = 0;
+	di_set_power_control(0, 0);
+	di_set_power_control(1, 0);
+	if (is_meson_txlx_cpu())
+		di_top_gate_control(true, true);
+	else
+		DI_Wr(DI_CLKG_CTRL, 0x2);
+
+	switch_vpu_clk_gate_vmod(VPU_VPU_CLKB,
+		VPU_CLK_GATE_OFF);
+	kfree(di_devp);
+	pr_info("[DI] shutdown done.\n");
+
+}
+
 #ifdef CONFIG_PM
 static int save_init_flag;
 /* must called after lcd */
@@ -10138,6 +10166,7 @@ static const struct of_device_id amlogic_deinterlace_dt_match[] = {
 static struct platform_driver di_driver = {
 	.probe			= di_probe,
 	.remove			= di_remove,
+	.shutdown		= di_shutdown,
 	.driver			= {
 		.name		= DEVICE_NAME,
 		.owner		= THIS_MODULE,
