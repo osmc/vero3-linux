@@ -54,6 +54,7 @@
 #define MESONGXBB_UBOOT_SUSPEND					0x5
 #define MESONGXBB_HIBERNATE					0x6
 #define MESONGXBB_BOOTLOADER_REBOOT				7
+#define MESONGXBB_RPMBP_REBOOT					0x9
 #define	MESONGXBB_CRASH_REBOOT					11
 #define	MESONGXBB_KERNEL_PANIC					12
 
@@ -77,6 +78,8 @@ static u32 parse_reason(const char *cmd)
 			reboot_reason = MESONGXBB_FASTBOOT_REBOOT;
 		else if (strcmp(cmd, "bootloader") == 0)
 			reboot_reason = MESONGXBB_BOOTLOADER_REBOOT;
+		else if (strcmp(cmd, "rpmbp") == 0)
+			reboot_reason = MESONGXBB_RPMBP_REBOOT;
 		else if (strcmp(cmd, "report_crash") == 0)
 			reboot_reason = MESONGXBB_CRASH_REBOOT;
 		else if (strcmp(cmd, "uboot_suspend") == 0)
