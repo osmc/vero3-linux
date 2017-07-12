@@ -230,6 +230,7 @@ extern void di_hw_init(void);
 
 extern void di_hw_uninit(void);
 
+void mc_pre_mv_irq(void);
 
 extern int di_vscale_skip_count;
 

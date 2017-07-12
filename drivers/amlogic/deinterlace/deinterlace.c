@@ -2665,7 +2665,7 @@ unsigned int di_cma_alloc(void)
 	}
 	end_time = jiffies_to_msecs(jiffies);
 	delta_time = end_time - start_time;
-	pr_info("%s:alloc %d buffer use %d ms(%d~%d)\n",
+	pr_info("%s:alloc %u buffer use %u ms(%u~%u)\n",
 			__func__, alloc_cnt, delta_time, start_time, end_time);
 	return 1;
 }
@@ -2707,7 +2707,7 @@ void di_cma_release(void)
 	}
 	end_time = jiffies_to_msecs(jiffies);
 	delta_time = end_time - start_time;
-	pr_info("%s:release %u buffer use %d ms(%d~%d)\n",
+	pr_info("%s:release %u buffer use %u ms(%u~%u)\n",
 			__func__, rels_cnt, delta_time, start_time, end_time);
 }
 #endif
@@ -3729,8 +3729,12 @@ static void pre_de_process(void)
 			if ((di_pre_stru.cur_prog_flag == 0) &&
 				(di_pre_stru.enable_mtnwr == 1)
 			   )
+				/*
+				bit12=0 disable autoen for
+				hw auto mode issue in mcdi
+				*/
 				RDMA_WR(DI_MTN_CTRL1,
-					(mcpre_en ? 0x3000 : 0) |
+					(mcpre_en ? 0x2000 : 0) |
 					RDMA_RD(DI_MTN_CTRL1));
 			else
 				RDMA_WR(DI_MTN_CTRL1,
@@ -3742,7 +3746,8 @@ static void pre_de_process(void)
 				RDMA_WR(MCDI_MOTINEN, 1 << 1 | 1);
 			}
 			if (di_pre_stru.field_count_for_cont == 5)
-				RDMA_WR(MCDI_CTRL_MODE, 0x1bfff7ff);
+				RDMA_WR(MCDI_CTRL_MODE,
+					(0x1bfe37ff | RDMA_RD(MCDI_CTRL_MODE)));
 				/* disalbe reflinfo */
 		} else {
 			di_mtn_1_ctrl1 &= (~(1 << 30));
@@ -3757,8 +3762,11 @@ static void pre_de_process(void)
 			/* txtdet_en mode */
 			RDMA_WR_BITS(MCDI_CTRL_MODE, 0, 1, 1);
 			RDMA_WR_BITS(MCDI_CTRL_MODE, 1, 9, 1);
-			RDMA_WR_BITS(MCDI_CTRL_MODE, 1, 16, 1);
+			RDMA_WR_BITS(MCDI_CTRL_MODE, 0, 16, 1);
 			RDMA_WR_BITS(MCDI_CTRL_MODE, 0, 28, 1);
+			/* disable gmv rpt mv */
+			RDMA_WR_BITS(MCDI_CTRL_MODE, 0, 14, 1);
+			RDMA_WR_BITS(MCDI_CTRL_MODE, 0, 15, 1);
 			RDMA_WR(MCDI_MOTINEN, 0);
 			RDMA_WR(DI_MTN_CTRL1,
 				(0xffffcfff & RDMA_RD(DI_MTN_CTRL1)));
@@ -5627,8 +5635,9 @@ jiffies_to_msecs(jiffies_64 - vframe->ready_jiffies64));
 				}
 			}
 			pr_info(
-			"%s: source change: 0x%x/%d/%d/%d=>0x%x/%d/%d/%d\n",
+			"%s:%d source change: 0x%x/%d/%d/%d=>0x%x/%d/%d/%d\n",
 				__func__,
+				di_pre_stru.in_seq,
 				di_pre_stru.cur_inp_type,
 				di_pre_stru.cur_width,
 				di_pre_stru.cur_height,
@@ -6348,8 +6357,10 @@ static irqreturn_t de_irq(int irq, void *dev_instance)
 	}
 
 	if (flag) {
-		if (mcpre_en)
+		if (mcpre_en) {
 			get_mcinfo_from_reg_in_irq();
+			mc_pre_mv_irq();
+		}
 #ifdef NEW_DI_V4
 		nr_process_in_irq();
 #endif
@@ -8676,7 +8687,6 @@ static void di_process(void)
 	}
 }
 static unsigned int nr_done_check_cnt = 10;
-module_param_named(nr_done_check_cnt, nr_done_check_cnt, uint, 0644);
 static void di_pre_trigger_work(struct di_pre_stru_s *pre_stru_p)
 {
 
@@ -10483,6 +10493,7 @@ __setup("di=", di_boot_para_setup);
 
 module_param_named(full_422_pack, full_422_pack, bool, 0644);
 #ifdef DEBUG_SUPPORT
+module_param_named(nr_done_check_cnt, nr_done_check_cnt, uint, 0644);
 module_param_named(di_pre_rdma_enable, di_pre_rdma_enable, uint, 0664);
 module_param_named(pldn_dly, pldn_dly, uint, 0644);
 module_param_named(tbbtff_dly, tbbtff_dly, uint, 0644);

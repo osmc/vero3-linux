@@ -46,11 +46,12 @@ UINT8 FlmVOFSftInt(struct sFlmSftPar *pPar)
 	pPar->flm32_en = 1;
 	pPar->flm22_flag = 1;
 	pPar->flm2224_flag = 1;
-	pPar->flm22_comlev = 20;
+	pPar->flm22_comlev = 22;
 	pPar->flm22_comlev1 = 8;
-	pPar->flm22_comnum = 120;
+	pPar->flm22_comlev2 = 22;
+	pPar->flm22_comnum = 115;
 	pPar->flm22_comth = 15;
-	pPar->flm22_dif01_avgth = 50;
+	pPar->flm22_dif01_avgth = 55;
 	pPar->dif01rate = 20;
 	pPar->flag_di01th = 0;
 	pPar->numthd = 60;
@@ -103,9 +104,9 @@ int flm32_mim_frms = 6;
 module_param(flm32_mim_frms, int, 0644);
 MODULE_PARM_DESC(flm32_mim_frms, "flm32_mim_frms");
 
-int flm32_dif01a_flag = 1;
-module_param(flm32_dif01a_flag, int, 0644);
-MODULE_PARM_DESC(flm32_dif01a_flag, "flm32_dif01a_flag");
+int flm22_dif01a_flag = 1;
+module_param(flm22_dif01a_flag, int, 0644);
+MODULE_PARM_DESC(flm22_dif01a_flag, "flm22_dif01a_flag");
 
 int flm22_mim_frms = 60;
 module_param(flm22_mim_frms, int, 0644);
@@ -481,15 +482,27 @@ int FlmVOFSftTop(UINT8 *rCmb32Spcl, unsigned short *rPstCYWnd0,
 				pr_info("comsum=%d, comsumpre=%d, flev=%d\n",
 					comsum, comsumpre, nS1);
 			if ((comsum < 200) && (comsum > pPar->flm22_comnum)
-				&& (comdif < flm22_comth))
-				nS1 = nS1 - pPar->flm22_comlev;
-			else if (dif01avg > pPar->flm22_dif01_avgth)
-				nS1 = nS1 - pPar->flm22_comlev;
+				&& (comdif < flm22_comth) &&
+				flm22_dif01a_flag) {
+				if (nS1 < pPar->flm22_comlev)
+					nS1 = 0;
+				else
+					nS1 = nS1 - pPar->flm22_comlev;
+			} else if (dif01avg > pPar->flm22_dif01_avgth) {
+				if (nS1 < pPar->flm22_comlev)
+					nS1 = 0;
+				else
+					nS1 = nS1 - pPar->flm22_comlev;
+			}
 			if (pr_pd)
 				pr_info("flev=%d\n", nS1);
 			comsumpre = comsum;
-		} else if (nS1pre < 100)
-			nS1 = nS1 - pPar->flm22_comlev;
+		} else if (nS1pre < 100) {
+			if (nS1 < pPar->flm22_comlev2)
+				nS1 = 0;
+			else
+				nS1 = nS1 - pPar->flm22_comlev2;
+		}
 		nS1pre = nS1;
 
 		/* param: at least 60 field+4 */

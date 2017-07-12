@@ -2297,6 +2297,7 @@ normally 0-16               . unsigned  , default = 1 */
 #define MCDI_PD_22_CHK_WND0_Y				(0x2f5a)
 #define MCDI_PD_22_CHK_WND1_X				(0x2f5b)
 #define MCDI_PD_22_CHK_WND1_Y				(0x2f5c)
+#define MCDI_PD_22_CHK_FLG_CNT				(0x2f5e)
 /* mc di */
 /* //=================================================================//// */
 /* // memc di core 0 */

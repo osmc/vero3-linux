@@ -194,6 +194,47 @@ void init_field_mode(unsigned short height)
 	else
 		DI_Wr(DIPD_COMB_CTRL5, 0x04040804);
 }
+void mc_pre_mv_irq(void)
+{
+	unsigned int val1;
+	val1 = RDMA_RD(MCDI_RO_PD_22_FLG);
+	RDMA_WR(MCDI_PD_22_CHK_FLG_CNT, val1);
+	val1 = RDMA_RD_BITS(MCDI_RO_HIGH_VERT_FRQ_FLG, 0, 16);
+	RDMA_WR_BITS(MCDI_FIELD_HVF_PRDX_CNT, val1, 0, 16);
+
+	val1 = RDMA_RD_BITS(MCDI_RO_MOTION_PARADOX_FLG, 0, 16);
+	RDMA_WR_BITS(MCDI_FIELD_HVF_PRDX_CNT, val1, 16, 16);
+
+	val1 = RDMA_RD_BITS(MCDI_RO_RPT_MV, 0, 6);
+	if (val1 >= 32) {
+		val1 = 0;
+		RDMA_WR_BITS(MCDI_CTRL_MODE, 0, 15, 1);
+	} else {
+		RDMA_WR_BITS(MCDI_CTRL_MODE, 1, 15, 1);
+	}
+	RDMA_WR_BITS(MCDI_FIELD_MV, val1, 8, 6);
+
+	val1 = RDMA_RD_BITS(MCDI_RO_GMV_LOCK_FLG, 0, 1);
+	RDMA_WR_BITS(MCDI_FIELD_MV, val1, 14, 1);
+
+	val1 = RDMA_RD_BITS(MCDI_RO_GMV_LOCK_FLG, 8, 8);
+	RDMA_WR_BITS(MCDI_FIELD_MV, val1, 16, 8);
+
+	val1 = RDMA_RD_BITS(MCDI_RO_GMV_LOCK_FLG, 2, 6);
+	if (val1 >= 32) {
+		val1 = 0;
+		RDMA_WR_BITS(MCDI_CTRL_MODE, 0, 14, 1);
+	} else {
+		RDMA_WR_BITS(MCDI_CTRL_MODE, 1, 14, 1);
+	}
+	RDMA_WR_BITS(MCDI_FIELD_MV, val1, 0, 6);
+
+	val1 = RDMA_RD(MCDI_FIELD_LUMA_AVG_SUM_1);
+	RDMA_WR(MCDI_FIELD_LUMA_AVG_SUM_0, val1);
+
+	val1 = RDMA_RD(MCDI_RO_FLD_LUMA_AVG_SUM);
+	RDMA_WR(MCDI_FIELD_LUMA_AVG_SUM_1, val1);
+}
 
 void di_hw_init(void)
 {
@@ -2231,7 +2272,7 @@ void enable_di_pre_mif(bool en)
 void combing_pd22_window_config(unsigned int width, unsigned int height)
 {
 	unsigned short y1 = 39, y2 = height - 41;
-	if (width == 1080) {
+	if (width >= 540) {
 		y1 = 79;
 		y2 = height - 81;
 	}
@@ -2252,6 +2293,7 @@ void combing_pd22_window_config(unsigned int width, unsigned int height)
 	DI_Wr_reg_bits(MCDI_PD_22_CHK_WND1_X, 0, 0, 13);/* pd x0 */
 	DI_Wr_reg_bits(MCDI_PD_22_CHK_WND1_X , (width-1), 16, 13);/* pd x1 */
 	DI_Wr_reg_bits(MCDI_PD_22_CHK_WND1_Y, (y1+1), 0, 13);/* pd y0 */
+	DI_Wr_reg_bits(MCDI_PD_22_CHK_WND1_Y, y2, 16, 13);/* pd y2 */
 }
 
 void di_load_regs(struct di_pq_parm_s *di_pq_ptr)
