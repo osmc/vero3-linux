@@ -3048,6 +3048,18 @@ void vdin_set_hvscale(struct vdin_dev_s *devp)
 	if (vdin_ctl_dbg)
 		pr_info(" dst vactive:%u.\n", devp->v_active);
 }
+/*@20170728 add for di pre align issue on gxtvbb*/
+void vdin_bitdepth_patch(struct vdin_dev_s *devp)
+{
+	unsigned int h_size = roundup(devp->h_active, 16);
+	unsigned int offset = devp->addr_offset;
+
+	if (h_size > devp->h_active) {
+		devp->source_bitdepth = 10;
+		wr_bits(offset, VDIN_WR_CTRL2, 1,
+			VDIN_WR_10BIT_MODE_BIT, VDIN_WR_10BIT_MODE_WID);
+	}
+}
 /*set source_bitdepth
 *	base on color_depth_config:
 *		10, 8, 0, other
@@ -3103,6 +3115,8 @@ void vdin_set_bitdepth(struct vdin_dev_s *devp)
 			VDIN_WR_10BIT_MODE_BIT, VDIN_WR_10BIT_MODE_WID);
 		break;
 	}
+	if (is_meson_gxtvbb_cpu())
+		vdin_bitdepth_patch(devp);
 }
 
 /*do horizontal reverse and veritical reverse
