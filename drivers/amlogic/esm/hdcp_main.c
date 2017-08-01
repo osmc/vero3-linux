@@ -35,6 +35,7 @@
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 #include <linux/delay.h>
+#include <linux/debugfs.h>
 
 #include "host_lib_driver_linux_if.h"
 
@@ -61,6 +62,8 @@ struct esm_device {
 	dma_addr_t data_base;
 	uint32_t data_size;
 	uint8_t *data;
+
+	struct debugfs_blob_wrapper blob;
 
 	struct resource *hpi_resource;
 	uint8_t __iomem *hpi;
@@ -241,6 +244,9 @@ static void free_dma_areas(struct esm_device *esm)
 	}
 }
 
+static struct dentry *esm_debugfs;
+struct dentry *esm_blob;
+
 static int alloc_dma_areas(struct esm_device *esm,
 	const struct esm_ioc_meminfo *info)
 {
@@ -272,6 +278,14 @@ static int alloc_dma_areas(struct esm_device *esm,
 			return -ENOMEM;
 		}
 	}
+
+	esm_debugfs = debugfs_create_dir("esm", NULL);
+	if (!esm_debugfs)
+		return -ENOENT;
+
+	esm->blob.data = (void *)esm->data;
+	esm->blob.size = esm->data_size;
+	esm_blob = debugfs_create_blob("blob", 0644, esm_debugfs, &esm->blob);
 
 	if (randomize_mem) {
 		prandom_bytes(esm->code, esm->code_size);
