@@ -3609,7 +3609,8 @@ static void vpp_lut_curve_set(enum vpp_lut_sel_e lut_sel)
 	if (lut_sel == VPP_LUT_EOTF) {
 		/* eotf lut 2048 */
 		if ((get_cpu_type() == MESON_CPU_MAJOR_ID_GXL) ||
-			(get_cpu_type() == MESON_CPU_MAJOR_ID_GXM)) {
+			(get_cpu_type() == MESON_CPU_MAJOR_ID_GXM) ||
+			(get_cpu_type() == MESON_CPU_MAJOR_ID_GXLX)) {
 			if (video_lut_swtich == 1)
 				/*350nit alpha_low = 0.12; */
 				set_vpp_lut(VPP_LUT_EOTF,
@@ -3655,7 +3656,8 @@ static void vpp_lut_curve_set(enum vpp_lut_sel_e lut_sel)
 	} else if (lut_sel == VPP_LUT_OETF) {
 		/* oetf lut bypass */
 		if ((get_cpu_type() == MESON_CPU_MAJOR_ID_GXL) ||
-			(get_cpu_type() == MESON_CPU_MAJOR_ID_GXM)) {
+			(get_cpu_type() == MESON_CPU_MAJOR_ID_GXM) ||
+			(get_cpu_type() == MESON_CPU_MAJOR_ID_GXLX)) {
 			if (video_lut_swtich == 1)
 				set_vpp_lut(VPP_LUT_OETF,
 					oetf_289_gamma22_mapping_level1_box,
@@ -4659,7 +4661,8 @@ static void sdr_hdr_process(
 	struct vframe_master_display_colour_s *master_info)
 {
 	if ((get_cpu_type() == MESON_CPU_MAJOR_ID_GXL) ||
-		(get_cpu_type() == MESON_CPU_MAJOR_ID_GXM)) {
+		(get_cpu_type() == MESON_CPU_MAJOR_ID_GXM) ||
+		(get_cpu_type() == MESON_CPU_MAJOR_ID_GXLX)) {
 		/*vpp matrix mux read*/
 		vpp_set_mtx_en_read();
 		/* OSD convert to 709 limited to match SDR video */
@@ -4818,7 +4821,8 @@ static int vpp_matrix_update(
 	if (sdr_mode == 2) { /* auto */
 		if ((vinfo->hdr_info.hdr_support & 0x4) &&
 		((get_cpu_type() == MESON_CPU_MAJOR_ID_GXL) ||
-		 (get_cpu_type() == MESON_CPU_MAJOR_ID_GXM)))
+		 (get_cpu_type() == MESON_CPU_MAJOR_ID_GXM) ||
+		 (get_cpu_type() == MESON_CPU_MAJOR_ID_GXLX)))
 			sdr_process_mode = 1; /*box sdr->hdr*/
 		else if ((vinfo->viu_color_fmt == TVIN_RGB444) &&
 			((get_cpu_type() == MESON_CPU_MAJOR_ID_GXTVBB) ||

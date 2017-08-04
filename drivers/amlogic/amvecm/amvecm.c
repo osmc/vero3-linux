@@ -2306,7 +2306,7 @@ static ssize_t amvecm_dump_reg_show(struct class *cla,
 	unsigned int value;
 	unsigned int base_reg;
 
-	if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXLX))
+	if (get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX)
 		base_reg = 0xff900000;
 	else
 		base_reg = 0xd0100000;
