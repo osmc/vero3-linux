@@ -95,9 +95,12 @@ static int hdmitx_hdcp_task(void *data)
 
 	INIT_DELAYED_WORK(&hdev->work_do_hdcp, _hdcp_do_work);
 	while (hdev->hpd_event != 0xff) {
-		hdmi_authenticated = hdev->HWOp.CntlDDC(hdev,
-			DDC_HDCP_GET_AUTH, 0);
-		switch_set_state(&hdcp_dev, hdmi_authenticated);
+		if (hdev->hdcp_mode) {
+			hdmi_authenticated = hdev->HWOp.CntlDDC(hdev,
+				DDC_HDCP_GET_AUTH, 0);
+			switch_set_state(&hdcp_dev, hdmi_authenticated);
+		} else
+			hdmi_authenticated = 0;
 		msleep_interruptible(200);
 	}
 

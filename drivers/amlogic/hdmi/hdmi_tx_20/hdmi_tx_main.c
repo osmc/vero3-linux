@@ -2298,7 +2298,7 @@ static ssize_t store_hdcp_mode(struct device *dev,
 {
 	pr_info("hdcp: set mode as %s\n", buf);
 	hdmitx_device.HWOp.CntlDDC(&hdmitx_device, DDC_HDCP_MUX_INIT, 1);
-	if (strncmp(buf, "0", 1) == 0) {
+	if ((strncmp(buf, "0", 1) == 0) || (strncmp(buf, "-1", 2) == 0)) {
 		hdmitx_device.hdcp_mode = 0;
 		hdmitx_device.HWOp.CntlDDC(&hdmitx_device,
 			DDC_HDCP_OP, HDCP14_OFF);
