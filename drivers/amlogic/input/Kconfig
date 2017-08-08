@@ -8,6 +8,12 @@ menuconfig AM_INPUT
 	help
 	  "Input devices include keyboard, touchscreen, remote, sensor, etc."
 
+menu "Peripheral Adc Device"
+
+source "drivers/amlogic/input/adc/Kconfig"
+
+endmenu
+
 if AM_INPUT
 
 source "drivers/amlogic/input/saradc/Kconfig"

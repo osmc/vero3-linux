@@ -121,7 +121,7 @@
 			compatible = "amlogic, codec-mm-reserved";
 			size = <0x0 0x4100000>;
 			alignment = <0x0 0x100000>;
- 			//no-map;
+			//no-map;
 		};
 		/*  vdin0 CMA pool */
 		//vdin0_cma_reserved:linux,vdin0_cma {
@@ -382,7 +382,7 @@
 		uart_scl_a_pin =  <&gpio       GPIOW_8       GPIO_ACTIVE_HIGH>;
 		uart_scl_b_pin =  <&gpio       GPIOW_12      GPIO_ACTIVE_HIGH>;
 		uart_scl_c_pin =  <&gpio       GPIOW_16      GPIO_ACTIVE_HIGH>;
- 	};
+	};
 	tvafe {
 		compatible = "amlogic, tvafe";
 		/*memory-region = <&tvafe_cma_reserved>;*/
@@ -519,7 +519,7 @@
 		pinctrl-0 = <&wifi_32k_pins>;
 		pwm_config = <&wifi_pwm_conf>;
 	};
- 	wifi_pwm_conf:wifi_pwm_conf{
+	wifi_pwm_conf:wifi_pwm_conf{
 		pwm_channel1 = <PWM_C>;
 		pwm_channel2 = <PWM_C2>;
 		pwm_channel1_conf = <30541 15270 6>;
@@ -562,10 +562,10 @@
         pinctrl-0 = <&sd_clk_cmd_pins>;
         pinctrl-1 = <&sd_all_pins>;
 		sd{
-	   		status = "okay";
-	   		pinname = "sd";
-	   		ocr_avail = <0x00200080>; /*  3.3:0x200000, 1.8+3.3:0x00200080 */
-	   		caps = "MMC_CAP_4_BIT_DATA","MMC_CAP_MMC_HIGHSPEED",
+			status = "okay";
+			pinname = "sd";
+			ocr_avail = <0x00200080>; /*  3.3:0x200000, 1.8+3.3:0x00200080 */
+			caps = "MMC_CAP_4_BIT_DATA","MMC_CAP_MMC_HIGHSPEED",
 					"MMC_CAP_SD_HIGHSPEED","MMC_PM_KEEP_POWER",
 	   				"MMC_CAP_UHS_SDR104","MMC_CAP_NONREMOVABLE","MMC_CAP_SDIO_IRQ";
 			f_min = <400000>;
@@ -988,12 +988,12 @@
 		codec2: codec2 {
 			sound-dai = <&pcm_codec>;
 		};
- 	};
+	};
 	amaudio2 {
 		compatible = "amlogic, aml_amaudio2";
 		status = "okay";
 		interrupts = <0 48 1>;
- 	};
+	};
 
 	ethmac: ethernet@0xc9410000{
                 compatible = "amlogic, gxbb-rgmii-dwmac";
@@ -1233,13 +1233,27 @@ hdmirx_pins: hdmirx_pins {
 	status = "okay";
 };
 
-/* 	&spicc{
-		status = "okay";
-		pinctrl-names = "spicc_pulldown","spicc_pullup";
-		pinctrl-0 = <&spicc_pulldown_h6h7h8 &spicc_pins_h6h7h8>;
-		pinctrl-1 = <&spicc_pullup_h6h7h8 &spicc_pins_h6h7h8>;
-		num_chipselect = <1>;
-		cs-gpios = <&gpio GPIOH_9 GPIO_ACTIVE_HIGH>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-	}; */
+/*
+&spicc{
+	status = "okay";
+	pinctrl-names = "spicc_pulldown","spicc_pullup";
+	pinctrl-0 = <&spicc_pulldown_y4y5y6 &spicc_pins_y4y5y6>;
+	pinctrl-1 = <&spicc_pullup_y4y5y6 &spicc_pins_y4y5y6>;
+	num_chipselect = <1>;
+	cs-gpios = <&gpio GPIOH_0 GPIO_ACTIVE_HIGH>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	ad7793: spicc@0 {
+            compatible = "adi, ad7793";
+            status = "okay";
+            reg = <0>;
+            spi-cpha = <0>;
+            spi-cpol = <1>;
+            spi-max-frequency = <1000000>;
+            ready-gpios = <&gpio GPIOY_3  GPIO_ACTIVE_HIGH>;
+            gpioirq = <6>;
+            interrupts = <GIC_SPI 70 IRQ_TYPE_EDGE_RISING>;
+    };
+};
+*/
+
