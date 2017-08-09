@@ -15,17 +15,18 @@
  *
 */
 
-
-
 #ifndef __TVIN_VDIN_CTL_H
 #define __TVIN_VDIN_CTL_H
 
-
-#include <linux/amlogic/amports/vframe.h>
-
 #include "vdin_drv.h"
 
-
+#define DV_SWAP_EN	(1 << 0)
+#define DV_BUF_START_RESET	(1 << 1)
+#define DV_FRAME_BUF_START_RESET	(1 << 2)
+#define DV_UPDATE_DATA_MODE_DELBY_WORK	(1 << 4)
+#define DV_CLEAN_UP_MEM	(1 << 5)
+#define DV_READ_MODE_AXI	(1 << 6)
+#define DV_CRC_CHECK	(1 << 7)
 
 /* *********************************************************************** */
 /* *** enum definitions ********************************************* */
@@ -118,13 +119,10 @@ struct vdin_hist_cfg_s {
 	unsigned int                vstart;
 	unsigned int                vend;
 };
-#define DV_SWAP_EN	(1 << 0)
-#define DV_BUF_START_RESET	(1 << 1)
-#define DV_FRAME_BUF_START_RESET	(1 << 2)
-#define DV_UPDATE_DATA_MODE_DELBY_WORK	(1 << 4)
-#define DV_CLEAN_UP_MEM	(1 << 5)
-#define DV_READ_MODE_AXI	(1 << 6)
-#define DV_CRC_CHECK	(1 << 7)
+
+/*global variable claim*/
+extern unsigned int vpu_reg_27af;
+
 /* ************************************************************************ */
 /* ******** GLOBAL FUNCTION CLAIM ******** */
 /* ************************************************************************ */
@@ -164,18 +162,13 @@ extern void vdin_set_chma_canvas_id(struct vdin_dev_s *devp,
 		unsigned int rdma_enable, unsigned int canvas_id);
 extern void vdin_enable_module(unsigned int offset, bool enable);
 extern void vdin_set_matrix(struct vdin_dev_s *devp);
-void vdin_set_matrixs(struct vdin_dev_s *devp, unsigned char no,
+extern void vdin_set_matrixs(struct vdin_dev_s *devp, unsigned char no,
 		enum vdin_format_convert_e csc);
-extern void vdin_set_matrix_blank(struct vdin_dev_s *devp);
-extern void vdin_delay_line(unsigned short num, unsigned int offset);
-extern void set_wr_ctrl(int h_pos, int v_pos, struct vdin_dev_s *devp);
 extern bool vdin_check_cycle(struct vdin_dev_s *devp);
 extern bool vdin_write_done_check(unsigned int offset,
 		struct vdin_dev_s *devp);
 extern bool vdin_check_vs(struct vdin_dev_s *devp);
 extern void vdin_calculate_duration(struct vdin_dev_s *devp);
-extern void vdin_output_ctl(unsigned int offset,
-		unsigned int output_flag);
 extern void vdin_wr_reverse(unsigned int offset, bool hreverse,
 		bool vreverse);
 extern void vdin_set_hvscale(struct vdin_dev_s *devp);
@@ -194,8 +187,6 @@ extern void vdin_dolby_addr_update(struct vdin_dev_s *devp, unsigned int index);
 extern void vdin_dolby_addr_alloc(struct vdin_dev_s *devp, unsigned int size);
 extern void vdin_dolby_addr_release(struct vdin_dev_s *devp, unsigned int size);
 extern int vdin_event_cb(int type, void *data, void *op_arg);
-extern void vdin_dolby_metadata_swap(char *buf);
 extern void vdin_hdmiin_patch(struct vdin_dev_s *devp);
-
 #endif
 

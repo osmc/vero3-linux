@@ -15,11 +15,8 @@
  *
 */
 
-
-
 #ifndef __VDIN_REGS_H
 #define __VDIN_REGS_H
-
 
 /* mmc */
 #define VPU_VDIN_ASYNC_HOLD_CTRL 0x2743
@@ -558,8 +555,8 @@
 /* Bit 28:16 input window H start */
 /* Bit 12:0  input window H end */
 #define VDIN_WIN_H_START_END     ((0x126d))/* + 0xd0100000) */
-/* Bit 28:16 input window H start */
-/* Bit 12:0  input window V start */
+/* Bit 28:16 input window V start */
+/* Bit 12:0  input window V end */
 #define VDIN_WIN_V_START_END     ((0x126e))/* + 0xd0100000) */
 /* Bit 23:16 vdi8 asfifo_ctrl */
 /* Bit 15:8 vdi7 asfifo_ctrl */
@@ -629,12 +626,8 @@
 /* 00: component0_in 01: component1_in 10: component2_in */
 #define COMP0_OUT_SWT_BIT               6
 #define COMP0_OUT_SWT_WID               2
-
-
 #define INPUT_WIN_SEL_EN_BIT            5
 #define INPUT_WIN_SEL_EN_WID            1
-
-
 /* 0: no data input 1: common data input */
 #define COMMON_DATA_IN_EN_BIT           4
 #define COMMON_DATA_IN_EN_WID           1
@@ -643,7 +636,6 @@
 */
 #define VDIN_SEL_BIT                    0
 #define VDIN_SEL_WID                    4
-
 /* #define VDIN_ACTIVE_MAX_PIX_CNT_STATUS             0x1203 */
 /* ~field_hold & prehsc input active max pixel
  * every line output of window */
@@ -825,7 +817,6 @@
 
 /* #define VDIN_COM_STATUS2                           0x120e */
 /* Read only */
-
 #define VDI7_FIFO_OVFL_BIT              23  /* vdi7 fifo overflow */
 #define VDI7_FIFO_OVFL_WID              1
 #define VDI7_ASFIFO_CNT_BIT             16  /* vdi7_asfifo_cnt */
@@ -839,8 +830,6 @@
 #define VDI5_FIFO_OVFL_WID              1
 #define VDI5_ASFIFO_CNT_BIT             0  /* vdi5_asfifo_cnt */
 #define VDI5_ASFIFO_CNT_WID             6
-
-
 
 /* #define VDIN_ASFIFO_CTRL2                          0x120f */
 #define ASFIFO_DECIMATION_SYNC_WITH_DE_BIT        25
@@ -872,7 +861,6 @@
 #define ASFIFO5_SOFT_RST_BIT                      0
 /* write 1 & then 0 to reset */
 #define ASFIFO5_SOFT_RST_WID                      1
-
 
 /* #define VDIN_MATRIX_CTRL                        0x1210 */
 #define VDIN_MATRIX0_BYPASS_BIT             9/* 1:bypass 0:pass */
@@ -1519,7 +1507,6 @@
 #define MEAS_VS_TOTAL_CNT_LO_BIT        0  /* vsync_total_counter[31:0] */
 #define MEAS_VS_TOTAL_CNT_LO_WID        32
 
-
 /* 1st/2nd/3rd/4th hs range according to VDIN_MEAS_HS_INDEX */
 /* #define VDIN_MEAS_HS_RANGE                         0x125d */
 #define MEAS_HS_RANGE_CNT_START_BIT     16
@@ -1527,13 +1514,10 @@
 #define MEAS_HS_RANGE_CNT_END_BIT       0
 #define MEAS_HS_RANGE_CNT_END_WID       13
 
-
 /* hs count as per 1st/2nd/3rd/4th hs range according to VDIN_MEAS_HS_INDEX */
 /* #define VDIN_MEAS_HS_COUNT                         0x125e // read only */
 #define MEAS_HS_CNT_BIT                 0
 #define MEAS_HS_CNT_WID                 24
-
-
 
 /* #define VDIN_BLKBAR_CTRL1                          0x125f */
 #define BLKBAR_WHITE_EN_BIT             8
@@ -1541,9 +1525,7 @@
 #define BLKBAR_WHITE_LVL_BIT            0
 #define BLKBAR_WHITE_LVL_WID            8
 
-
 /* #define VDIN_BLKBAR_CTRL0                       0x1260 */
-
 
  /* threshold to judge a black point */
 #define BLKBAR_BLK_LVL_BIT              24
@@ -1647,14 +1629,11 @@
 #define INPUT_WIN_H_END_BIT              0
 #define INPUT_WIN_H_END_WID              13
 
-
-
 /* #define VDIN_WIN_V_START_END                       0x126e */
 #define INPUT_WIN_V_START_BIT            16
 #define INPUT_WIN_V_START_WID            13
 #define INPUT_WIN_V_END_BIT              0
 #define INPUT_WIN_V_END_WID              13
-
 
 /* Bit 15:8 vdi7 asfifo_ctrl */
 /* Bit 7:0 vdi6 asfifo_ctrl */
@@ -1689,7 +1668,34 @@
 /* Bit 5:0, vdi9_asfifo_cnt */
 /* #define VDIN_COM_STATUS3    ((0x1273  << 2) + 0xd0100000) */
 
+#define VDIN_FORCEGOLINE_EN_BIT		28
+#define VDIN_WRREQUEST_EN_BT		8
+#define VDIN_WRCTRLREG_PAUSE_BIT		10
 
+/*#define VDIN_INTF_WIDTHM1*/
+#define VDIN_FIX_NONSTDVSYNC_BIT	24
+#define VDIN_FIX_NONSTDVSYNC_WID	2
+
+/*#define VPU_ARB_URG_CTRL*/
+#define VDIN_LFF_URG_CTRL_BIT	8
+#define VDIN_LFF_URG_CTRL_WID	1
+#define VPP_OFF_URG_CTRL_BIT	6
+#define VPP_OFF_URG_CTRL_WID	1
+
+/*#define VDIN_COM_CTRL0*/
+#define VDIN_COMMONINPUT_EN_BIT		4
+#define VDIN_COMMONINPUT_EN_WID		1
+
+/*#define VDIN_WR_CTRL*/
+#define VDIN0_VCP_WR_EN_BIT	25
+#define VDIN0_VCP_WR_EN_WID	1
+#define VDIN0_DISABLE_CLOCKGATE_BIT	29
+#define VDIN0_DISABLE_CLOCKGATE_WID	1
+/*#define VDIN1_WR_CTRL*/
+#define VDIN1_VCP_WR_EN_BIT	8
+#define VDIN1_VCP_WR_EN_WID	1
+#define VDIN1_DISABLE_CLOCKGATE_BIT	29
+#define VDIN1_DISABLE_CLOCKGATE_WID	1
 
 
 #endif /* __VDIN_REGS_H */

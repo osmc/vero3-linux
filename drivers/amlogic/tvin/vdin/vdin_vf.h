@@ -21,13 +21,12 @@
 #define __VDIN_VF_H
 
 /* Standard Linux Headers */
-#include <linux/types.h>
 #include <linux/kernel.h>
 #include <linux/spinlock.h>
-#include <linux/list.h>
+
 
 /* Amlogic Linux Headers */
-#include <linux/amlogic/amports/vframe.h>
+
 #include <linux/amlogic/amports/vframe_provider.h>
 #define VF_LOG_EN
 
@@ -40,6 +39,13 @@
 #define VF_LOG_BE
 
 #define VDIN_DV_MAX_NUM		        9
+
+#define VF_FLAG_NORMAL_FRAME		 0x00000001
+#define VF_FLAG_FREEZED_FRAME		 0x00000002
+#define VFRAME_DISP_MAX_NUM 10
+#define VDIN_VF_POOL_FREEZE              0x00000001
+#define ISR_LOG_EN
+
 
 enum vf_operation_e {
 	VF_OPERATION_INIT = 0,
@@ -88,7 +94,6 @@ struct vf_log_s {
 
 #endif
 
-#define ISR_LOG_EN
 #ifdef ISR_LOG_EN
 #define ISR_LOG_LEN		 2000
 struct isr_log_s {
@@ -98,10 +103,6 @@ struct isr_log_s {
 };
 #endif
 
-#define VF_FLAG_NORMAL_FRAME		 0x00000001
-#define VF_FLAG_FREEZED_FRAME		 0x00000002
-#define VFRAME_DISP_MAX_NUM 10
-
 
 struct vf_entry {
 	struct vframe_s vf;
@@ -110,7 +111,6 @@ struct vf_entry {
 	unsigned int flag;
 };
 
-#define VDIN_VF_POOL_FREEZE              0x00000001
 struct vf_pool {
 	unsigned int pool_flag;
 	unsigned int max_size, size;
@@ -180,6 +180,7 @@ extern void provider_vf_put(struct vf_entry *vf, struct vf_pool *p);
 extern struct vf_entry *receiver_vf_peek(struct vf_pool *p);
 extern struct vf_entry *receiver_vf_get(struct vf_pool *p);
 extern void receiver_vf_put(struct vframe_s *vf, struct vf_pool *p);
+
 
 extern struct vframe_s *vdin_vf_peek(void *op_arg);
 extern struct vframe_s *vdin_vf_get(void *op_arg);

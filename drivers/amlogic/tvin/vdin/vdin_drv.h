@@ -22,7 +22,6 @@
 
 /* Standard Linux Headers */
 #include <linux/cdev.h>
-#include <linux/spinlock.h>
 #include <linux/irqreturn.h>
 #include <linux/timer.h>
 #include <linux/mutex.h>
@@ -34,18 +33,13 @@
 #include <linux/workqueue.h>
 
 /* Amlogic Headers */
-#include <linux/amlogic/cpu_version.h>
-#include <linux/amlogic/canvas/canvas.h>
-#include <linux/amlogic/amports/vframe.h>
 #include <linux/amlogic/amports/vframe_receiver.h>
-#include <linux/amlogic/amports/vframe_provider.h>
 #include <linux/amlogic/tvin/tvin_v4l2.h>
 #ifdef CONFIG_AML_RDMA
 #include <linux/amlogic/rdma/rdma_mgr.h>
 #endif
 
 /* Local Headers */
-#include "../tvin_global.h"
 #include "../tvin_frontend.h"
 #include "vdin_vf.h"
 #include "vdin_regs.h"
@@ -301,7 +295,14 @@ struct vdin_dev_s {
 	wait_queue_head_t queue;
 };
 
+extern struct vframe_provider_s *vf_get_provider_by_name(
+		const char *provider_name);
 
+extern unsigned int dolby_input;
+extern bool enable_reset;
+extern unsigned int dolby_size_byte;
+extern unsigned int   vdin_ldim_max_global[100];
+extern unsigned int dv_dbg_mask;
 
 #ifdef CONFIG_TVIN_VDIN_CTRL
 int vdin_ctrl_open_fe(int no, int port);
@@ -310,20 +311,12 @@ int vdin_ctrl_start_fe(int no, struct vdin_parm_s *para);
 int vdin_ctrl_stop_fe(int no);
 enum tvin_sig_fmt_e vdin_ctrl_get_fmt(int no);
 #endif
-extern unsigned int dolby_input;
-extern bool enable_reset;
-extern unsigned int dolby_size_byte;
-extern unsigned int   vdin_ldim_max_global[100];
-extern unsigned int dv_dbg_mask;
 
-extern struct vframe_provider_s *vf_get_provider_by_name(
-		const char *provider_name);
-
+extern char *vf_get_receiver_name(const char *provider_name);
 extern int start_tvin_service(int no, struct vdin_parm_s *para);
 extern int stop_tvin_service(int no);
 extern int vdin_reg_v4l2(struct vdin_v4l2_ops_s *v4l2_ops);
 extern void vdin_unreg_v4l2(void);
-
 extern int vdin_create_class_files(struct class *vdin_clsp);
 extern void vdin_remove_class_files(struct class *vdin_clsp);
 extern int vdin_create_device_files(struct device *dev);
@@ -347,5 +340,7 @@ extern void vdin_vf_unreg(struct vdin_dev_s *devp);
 extern void vdin_pause_dec(struct vdin_dev_s *devp);
 extern void vdin_resume_dec(struct vdin_dev_s *devp);
 extern bool is_dolby_vision_enable(void);
+
+extern void set_invert_top_bot(bool invert_flag);
 #endif /* __TVIN_VDIN_DRV_H */
 

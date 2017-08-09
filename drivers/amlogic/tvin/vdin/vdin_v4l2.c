@@ -24,7 +24,9 @@
 #include <linux/amlogic/tvin/tvin_v4l2.h>
 
 static struct vdin_v4l2_ops_s ops = {NULL};
-
+/*regs v4l2
+*call func memcpy to set v4l2_ops
+*/
 int vdin_reg_v4l2(struct vdin_v4l2_ops_s *v4l2_ops)
 {
 	void *ret = 0;
@@ -42,7 +44,9 @@ void vdin_unreg_v4l2(void)
 	memset(&ops, 0, sizeof(struct vdin_v4l2_ops_s));
 }
 EXPORT_SYMBOL(vdin_unreg_v4l2);
-
+/*
+initialize vdin_v4l2_ops_s
+*/
 int v4l2_vdin_ops_init(struct vdin_v4l2_ops_s *vdin_v4l2p)
 {
 	void *ret = 0;
@@ -67,6 +71,7 @@ struct vdin_v4l2_ops_s *get_vdin_v4l2_ops()
 }
 EXPORT_SYMBOL(get_vdin_v4l2_ops);
 
+/*Converts commands into strings */
 const char *cam_cmd_to_str(enum cam_command_e cmd)
 {
 	switch (cmd) {

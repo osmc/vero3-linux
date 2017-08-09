@@ -48,11 +48,14 @@ static void vdin_get_vdin_yuv_rgb_mat0(unsigned int offset,
 {
 	*rgb_yuv0 = 0;  *rgb_yuv1 = 0;  *rgb_yuv2 = 0;
 
-	*rgb_yuv0 = ((rd_bits(offset, VDIN_MATRIX_PROBE_COLOR, 0, 10)
+	*rgb_yuv0 = ((rd_bits(offset, VDIN_MATRIX_PROBE_COLOR,
+		COMPONENT2_PROBE_COLOR_BIT, COMPONENT2_PROBE_COLOR_WID)
 			<< 8) >> 10);
-	*rgb_yuv1 = ((rd_bits(offset, VDIN_MATRIX_PROBE_COLOR, 10, 10)
+	*rgb_yuv1 = ((rd_bits(offset, VDIN_MATRIX_PROBE_COLOR,
+		COMPONENT1_PROBE_COLOR_BIT, COMPONENT1_PROBE_COLOR_WID)
 			<< 8) >> 10);
-	*rgb_yuv2 = ((rd_bits(offset, VDIN_MATRIX_PROBE_COLOR, 20, 10)
+	*rgb_yuv2 = ((rd_bits(offset, VDIN_MATRIX_PROBE_COLOR,
+		COMPONENT0_PROBE_COLOR_BIT, COMPONENT0_PROBE_COLOR_WID)
 			<< 8) >> 10);
 }
 
@@ -63,8 +66,10 @@ static void vdin_set_prob_matrix0_xy(unsigned int offset,
 	if (devp->fmt_info_p->scan_mode == TVIN_SCAN_MODE_INTERLACED)
 		y = y/2;
 
-	wr_bits(offset, VDIN_MATRIX_PROBE_POS, y, 0, 13);
-	wr_bits(offset, VDIN_MATRIX_PROBE_POS, x, 16, 13);
+	wr_bits(offset, VDIN_MATRIX_PROBE_POS, y,
+		PROBE_POX_Y_BIT, PROBE_POX_Y_WID);
+	wr_bits(offset, VDIN_MATRIX_PROBE_POS, x,
+		PROBE_POS_X_BIT, PROBE_POS_X_WID);
 }
 
 static void vdin_set_before_after_mat0(unsigned int offset,

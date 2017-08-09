@@ -620,7 +620,7 @@ struct vf_entry *receiver_vf_get(struct vf_pool *p)
 	return vfe;
 }
 /*check vf point,0:nornal;1:bad*/
-unsigned int check_vf_put(struct vframe_s *vf, struct vf_pool *p)
+static unsigned int check_vf_put(struct vframe_s *vf, struct vf_pool *p)
 {
 	struct vf_entry *master;
 	unsigned int i;
@@ -868,7 +868,7 @@ void vdin_vf_unfreeze(struct vf_pool *p)
 		spin_unlock_irqrestore(&p->fz_lock, flags);
 	}
 }
-
+/*dump vframe state*/
 void vdin_dump_vf_state(struct vf_pool *p)
 {
 	unsigned long flags;
@@ -919,6 +919,11 @@ void vdin_dump_vf_state(struct vf_pool *p)
 	pr_info("buffer get count %d.\n", atomic_read(&p->buffer_cnt));
 
 }
+
+/*update the vframe disp_mode
+	a.VFRAME_DISP_MODE_UNKNOWN
+	b. VFRAME_DISP_MODE_OK
+*/
 void vdin_vf_disp_mode_update(struct vf_entry *vfe, struct vf_pool *p)
 {
 	if (p->skip_vf_num == 2)
@@ -969,6 +974,11 @@ void vdin_vf_disp_mode_update(struct vf_entry *vfe, struct vf_pool *p)
 	}
 
 }
+/*disp mode skip
+*skip_vf_num
+*	2:last last vframe,	1:last vframe
+*	0:current vframe
+*/
 void vdin_vf_disp_mode_skip(struct vf_pool *p)
 {
 	if ((p->disp_index == 0) &&

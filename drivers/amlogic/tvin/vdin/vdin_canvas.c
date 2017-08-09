@@ -66,6 +66,11 @@ const unsigned int vdin_canvas_ids[2][VDIN_CANVAS_MAX_CNT] = {
 	},
 };
 
+/*function:
+	1.set canvas_max_w & canvas_max_h
+	2.set canvas_max_size & canvas_max_num
+	3.set canvas_id & canvas_addr
+*/
 void vdin_canvas_init(struct vdin_dev_s *devp)
 {
 	int i, canvas_id;
@@ -84,7 +89,7 @@ void vdin_canvas_init(struct vdin_dev_s *devp)
 		devp->canvas_max_num = VDIN_CANVAS_MAX_CNT;
 
 	devp->mem_start = roundup(devp->mem_start, 32);
-	pr_info("vdin.%d cnavas initial table:\n", devp->index);
+	pr_info("vdin.%d canvas initial table:\n", devp->index);
 	for (i = 0; i < devp->canvas_max_num; i++) {
 		canvas_id = vdin_canvas_ids[devp->index][i];
 		canvas_addr = devp->mem_start + devp->canvas_max_size * i;
@@ -100,6 +105,15 @@ void vdin_canvas_init(struct vdin_dev_s *devp)
 	}
 }
 
+/*function:canvas_config when canvas_config_mode=1
+	1.set canvas_w and canvas_h
+	2.set canvas_max_size and canvas_max_num
+	3.when dest_cfmt is TVIN_NV12/TVIN_NV21,
+		buf width add canvas_w*canvas_h
+*based on parameters:
+	format_convert/	source_bitdepth/
+	v_active color_depth_mode/	prop.dest_cfmt
+*/
 void vdin_canvas_start_config(struct vdin_dev_s *devp)
 {
 	int i = 0;
@@ -127,7 +141,7 @@ void vdin_canvas_start_config(struct vdin_dev_s *devp)
 		canvas_num = canvas_num/2;
 		canvas_step = 2;
 	} else{/*YUV422*/
-		/* txl new add yuv422 pack mode:canvas-w=h*2*10/8*/
+		/* txl new add yuv422 pack mode:canvas_w=h*2*10/8*/
 		if ((devp->source_bitdepth > 8) &&
 		((devp->format_convert == VDIN_FORMAT_CONVERT_YUV_YUV422) ||
 		(devp->format_convert == VDIN_FORMAT_CONVERT_RGB_YUV422) ||
@@ -184,7 +198,8 @@ void vdin_canvas_start_config(struct vdin_dev_s *devp)
 }
 
 /*
-*this function used for configure canvas base on the input format
+*this function used for configure canvas when canvas_config_mode=2
+*base on the input format
 *also used for input resalution over 1080p such as camera input 200M,500M
 *YUV422-8BIT:1pixel = 2byte;
 *YUV422-10BIT:1pixel = 3byte;
@@ -399,6 +414,11 @@ unsigned int vdin_cma_alloc(struct vdin_dev_s *devp)
 	return 0;
 }
 
+/*this function used for codec cma release
+	1.call codec_mm_free_for_dma() or
+	  dma_release_from_contiguous() to relase cma;
+	2.reset mem_start & mem_size & cma_mem_alloc[devp->index] to 0;
+*/
 void vdin_cma_release(struct vdin_dev_s *devp)
 {
 	char vdin_name[5];

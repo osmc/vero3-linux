@@ -15,8 +15,6 @@
  *
 */
 
-
-
 /* Standard Linux Headers */
 #include <linux/types.h>
 #include <linux/errno.h>
@@ -77,27 +75,23 @@
 #include "vdin_vf.h"
 #include "vdin_canvas.h"
 
-
 #define VDIN_NAME		"vdin"
 #define VDIN_DRV_NAME		"vdin"
 #define VDIN_MOD_NAME		"vdin"
 #define VDIN_DEV_NAME		"vdin"
 #define VDIN_CLS_NAME		"vdin"
 #define PROVIDER_NAME		"vdin"
-
 #define SMOOTH_DEBUG
 
 #define VDIN_PUT_INTERVAL		(HZ/100)   /* 10ms, #define HZ 100 */
-
 #define INVALID_VDIN_INPUT		0xffffffff
-
 #define VDIN0_ALLOC_SIZE		SZ_64M
+#define VDIN_MEAS_24M_1MS 24000
 
 static dev_t vdin_devno;
 static struct class *vdin_clsp;
-
 static unsigned int vdin_addr_offset[VDIN_MAX_DEVS] = {0, 0x80};
-struct vdin_dev_s *vdin_devp[VDIN_MAX_DEVS];
+static struct vdin_dev_s *vdin_devp[VDIN_MAX_DEVS];
 static int callmaster_status;
 
 /*
@@ -384,7 +378,7 @@ void set_invert_top_bot(bool invert_flag)
 	invert_top_bot = invert_flag;
 }
 
-void vdin_timer_func(unsigned long arg)
+static void vdin_timer_func(unsigned long arg)
 {
 	struct vdin_dev_s *devp = (struct vdin_dev_s *)arg;
 
@@ -467,15 +461,12 @@ int vdin_open_fe(enum tvin_port_e port, int index,  struct vdin_dev_s *devp)
 	return 0;
 }
 
-/*
- *
- * 1. disable hw work, including:
+/* 1. disable hw work, including:
  *		a. mux null input.
  *		b. set clock off.
  * 2. delete timer for state machine.
  * 3. unregiseter provider & notify receiver.
  * 4. call the callback function of the frontend to close.
- *
  */
 void vdin_close_fe(struct vdin_dev_s *devp)
 {
@@ -503,6 +494,15 @@ void vdin_close_fe(struct vdin_dev_s *devp)
 	pr_info("%s ok\n", __func__);
 }
 
+/*	function: set vf source type
+	source type list:
+	a.VFRAME_SOURCE_TYPE_TUNER	(TVIN_PORT CVBS3/CVBS0)
+	b.VFRAME_SOURCE_TYPE_CVBS	(TVIN_PORT CVBS1/
+		CVBS2/CVBS4/CVBS5/CVBS6/CVBS7)
+	c.VFRAME_SOURCE_TYPE_COMP	(TVIN_PORT COMP0~COMP7)
+	d.VFRAME_SOURCE_TYPE_HDMI	(TVIN_PORT HDMI0~HDMI7/DVIN0)
+	e.others
+*/
 static inline void vdin_set_source_type(struct vdin_dev_s *devp,
 		struct vframe_s *vf)
 {
@@ -546,8 +546,11 @@ static inline void vdin_set_source_type(struct vdin_dev_s *devp,
 	}
 }
 
-
-
+/**function:set
+*main source modes:
+a.NTSC	b.PAL
+c.SECAM	d.others
+**/
 static inline void vdin_set_source_mode(struct vdin_dev_s *devp,
 		struct vframe_s *vf)
 {
@@ -665,6 +668,10 @@ static void vdin_set_display_ratio(struct vdin_dev_s *devp,
 			aspect_ratio, vf->ratio_control);
 }
 
+/*function:set source bitdepth
+	based on parameter:
+	devp->source_bitdepth:	8/9/10
+*/
 static inline void vdin_set_source_bitdepth(struct vdin_dev_s *devp,
 		struct vframe_s *vf)
 {
@@ -691,9 +698,16 @@ static inline void vdin_set_source_bitdepth(struct vdin_dev_s *devp,
 }
 
 /*
-   based on the bellow parameters:
-   1.h_active
-   2.v_active
+*based on the bellow parameters:
+	a.h_active		(vf->width = devp->h_active)
+	b.v_active		(vf->height = devp->v_active)
+*function: init vframe
+ 1.set source type & mode
+ 2.set source signal format
+ 3.set pixel aspect ratio
+ 4.set display ratio control
+ 5.init slave vframe
+ 6.set slave vf source type & mode
  */
 static void vdin_vf_init(struct vdin_dev_s *devp)
 {
@@ -788,15 +802,21 @@ static struct rdma_op_s vdin_rdma_op = {
 #endif
 
 /*
- * 1. config canvas for video frame.
- * 2. enable hw work, including:
+ * 1. config canvas base on  canvas_config_mode
+ *		0: canvas_config in driver probe
+ *		1: start cofig
+ *		2: auto config
+ * 2. recalculate h_active and v_active, including:
+ *		a. vdin_set_decimation.
+ *		b. vdin_set_cutwin.
+ *		c. vdin_set_hvscale.
+ * 3. enable hw work, including:
  *		a. mux null input.
  *		b. set clock auto.
- * 3. set all registeres including:
+ * 4. set all registeres including:
  *		a. mux input.
- * 4. call the callback function of the frontend to start.
- * 5. enable irq .
- *
+ * 5. call the callback function of the frontend to start.
+ * 6. enable irq .
  */
 void vdin_start_dec(struct vdin_dev_s *devp)
 {
@@ -1000,8 +1020,8 @@ void vdin_start_dec(struct vdin_dev_s *devp)
  * 2. disable hw work, including:
  *		a. mux null input.
  *		b. set clock off.
- * 3. call the callback function of the frontend to stop.
- *
+ * 3. reset default canvas
+ * 4.call the callback function of the frontend to stop vdin.
  */
 void vdin_stop_dec(struct vdin_dev_s *devp)
 {
@@ -1062,8 +1082,11 @@ void vdin_stop_dec(struct vdin_dev_s *devp)
 	if (vdin_dbg_en)
 		pr_info("%s ok\n", __func__);
 }
-/* @todo */
 
+/*
+*config the vdin use default regmap
+*call vdin_start_dec to start vdin
+*/
 int start_tvin_service(int no , struct vdin_parm_s  *para)
 {
 	struct tvin_frontend_s *fe;
@@ -1182,7 +1205,12 @@ int start_tvin_service(int no , struct vdin_parm_s  *para)
 	return 0;
 }
 EXPORT_SYMBOL(start_tvin_service);
-/* @todo */
+
+/*
+*call vdin_stop_dec to stop the frontend
+*close frontend
+*free the memory allocated in start tvin service
+*/
 int stop_tvin_service(int no)
 {
 	struct vdin_dev_s *devp;
@@ -1226,7 +1254,7 @@ int stop_tvin_service(int no)
 }
 EXPORT_SYMBOL(stop_tvin_service);
 
-void get_tvin_canvas_info(int *start , int *num)
+static void get_tvin_canvas_info(int *start , int *num)
 {
 	*start = vdin_canvas_ids[0][0];
 	*num = vdin_devp[0]->canvas_max_num;
@@ -1256,11 +1284,28 @@ static int vdin_ioctl_fe(int no, struct fe_arg_s *parm)
 	}
 	return ret;
 }
+
+/*
+* if parm.port is TVIN_PORT_VIU,call vdin_v4l2_isr
+	vdin_v4l2_isr is used to the sample
+	v4l2 application such as camera,viu
+*/
 static void vdin_rdma_isr(struct vdin_dev_s *devp)
 {
 	if (devp->parm.port == TVIN_PORT_VIU)
 		vdin_v4l2_isr(devp->irq, devp);
 }
+
+/*based on parameter
+*parm->cmd :
+	VDIN_CMD_SET_CSC
+	VDIN_CMD_SET_CM2
+	VDIN_CMD_ISR
+	VDIN_CMD_MPEGIN_START
+	VDIN_CMD_GET_HISTGRAM
+	VDIN_CMD_MPEGIN_STOP
+	VDIN_CMD_FORCE_GO_FIELD
+*/
 static int vdin_func(int no, struct vdin_arg_s *arg)
 {
 	struct vdin_dev_s *devp = vdin_devp[no];
@@ -1357,27 +1402,35 @@ static struct vdin_v4l2_ops_s vdin_4v4l2_ops = {
 	.tvin_vdin_func	      = vdin_func,
 };
 
+/*call vdin_hw_disable to pause hw*/
 void vdin_pause_dec(struct vdin_dev_s *devp)
 {
 	vdin_hw_disable(devp->addr_offset);
 }
 
+/*call vdin_hw_enable to resume hw*/
 void vdin_resume_dec(struct vdin_dev_s *devp)
 {
 	vdin_hw_enable(devp->addr_offset);
 }
-
+/*register provider & notify receiver */
 void vdin_vf_reg(struct vdin_dev_s *devp)
 {
 	vf_reg_provider(&devp->vprov);
 	vf_notify_receiver(devp->name, VFRAME_EVENT_PROVIDER_START, NULL);
 }
 
+/*unregister provider*/
 void vdin_vf_unreg(struct vdin_dev_s *devp)
 {
 	vf_unreg_provider(&devp->vprov);
 }
 
+/*set vframe_view base on parameters:
+*	left_eye, right_eye, parm.info.trans_fmt
+* set view:
+*	start_x, start_y, width, height
+*/
 static inline void vdin_set_view(struct vdin_dev_s *devp, struct vframe_s *vf)
 {
 	struct vframe_view_s *left_eye, *right_eye;
@@ -1493,6 +1546,12 @@ static inline void vdin_set_view(struct vdin_dev_s *devp, struct vframe_s *vf)
 		break;
 	}
 }
+
+/*function:
+*	get current field type
+*	set canvas addr
+*	disable hw when irq_max_count >= canvas_max_num
+*/
 irqreturn_t vdin_isr_simple(int irq, void *dev_id)
 {
 	struct vdin_dev_s *devp = (struct vdin_dev_s *)dev_id;
@@ -1548,13 +1607,13 @@ static void vdin_backup_histgram(struct vframe_s *vf, struct vdin_dev_s *devp)
 	for (i = 0; i < 64; i++)
 		devp->parm.histgram[i] = vf->prop.hist.gamma[i];
 }
-/*as use the spin_lock,
- *1--there is no sleep,
- *2--it is better to shorter the time,
- *3--it is better to shorter the time,
- */
-#define VDIN_MEAS_24M_1MS 24000
 
+/*
+*VDIN_FLAG_RDMA_ENABLE=1
+*	provider_vf_put(devp->last_wr_vfe, devp->vfp);
+*VDIN_FLAG_RDMA_ENABLE=0
+*	provider_vf_put(curr_wr_vfe, devp->vfp);
+*/
 irqreturn_t vdin_isr(int irq, void *dev_id)
 {
 	ulong flags = 0;
@@ -1853,7 +1912,6 @@ irqreturn_t vdin_isr(int irq, void *dev_id)
 	curr_wr_vf->duration = devp->duration;
 #endif
 	/* put for receiver
-
 	   ppmgr had handled master and slave vf by itself,
 	   vdin do not to declare them respectively
 	   ppmgr put the vf that included master vf and slave vf
@@ -2113,6 +2171,7 @@ irq_handled:
 	return IRQ_HANDLED;
 }
 
+
 static void vdin_dv_dwork(struct work_struct *work)
 {
 	struct delayed_work *dwork = to_delayed_work(work);
@@ -2131,6 +2190,10 @@ static void vdin_dv_dwork(struct work_struct *work)
 	cancel_delayed_work(&devp->dv_dwork);
 }
 
+/*function:open device
+	1.request irq to open device configure vdinx
+	2.disable irq untill vdin is configured completely
+*/
 static int vdin_open(struct inode *inode, struct file *file)
 {
 	struct vdin_dev_s *devp;
@@ -2177,6 +2240,12 @@ static int vdin_open(struct inode *inode, struct file *file)
 	return ret;
 }
 
+/*function:
+	close device
+	a.vdin_stop_dec
+	b.vdin_close_fe
+	c.free irq
+*/
 static int vdin_release(struct inode *inode, struct file *file)
 {
 	struct vdin_dev_s *devp = file->private_data;
@@ -2217,6 +2286,18 @@ static int vdin_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
+/* vdin ioctl cmd:
+*	TVIN_IOC_OPEN /TVIN_IOC_CLOSE
+*	TVIN_IOC_START_DEC /TVIN_IOC_STOP_DEC
+*	TVIN_IOC_VF_REG /TVIN_IOC_VF_UNREG
+*	TVIN_IOC_G_SIG_INFO /TVIN_IOC_G_BUF_INFO
+*	TVIN_IOC_G_PARM
+*	TVIN_IOC_START_GET_BUF /TVIN_IOC_GET_BUF
+*	TVIN_IOC_PAUSE_DEC /TVIN_IOC_RESUME_DEC
+*	TVIN_IOC_FREEZE_VF /TVIN_IOC_UNFREEZE_VF
+*	TVIN_IOC_CALLMASTER_SET
+*	TVIN_IOC_SNOWON /TVIN_IOC_SNOWOFF
+*/
 static long vdin_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	long ret = 0;
@@ -2589,6 +2670,11 @@ static long vdin_compat_ioctl(struct file *file, unsigned int cmd,
 	return ret;
 }
 #endif
+
+/*based on parameters:
+	mem_start, mem_size
+	vm_pgoff, vm_page_prot
+*/
 static int vdin_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	struct vdin_dev_s *devp = file->private_data;
@@ -3007,6 +3093,12 @@ fail_kmalloc_vdev:
 	return ret;
 }
 
+/*this function is used for removing driver
+*	free the vframe pool
+*	remove device files
+*	delet vdinx device
+*	free drvdata
+*/
 static int vdin_drv_remove(struct platform_device *pdev)
 {
 	struct vdin_dev_s *vdevp;
@@ -3107,7 +3199,6 @@ static struct platform_driver vdin_driver = {
 
 /* extern int vdin_reg_v4l2(struct vdin_v4l2_ops_s *v4l2_ops); */
 /* extern void vdin_unreg_v4l2(void); */
-
 static int __init vdin_drv_init(void)
 {
 	int ret = 0;
@@ -3202,6 +3293,13 @@ MODULE_DESCRIPTION("AMLOGIC VDIN Driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Xu Lin <lin.xu@amlogic.com>");
 
+
+/*function:
+	request irq to configured vdin
+	disable irq untill vdin is configured completely
+	call vdin_open_fe open device
+*/
+
 #ifdef CONFIG_TVIN_VDIN_CTRL
 int vdin_ctrl_open_fe(int no , int port)
 {
@@ -3244,6 +3342,11 @@ int vdin_ctrl_open_fe(int no , int port)
 	return 0;
 }
 
+/*function:
+	1.close frontend
+	2.free the memory allocated in start tvin service
+	3.free irq
+*/
 int vdin_ctrl_close_fe(int no)
 {
 	struct vdin_dev_s *devp;
@@ -3267,7 +3370,11 @@ int vdin_ctrl_close_fe(int no)
 	return 0;
 }
 
-
+/*function:
+*	tvin_get_fmt_info
+*	tvin_get_frontend
+*	call vdin_start_dec to start decode
+*/
 int vdin_ctrl_start_fe(int no , struct vdin_parm_s  *para)
 {
 	struct tvin_frontend_s *fe;
@@ -3344,6 +3451,9 @@ int vdin_ctrl_start_fe(int no , struct vdin_parm_s  *para)
 	return 0;
 }
 
+/*function:
+	call vdin_stop_dec to stop decode
+*/
 int vdin_ctrl_stop_fe(int no)
 {
 	struct vdin_dev_s *devp;
