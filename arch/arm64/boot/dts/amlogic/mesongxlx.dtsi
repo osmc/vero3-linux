@@ -16,7 +16,7 @@
 */
 
 #include <dt-bindings/clock/gxl.h>
-#include <dt-bindings/gpio/gxl.h>
+#include <dt-bindings/gpio/gxlx.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/reset/aml_gxlx.h>
 #include <dt-bindings/thermal/thermal.h>
@@ -180,7 +180,7 @@
 		cpuinfo_cmd = <0x82000044>;
 	};
 	pinmux: pinmux{
-		compatible = "amlogic, pinmux-gxl";
+		compatible = "amlogic, pinmux-gxlx";
 		dev_name = "pinmux";
 		#pinmux-cells=<2>;
 		#address-cells = <2>;
