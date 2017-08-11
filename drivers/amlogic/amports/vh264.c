@@ -2837,7 +2837,7 @@ static void error_do_work(struct work_struct *work)
 	 * free_irq/deltimer/..and some other.
 	 */
 	if (atomic_read(&vh264_active)) {
-
+		amvdec_stop();
 		do {
 			msleep(20);
 		} while (vh264_stream_switching_state != SWITCHING_STATE_OFF);
