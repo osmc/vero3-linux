@@ -2527,16 +2527,29 @@ static void set_aud_samp_pkt(struct hdmitx_dev *hdev,
 	}
 }
 
+static int amute_flag = -1;
 static void audio_mute_op(bool flag)
 {
+	if (amute_flag != flag)
+		amute_flag = flag;
+	else
+		return;
+
 	if (flag == 0) {
 		hdmitx_set_reg_bits(HDMITX_TOP_CLK_CNTL, 0, 2, 2);
 		hdmitx_set_reg_bits(HDMITX_DWC_FC_PACKET_TX_EN, 0, 0, 1);
 		hdmitx_set_reg_bits(HDMITX_DWC_FC_PACKET_TX_EN, 0, 3, 1);
 	} else {
 		hdmitx_set_reg_bits(HDMITX_TOP_CLK_CNTL, tx_aud_src + 1, 2, 2);  // turn on only spdif or i2s
+		set_aud_fifo_rst();
+		hdmitx_wr_reg(HDMITX_DWC_AUD_N1,
+			hdmitx_rd_reg(HDMITX_DWC_AUD_N1));
 		hdmitx_set_reg_bits(HDMITX_DWC_FC_PACKET_TX_EN, 1, 0, 1);
 		hdmitx_set_reg_bits(HDMITX_DWC_FC_PACKET_TX_EN, 1, 3, 1);
+		if (!(hdmitx_rd_reg(HDMITX_DWC_MC_LOCKONCLOCK) & (1 << 2))) {
+			hdmitx_set_reg_bits(HDMITX_DWC_MC_SWRSTZREQ, 0, 4, 1);
+			pr_info("%s[%d]\n", __func__, __LINE__);
+		}
 	}
 }
 
