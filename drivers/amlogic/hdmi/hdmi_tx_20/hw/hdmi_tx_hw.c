@@ -1446,6 +1446,22 @@ static void hdmi_tvenc_set(struct hdmitx_vidpara *param)
 		SOF_LINES = 36;
 		TOTAL_FRAMES = 4;
 		break;
+        case HDMIV_1360x768p60hz:
+                INTERLACE_MODE      = 0;
+                PIXEL_REPEAT_VENC   = 0;
+                PIXEL_REPEAT_HDMI   = 0;
+                ACTIVE_PIXELS       = 1360;
+                ACTIVE_LINES        = 768;
+                LINES_F0            = 795;
+                LINES_F1            = 795;
+                FRONT_PORCH         = 64;
+                HSYNC_PIXELS        = 112;
+                BACK_PORCH          = 256;
+                EOF_LINES           = 3;
+                VSYNC_LINES         = 6;
+                SOF_LINES           = 18;
+                TOTAL_FRAMES        = 4;
+                break;
 	default:
 		break;
 	}

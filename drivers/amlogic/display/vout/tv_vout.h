@@ -147,6 +147,7 @@ static struct vmode_tvmode_tab_s mode_tab[] = {
 	{TVMODE_4K05K_200HZ_Y420, VMODE_4K05K_200HZ_Y420},
 	{TVMODE_4K05K_240HZ, VMODE_4K05K_240HZ},
 	{TVMODE_4K05K_240HZ_Y420, VMODE_4K05K_240HZ_Y420},
+	{TVMODE_1360x768p60hz, VMODE_1360x768p60hz},
 };
 
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
@@ -1383,6 +1384,19 @@ static struct vinfo_s tv_info[] = {
 		.video_clk         = 1485000000,
 		.viu_color_fmt     = TVIN_YUV444,
 	},
+	/* VMODE for 1360x76860hz */
+        {
+                .name              = "1360x768p60hz",
+                .mode              = TVMODE_1360x768p60hz,
+                .width             = 1360,
+                .height            = 768,
+                .field_height      = 768,
+                .aspect_ratio_num  = 16,
+                .aspect_ratio_den  = 9,
+                .sync_duration_num = 60,
+                .sync_duration_den = 1,
+                .video_clk         = 85500000,
+        },
 };
 
 #endif

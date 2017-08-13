@@ -2073,6 +2073,7 @@ static struct dispmode_vic dispmode_vic_tab[] = {
 	{"2160p50hz", HDMI_4k2k_50},
 	{"2160p60hz420", HDMI_3840x2160p60_16x9_Y420},
 	{"2160p50hz420", HDMI_3840x2160p50_16x9_Y420},
+	{"1360x768p60hz", HDMIV_1360x768p60hz},
 };
 
 int hdmitx_edid_VIC_support(enum hdmi_vic vic)

@@ -39,6 +39,17 @@ static void hdmi_set_vend_spec_infofram(struct hdmitx_dev *hdev,
 	enum hdmi_vic VideoCode);
 
 static struct hdmitx_vidpara hdmi_tx_video_params[] = {
+        {
+                .VIC            = HDMIV_1360x768p60hz,
+                .color_prefer   = COLORSPACE_RGB444,
+                .color_depth    = COLORDEPTH_24B,
+                .bar_info       = B_BAR_VERT_HORIZ,
+                .repeat_time    = NO_REPEAT,
+                .aspect_ratio   = TV_ASPECT_RATIO_16_9,
+                .cc             = CC_ITU709,
+                .ss             = SS_SCAN_UNDER,
+                .sc             = SC_SCALE_HORIZ_VERT,
+        },
 	{
 		.VIC		= HDMI_640x480p60,
 		.color_prefer   = COLORSPACE_RGB444,

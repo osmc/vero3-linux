@@ -999,6 +999,36 @@ static struct hdmi_format_para fmt_para_4096x2160p60_256x135_y420 = {
 	},
 };
 
+static struct hdmi_format_para fmt_para_vesa_1360x768p60_16x9 = {
+        .vic = HDMIV_1360x768p60hz,
+        .name = "1360x768p60hz",
+        .pixel_repetition_factor = 0,
+        .progress_mode = 1,
+        .scrambler_en = 0,
+        .tmds_clk_div40 = 0,
+        .tmds_clk = 855000,
+        .timing = {
+                .pixel_freq = 855000,
+                .h_freq = 47700,
+                .v_freq = 60000,
+                .vsync_polarity = 1,
+                .hsync_polarity = 1,
+                .h_active = 1360,
+                .h_total = 1792,
+                .h_blank = 432,
+                .h_front = 64,
+                .h_sync = 112,
+                .h_back = 256,
+                .v_active = 768,
+                .v_total = 795,
+                .v_blank = 27,
+                .v_front = 3,
+                .v_sync = 6,
+                .v_back = 18,
+                .v_sync_ln = 1,
+        },
+};
+
 static struct hdmi_format_para fmt_para_non_hdmi_fmt = {
 	.vic = HDMI_Unkown,
 	.name = "invalid",
@@ -1039,6 +1069,7 @@ static struct hdmi_format_para *all_fmt_paras[] = {
 	&fmt_para_4096x2160p60_256x135_y420,
 	&fmt_para_3840x2160p50_16x9_y420,
 	&fmt_para_4096x2160p50_256x135_y420,
+	&fmt_para_vesa_1360x768p60_16x9,
 	&fmt_para_non_hdmi_fmt,
 	NULL,
 };
