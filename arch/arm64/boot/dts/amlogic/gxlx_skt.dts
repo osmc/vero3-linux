@@ -40,7 +40,7 @@
 
 	memory@00000000 {
 		device_type = "memory";
-		linux,usable-memory = <0x0 0x1000000 0x0 0x3f000000>;
+		linux,usable-memory = <0x0 0x100000 0x0 0x3ff00000>;
 	};
 
 	reserved-memory {
@@ -50,7 +50,7 @@
 		/* global autoconfigured region for contiguous allocations */
 		secmon_reserved:linux,secmon {
 			compatible = "amlogic, aml_secmon_memory";
-			reg = <0x0 0x10000000 0x0 0x200000>;
+			reg = <0x0 0x05000000 0x0 0x300000>;
 			no-map;
 		};
 		secos_reserved:linux,secos {
@@ -66,10 +66,9 @@
 		};
 
 		fb_reserved:linux,meson-fb {
-			compatible = "shared-dma-pool";
+			compatible = "amlogic, fb-memory";
 			size = <0x0 0x2000000>;
-			reusable;
-			alignment = <0x0 0x40000>;
+			no-map;
 		};
 
 		//di_reserved:linux,di {
@@ -90,19 +89,20 @@
 
 		ion_reserved:linux,ion-dev {
 			compatible = "amlogic, idev-mem";
-			size = <0x0 0x1000>;
+			size = <0x0 0x2000000>;
 		};
 
 		/*  POST PROCESS MANAGER */
 		ppmgr_reserved:linux,ppmgr {
 			compatible = "amlogic, ppmgr_memory";
-			size = <0x0 0x2000000>;
+			size = <0x0 0x0>;
+			multi-use;
 		};
 
 		codec_mm_cma:linux,codec_mm_cma {
 			compatible = "shared-dma-pool";
 			reusable;
-			size = <0x0 0x13000000>;
+			size = <0x0 0xbc00000>;
 			alignment = <0x0 0x400000>;
 			linux,contiguous-region;
 		};
@@ -116,7 +116,7 @@
 		/* codec shared reserved */
 		codec_mm_reserved:linux,codec_mm_reserved {
 			compatible = "amlogic, codec-mm-reserved";
-			size = <0x0 0x0>;
+			size = <0x0 0x4100000>;
 			alignment = <0x0 0x100000>;
  			//no-map;
 		};
@@ -443,9 +443,11 @@
             caps = "MMC_CAP_8_BIT_DATA","MMC_CAP_MMC_HIGHSPEED",
 					"MMC_CAP_SD_HIGHSPEED", "MMC_CAP_NONREMOVABLE", "MMC_CAP_1_8V_DDR",
 					"MMC_CAP_HW_RESET", "MMC_CAP_ERASE", "MMC_CAP_CMD23";
-            caps2 = "MMC_CAP2_HS200";
+            /*caps2 = "MMC_CAP2_HS200";*/
 	    f_min = <300000>;
             f_max = <100000000>;
+			base =  <0xc8834400>;
+			clksrc_base = <0xc883c000>;
 			tx_phase = <0>;
             max_req_size = <0x20000>;          /**256KB*/
 		gpio_dat3 = <&gpio       BOOT_3      GPIO_ACTIVE_HIGH>;
@@ -503,7 +505,7 @@
 		dev_name = "aml_newsd.0";
 		status = "okay";
 		reg = <0x0 0xd0070000 0x0 0x2000>;
-		interrupts = <	0 216 1>;
+		interrupts = <	0 216 4>;
 		pinctrl-names =  "sdio_clk_cmd_pins", "sdio_all_pins";
 		pinctrl-0 = <&sdio_clk_cmd_pins>;
 		pinctrl-1 = <&sdio_all_pins>;
@@ -515,7 +517,7 @@
 				"MMC_CAP_SD_HIGHSPEED", "MMC_CAP_NONREMOVABLE",
 				"MMC_CAP_UHS_SDR12","MMC_CAP_UHS_SDR25",
 				"MMC_CAP_UHS_SDR50","MMC_CAP_UHS_SDR104",
-				"MMC_PM_KEEP_POWER";
+				"MMC_PM_KEEP_POWER","MMC_CAP_SDIO_IRQ";
 				f_min = <400000>;
 				f_max = <200000000>;
 				max_req_size = <0x20000>;          /**128KB*/
