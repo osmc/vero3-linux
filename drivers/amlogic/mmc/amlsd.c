@@ -153,7 +153,7 @@ static const struct file_operations card_proc_fops = {
 	.open = card_proc_open,
 	.read = seq_read,
 	.llseek = seq_lseek,
-	.release = seq_release,
+	.release = single_release,
 };
 
 /**
