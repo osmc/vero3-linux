@@ -907,15 +907,15 @@ static void nr4_param_init(struct NR4_PARM_s *nr4_parm_p)
 	nr4_parm_p->sw_nr4_sad2gain_lut[4] =   8;
 	nr4_parm_p->sw_nr4_sad2gain_lut[5] =  16;
 	nr4_parm_p->sw_nr4_sad2gain_lut[6] =  32;
-	nr4_parm_p->sw_nr4_sad2gain_lut[7] =  64;
-	nr4_parm_p->sw_nr4_sad2gain_lut[8] =  96;
-	nr4_parm_p->sw_nr4_sad2gain_lut[9] = 192;
-	nr4_parm_p->sw_nr4_sad2gain_lut[10] = 224;
-	nr4_parm_p->sw_nr4_sad2gain_lut[11] = 240;
-	nr4_parm_p->sw_nr4_sad2gain_lut[12] = 255;
-	nr4_parm_p->sw_nr4_sad2gain_lut[13] = 255;
-	nr4_parm_p->sw_nr4_sad2gain_lut[14] = 255;
-	nr4_parm_p->sw_nr4_sad2gain_lut[15] = 255;
+	nr4_parm_p->sw_nr4_sad2gain_lut[7] =  63;
+	nr4_parm_p->sw_nr4_sad2gain_lut[8] =  67;
+	nr4_parm_p->sw_nr4_sad2gain_lut[9] = 104;
+	nr4_parm_p->sw_nr4_sad2gain_lut[10] = 48;
+	nr4_parm_p->sw_nr4_sad2gain_lut[11] = 32;
+	nr4_parm_p->sw_nr4_sad2gain_lut[12] = 20;
+	nr4_parm_p->sw_nr4_sad2gain_lut[13] = 16;
+	nr4_parm_p->sw_nr4_sad2gain_lut[14] = 14;
+	nr4_parm_p->sw_nr4_sad2gain_lut[15] = 9;
 }
 
 static int dnr_prm_init(DNR_PRM_t *pPrm)

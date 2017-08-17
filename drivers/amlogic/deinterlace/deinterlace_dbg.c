@@ -61,6 +61,11 @@ void dump_di_reg(void)
 		base_addr = 0xd0100000;
 
 	pr_info("----dump di reg----\n");
+	pr_info("----dump size reg---");
+	for (i = 0; i < 57; i++)
+		pr_info("[0x%x][0x%x]=0x%x\n",
+			base_addr + ((size_reg_addr[i]) << 2),
+			0x2010 + i, RDMA_RD(size_reg_addr[i]));
 	for (i = 0; i < 255; i++) {
 		if (i == 0x45)
 			pr_info("----nr reg----");
@@ -124,10 +129,14 @@ void dump_di_reg(void)
 		pr_info("[0x%x][0x%x]=0x%x\n",
 			base_addr + ((0x2010 + i) << 2),
 			0x2010 + i, RDMA_RD(0x2010 + i));
-	pr_info("----dump size reg---");
-	for (i = 0; i < 57; i++)
+	pr_info("----dump nr4 reg----\n");
+	for (i = 0x2da4; i < 0x2df6; i++)
 		pr_info("[0x%x][0x%x]=0x%x\n",
-			base_addr + ((size_reg_addr[i]) << 2),
-			0x2010 + i, RDMA_RD(size_reg_addr[i]));
+			base_addr + (i << 2),
+			i, RDMA_RD(i));
+	for (i = 0x3700; i < 0x373f; i++)
+		pr_info("[0x%x][0x%x]=0x%x\n",
+			base_addr + (i << 2),
+			i, RDMA_RD(i));
 	pr_info("----dump reg done----\n");
 }
