@@ -1092,7 +1092,8 @@ static int aml_sd_emmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 #endif
 	/* execute tuning... */
 	if ((clkc->div > 5)
-		|| (get_cpu_type() == MESON_CPU_MAJOR_ID_GXBB)) {
+		|| (get_cpu_type() == MESON_CPU_MAJOR_ID_GXBB)
+		|| (get_cpu_type() == MESON_CPU_MAJOR_ID_GXTVBB)) {
 		err = aml_sd_emmc_execute_tuning_(mmc, opcode,
 				&tuning_data, adj_win_start);
 		if (!err)
