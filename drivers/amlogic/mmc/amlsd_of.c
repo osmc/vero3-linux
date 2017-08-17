@@ -256,6 +256,8 @@ int amlsd_get_platform_data(struct platform_device *pdev,
 						prop, pdata->card_type);
 		SD_PARSE_U32_PROP_HEX(child, "base", prop,
 						pdata->base);
+		SD_PARSE_U32_PROP_HEX(child, "clksrc_base", prop,
+						pdata->clksrc_base);
 		SD_PARSE_U32_PROP_DEC(child, "tx_delay",
 						prop, pdata->tx_delay);
 		if (aml_card_type_mmc(pdata)) {

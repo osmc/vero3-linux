@@ -135,6 +135,7 @@ struct amlsd_platform {
 	unsigned int hw_reset;
 	unsigned int jtag_pin;
 	unsigned int base;
+	unsigned int clksrc_base;
 	int is_sduart;
 	unsigned int card_in_delay;
 	bool is_in;
@@ -293,6 +294,7 @@ struct amlsd_host {
 	enum aml_mmc_waitfor	xfer_step;
 	enum aml_mmc_waitfor	xfer_step_prev;
 
+	void __iomem        *clksrc_base;
 	int			bus_width;
 	int	 port;
 	int	 locked;
@@ -1316,7 +1318,7 @@ struct sd_emmc_desc_info {
 	u32 data_addr;
 	u32 resp_addr;
 };
-#define P_HHI_NAND_CLK_CNTL			(0xff63c000 + (0x97 << 2))
+#define P_HHI_NAND_CLK_CNTL						0x97
 #define SD_EMMC_MAX_DESC_MUN					512
 #define SD_EMMC_REQ_DESC_MUN					4
 #define SD_EMMC_CLOCK_SRC_OSC				 0 /* 24MHz */

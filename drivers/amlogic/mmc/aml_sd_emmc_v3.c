@@ -461,7 +461,6 @@ static void aml_sd_emmc_set_clk_rate_v3(struct mmc_host *mmc,
 	struct amlsd_host *host = (void *)pdata->host;
 	struct sd_emmc_regs_v3 *sd_emmc_regs =
 		(struct sd_emmc_regs_v3 *)host->sd_emmc_regs;
-	void __iomem *source_base = NULL;
 	u32 second_src = 0;
 	if (clk_ios == 0) {
 		aml_sd_emmc_clk_switch_off(host);
@@ -479,13 +478,10 @@ static void aml_sd_emmc_set_clk_rate_v3(struct mmc_host *mmc,
 			&& (aml_card_type_mmc(pdata))) {
 			clk_src_sel = SD_EMMC_CLOCK_SRC_OSC;
 			second_src = SRC_400MHZ;
-			source_base =
-				ioremap_nocache(P_HHI_NAND_CLK_CNTL,
-					sizeof(u32));
-			writel((1<<7)|(3<<9), source_base);
-			emmc_dbg(AMLSD_DBG_CLK_V3, "P_HHI_NAND_CLK_CNTL = 0x%x\n",
-				readl(source_base));
-			iounmap(source_base);
+			if (host->clksrc_base)
+				writel((1<<7)|(3<<9), host->clksrc_base);
+			emmc_dbg(AMLSD_DBG_V3, "P_HHI_NAND_CLK_CNTL = 0x%x\n",
+				readl(host->clksrc_base));
 		}
 	}
 	emmc_dbg(AMLSD_DBG_CLK_V3, "clk_ios: %u\n", clk_ios);
@@ -588,7 +584,10 @@ static void aml_sd_emmc_set_timing_v3(struct amlsd_platform *pdata,
 		sd_emmc_regs->gclock = vclkc;
 		pdata->clkc = vclkc;
 	} else if (timing == MMC_TIMING_UHS_SDR104) {
-		clkc->core_phase = 2;
+		if (get_cpu_type() == MESON_CPU_MAJOR_ID_GXLX)
+			clkc->tx_delay = pdata->tx_delay;
+		else
+			clkc->core_phase = 2;
 		sd_emmc_regs->gclock = vclkc;
 		pdata->clkc = vclkc;
 	} else
@@ -853,8 +852,6 @@ RETRY:
 				MMC_READ_MULTIPLE_BLOCK,
 				blk_test_v3, blksz, 80);
 	udelay(1);
-	eyetest_out0 = sd_emmc_regs->eyetest_out0;
-	eyetest_out1 = sd_emmc_regs->eyetest_out1;
 	eyetest_log = sd_emmc_regs->eyetest_log;
 
 	if (!(geyetest_log->eyetest_done & 0x1)) {
@@ -871,6 +868,8 @@ RETRY:
 		}
 		goto RETRY;
 	}
+	eyetest_out0 = sd_emmc_regs->eyetest_out0;
+	eyetest_out1 = sd_emmc_regs->eyetest_out1;
 	/*emmc_dbg(AMLSD_DBG_V3,
 		"test done! eyetest times: 0x%x, out: 0x%x, 0x%x\n",
 			geyetest_log->eyetest_times,

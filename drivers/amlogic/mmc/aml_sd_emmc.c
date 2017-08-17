@@ -3622,7 +3622,7 @@ static int aml_sd_emmc_probe(struct platform_device *pdev)
 		pr_info("error to get irq resource\n");
 		return -ENODEV;
 	}
-	if (is_meson_txlx_cpu()) {
+	if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXLX)) {
 		host->ctrl_ver = 3;
 		blk_test_v3 = kmalloc(80 * 512, GFP_KERNEL);
 		if (!blk_test_v3) {
@@ -3686,6 +3686,15 @@ static int aml_sd_emmc_probe(struct platform_device *pdev)
 		iounmap(host->base);
 		host->base = ioremap(pdata->base, 0x200);
 	}
+	/* default clock base reg for txlx */
+	if (pdata->clksrc_base == 0)
+		pdata->clksrc_base = 0xff63c000;
+
+	if (pdata->clksrc_base != 0)
+		host->clksrc_base
+			= ioremap(pdata->clksrc_base
+					+ (P_HHI_NAND_CLK_CNTL << 2),
+					sizeof(u32));
 	pdata->host = host;
 	pdata->mmc = mmc;
 	pdata->is_fir_init = true;
