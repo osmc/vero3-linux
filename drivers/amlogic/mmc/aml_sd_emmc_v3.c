@@ -1139,7 +1139,6 @@ static int emmc_ds_manual_sht(struct mmc_host *mmc)
 	int best_start = -1, best_size = -1;
 	int cur_start  = -1, cur_size = 0;
 	pr_info("[%s] 2017-7-4 emmc HS400 Timming\n", __func__);
-	sd_emmc_debug = 0x2000;
 	host->is_timming = 1;
 
 	print_all_line_eyetest(mmc);
@@ -1156,8 +1155,9 @@ static int emmc_ds_manual_sht(struct mmc_host *mmc)
 		err = aml_sd_emmc_cali_v3(mmc,
 			MMC_READ_MULTIPLE_BLOCK,
 			blk_test_v3, blksz, 20);
-		pr_warn("intf3: 0x%x, err[%d]: %d\n",
-				sd_emmc_regs->intf3, i, err);
+		emmc_dbg(AMLSD_DBG_V3,
+			"intf3: 0x%x, err[%d]: %d\n",
+			sd_emmc_regs->intf3, i, err);
 		if (!err)
 			match[i] = 0;
 		else
