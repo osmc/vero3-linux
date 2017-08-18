@@ -827,8 +827,8 @@ static int emmc_eyetest_log(struct mmc_host *mmc, u32 line_x)
 	host->is_tunning = 1;
 	/****** calculate  line_x ***************************/
 	/******* init eyetest register ************************/
-	emmc_dbg(AMLSD_DBG_V3, "delay1: 0x%x , delay2: 0x%x, line_x: %d\n",
-	    sd_emmc_regs->gdelay1, sd_emmc_regs->gdelay2, line_x);
+	/*emmc_dbg(AMLSD_DBG_V3, "delay1: 0x%x , delay2: 0x%x, line_x: %d\n",
+	    sd_emmc_regs->gdelay1, sd_emmc_regs->gdelay2, line_x);*/
 	gadjust->cali_enable = 1;
 	gadjust->cali_sel = line_x;
 	sd_emmc_regs->gadjust = adjust;
@@ -887,8 +887,9 @@ RETRY:
 			eyetest_out1 = 0x0;
 	}
 	pdata->align[line_x] = ((tmp | eyetest_out1) << 32) | eyetest_out0;
-	emmc_dbg(AMLSD_DBG_V3, "u64 eyetestout 0x%llx\n",
-			pdata->align[line_x]);
+	emmc_dbg(AMLSD_DBG_V3, "d1:0x%x,d2:0x%x,u64eyet:0x%llx,l_x:%d\n",
+			sd_emmc_regs->gdelay1, sd_emmc_regs->gdelay2,
+			pdata->align[line_x], line_x);
 	host->is_tunning = 0;
 	return 0;
 }
@@ -1110,14 +1111,15 @@ static int emmc_ds_core_align(struct mmc_host *mmc)
 	delay1 += (count<<0)|(count<<6)|(count<<12)|(count<<18)|(count<<24);
 	delay2 += (count<<0)|(count<<6)|(count<<12);
 	cmd_count = fbinary(pdata->align[9]);
-	if (cmd_count < (pdata->count / 2))
+	if (cmd_count < (pdata->count / 2)) {
 		cmd_count = (pdata->count / 2) - cmd_count;
-	delay2 += (cmd_count<<24);
+		delay2 += (cmd_count<<24);
+	}
 	sd_emmc_regs->gdelay1 = delay1;
 	sd_emmc_regs->gdelay2 = delay2;
 	emmc_dbg(AMLSD_DBG_V3,
-		"ds_count:%d,delay1:0x%x,delay2:0x%x,count: %u\n",
-		ds_count, sd_emmc_regs->gdelay1,
+		"cmd_count:%d,delay1:0x%x,delay2:0x%x,count: %u\n",
+		cmd_count, sd_emmc_regs->gdelay1,
 		sd_emmc_regs->gdelay2, count);
 	return 0;
 }
