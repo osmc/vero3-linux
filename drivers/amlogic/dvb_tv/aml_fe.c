@@ -1309,6 +1309,46 @@ static int aml_fe_afc_closer(struct dvb_frontend *fe, int minafcfreq,
 	return 0;
 }
 
+static void aml_fe_reset_ops(struct aml_fe *fe)
+{
+	memset(&fe->fe->ops.tuner_ops, 0, sizeof(fe->fe->ops.tuner_ops));
+	memset(&fe->fe->ops.analog_ops, 0, sizeof(fe->fe->ops.analog_ops));
+	memset(&fe->fe->ops.info, 0, sizeof(fe->fe->ops.info));
+	fe->fe->ops.release = NULL;
+	fe->fe->ops.release_sec = NULL;
+	fe->fe->ops.init = NULL;
+	fe->fe->ops.sleep = NULL;
+	fe->fe->ops.write = NULL;
+	fe->fe->ops.tune = NULL;
+	fe->fe->ops.get_frontend_algo = NULL;
+	fe->fe->ops.set_frontend = NULL;
+	fe->fe->ops.get_tune_settings = NULL;
+	fe->fe->ops.get_frontend = NULL;
+	fe->fe->ops.read_status = NULL;
+	fe->fe->ops.read_ber = NULL;
+	fe->fe->ops.read_signal_strength = NULL;
+	fe->fe->ops.read_snr = NULL;
+	fe->fe->ops.read_ucblocks = NULL;
+	fe->fe->ops.set_qam_mode = NULL;
+	fe->fe->ops.diseqc_reset_overload = NULL;
+	fe->fe->ops.diseqc_send_master_cmd = NULL;
+	fe->fe->ops.diseqc_recv_slave_reply = NULL;
+	fe->fe->ops.diseqc_send_burst = NULL;
+	fe->fe->ops.set_tone = NULL;
+	fe->fe->ops.set_voltage = NULL;
+	fe->fe->ops.enable_high_lnb_voltage = NULL;
+	fe->fe->ops.dishnetwork_send_legacy_command = NULL;
+	fe->fe->ops.i2c_gate_ctrl = NULL;
+	fe->fe->ops.ts_bus_ctrl = NULL;
+	fe->fe->ops.search = NULL;
+	fe->fe->ops.track = NULL;
+	fe->fe->ops.set_property = NULL;
+	fe->fe->ops.get_property = NULL;
+	memset(&fe->fe->ops.blindscan_ops, 0,
+	       sizeof(fe->fe->ops.blindscan_ops));
+	fe->fe->ops.asyncinfo.set_frontend_asyncenable = 0;
+}
+
 static int aml_fe_set_mode(struct dvb_frontend *dev, fe_type_t type)
 {
 	struct aml_fe *fe;
@@ -1378,6 +1418,10 @@ static int aml_fe_set_mode(struct dvb_frontend *dev, fe_type_t type)
 			aml_dmx_register_frontend(fe->ts, NULL);
 
 		fe->mode = AM_FE_UNKNOWN;
+
+		spin_lock_irqsave(&fe->slock, flags);
+		aml_fe_reset_ops(fe);
+		spin_unlock_irqrestore(&fe->slock, flags);
 	}
 
 	if (mode == AM_FE_UNKNOWN) {
@@ -1414,42 +1458,8 @@ static int aml_fe_set_mode(struct dvb_frontend *dev, fe_type_t type)
 
 	spin_lock_irqsave(&fe->slock, flags);
 
-	memset(&fe->fe->ops.tuner_ops, 0, sizeof(fe->fe->ops.tuner_ops));
-	memset(&fe->fe->ops.analog_ops, 0, sizeof(fe->fe->ops.analog_ops));
-	memset(&fe->fe->ops.info, 0, sizeof(fe->fe->ops.info));
-	fe->fe->ops.release = NULL;
-	fe->fe->ops.release_sec = NULL;
-	fe->fe->ops.init = NULL;
-	fe->fe->ops.sleep = NULL;
-	fe->fe->ops.write = NULL;
-	fe->fe->ops.tune = NULL;
-	fe->fe->ops.get_frontend_algo = NULL;
-	fe->fe->ops.set_frontend = NULL;
-	fe->fe->ops.get_tune_settings = NULL;
-	fe->fe->ops.get_frontend = NULL;
-	fe->fe->ops.read_status = NULL;
-	fe->fe->ops.read_ber = NULL;
-	fe->fe->ops.read_signal_strength = NULL;
-	fe->fe->ops.read_snr = NULL;
-	fe->fe->ops.read_ucblocks = NULL;
-	fe->fe->ops.set_qam_mode = NULL;
-	fe->fe->ops.diseqc_reset_overload = NULL;
-	fe->fe->ops.diseqc_send_master_cmd = NULL;
-	fe->fe->ops.diseqc_recv_slave_reply = NULL;
-	fe->fe->ops.diseqc_send_burst = NULL;
-	fe->fe->ops.set_tone = NULL;
-	fe->fe->ops.set_voltage = NULL;
-	fe->fe->ops.enable_high_lnb_voltage = NULL;
-	fe->fe->ops.dishnetwork_send_legacy_command = NULL;
-	fe->fe->ops.i2c_gate_ctrl = NULL;
-	fe->fe->ops.ts_bus_ctrl = NULL;
-	fe->fe->ops.search = NULL;
-	fe->fe->ops.track = NULL;
-	fe->fe->ops.set_property = NULL;
-	fe->fe->ops.get_property = NULL;
-	memset(&fe->fe->ops.blindscan_ops, 0,
-	       sizeof(fe->fe->ops.blindscan_ops));
-	fe->fe->ops.asyncinfo.set_frontend_asyncenable = 0;
+	aml_fe_reset_ops(fe);
+
 	if (fe->tuner && fe->tuner->drv && (mode & fe->tuner->drv->capability)
 	    && fe->tuner->drv->get_ops)
 		fe->tuner->drv->get_ops(fe->tuner, mode,
