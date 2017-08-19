@@ -124,8 +124,25 @@ static int tvafe_avin_dts_parse(struct platform_device *pdev)
 		avdev->dts_param.device_mask = value;
 		if (avdev->dts_param.device_mask == TVAFE_AVIN_MASK) {
 			avdev->device_num = 2;
-			avdev->report_data_s[0].channel = TVAFE_AVIN_CHANNEL1;
-			avdev->report_data_s[1].channel = TVAFE_AVIN_CHANNEL2;
+			ret = of_property_read_u32(pdev->dev.of_node,
+				"device_sequence", &value);
+			if (ret) {
+				pr_info("Failed to get device_mask.\n");
+				goto get_avin_param_failed;
+			} else {
+				avdev->dts_param.device_sequence = value;
+			}
+			if (avdev->dts_param.device_sequence == 0) {
+				avdev->report_data_s[0].channel =
+						TVAFE_AVIN_CHANNEL1;
+				avdev->report_data_s[1].channel =
+						TVAFE_AVIN_CHANNEL2;
+			} else {
+				avdev->report_data_s[0].channel =
+						TVAFE_AVIN_CHANNEL2;
+				avdev->report_data_s[1].channel =
+						TVAFE_AVIN_CHANNEL1;
+			}
 		} else if (avdev->dts_param.device_mask ==
 			TVAFE_AVIN_CH1_MASK) {
 			avdev->device_num = 1;

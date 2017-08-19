@@ -78,6 +78,8 @@ struct tvafe_report_data_s {
 
 struct tvafe_dts_const_param_s {
 	unsigned int device_mask;/*bit0:av1;bit1:av2*/
+	/*when mask==3,sequence 0:bit0->av1 bit1->av2;1:bit0->av2 bit1->av1*/
+	unsigned int device_sequence;
 	unsigned int irq[2];
 };
 
