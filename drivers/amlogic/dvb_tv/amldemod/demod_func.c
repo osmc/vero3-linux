@@ -130,7 +130,8 @@ void adc_dpll_setup(int clk_a, int clk_b, int clk_sys)
 	pll_n = 1;
 	for (pll_m = 1; pll_m < 512; pll_m++) {
 		/* for (pll_n=1; pll_n<=5; pll_n++) { */
-		if ((is_meson_txl_cpu()) || (is_meson_txlx_cpu())) {
+		if ((is_meson_txl_cpu()) || (is_meson_txlx_cpu())
+			|| (is_meson_gxlx_cpu())) {
 			freq_dco = freq_osc * pll_m / pll_n / 2;/*txl add div2*/
 			if (freq_dco < 700 * unit || freq_dco > 1000 * unit)
 				continue;
@@ -157,7 +158,8 @@ void adc_dpll_setup(int clk_a, int clk_b, int clk_sys)
 		adc_pll_cntl.b.pll_od1 = pll_od_a;
 		adc_pll_cntl.b.pll_xd0 = pll_xd_b;
 		adc_pll_cntl.b.pll_xd1 = pll_xd_a;
-		if ((is_meson_txl_cpu()) || (is_meson_txlx_cpu())) {
+		if ((is_meson_txl_cpu()) || (is_meson_txlx_cpu())
+			|| (is_meson_gxlx_cpu())) {
 			adc_pll_cntl4.b.pll_od3 = 0;
 			adc_pll_cntl.b.pll_od2 = 0;
 		} else {
@@ -176,7 +178,8 @@ void adc_dpll_setup(int clk_a, int clk_b, int clk_sys)
 	pll_xd_b = adc_pll_cntl.b.pll_xd0;
 	pll_xd_a = adc_pll_cntl.b.pll_xd1;
 
-	if ((is_meson_txl_cpu()) || (is_meson_txlx_cpu()))
+	if ((is_meson_txl_cpu()) || (is_meson_txlx_cpu())
+		|| (is_meson_gxlx_cpu()))
 		div2 = 1;
 	else
 		div2 = adc_pll_cntl2.b.div2_ctrl;
@@ -192,7 +195,8 @@ void adc_dpll_setup(int clk_a, int clk_b, int clk_sys)
 		pr_dbg(" ERROR can't setup %7ld kHz %7ld kHz\n",
 		       freq_b / (unit / 1000), freq_a / (unit / 1000));
 	} else {
-		if ((is_meson_txl_cpu()) || (is_meson_txlx_cpu()))
+		if ((is_meson_txl_cpu()) || (is_meson_txlx_cpu())
+			|| (is_meson_gxlx_cpu()))
 			freq_dco = freq_osc * pll_m / pll_n / 2;
 		else
 			freq_dco = freq_osc * pll_m / pll_n;
@@ -310,6 +314,45 @@ void adc_dpll_setup(int clk_a, int clk_b, int clk_sys)
 				demod_read_demod_reg(DEMOD_REG2));
 		pr_dbg("[demod][%x]%x\n", DEMOD_REG3,
 				demod_read_demod_reg(DEMOD_REG3));
+	} else if (is_meson_gxlx_cpu()) {
+		/*demod_set_demod_reg(TXLX_ADC_RESET_VALUE, ADC_REG3);*/
+		/*demod_set_demod_reg(adc_pll_cntl.d32, ADC_REG1);*/
+		demod_set_demod_reg(dig_clk_cfg.d32, ADC_REG6);
+		demod_set_demod_reg(0x1000502, ADC_REG6);
+		/*demod_set_demod_reg(TXLX_ADC_REG3_VALUE, ADC_REG3);*/
+		/* debug */
+		pr_dbg("gxlx[adc][%x]%x\n", ADC_REG1,
+				demod_read_demod_reg(ADC_REG1));
+		pr_dbg("[adc][%x]%x\n", ADC_REG2,
+				demod_read_demod_reg(ADC_REG2));
+		pr_dbg("[adc][%x]%x\n", ADC_REG3,
+				demod_read_demod_reg(ADC_REG3));
+		pr_dbg("[adc][%x]%x\n", ADC_REG4,
+				demod_read_demod_reg(ADC_REG4));
+		pr_dbg("[adc][%x]%x\n", ADC_REG5,
+				demod_read_demod_reg(ADC_REG5));
+		pr_dbg("[adc][%x]%x\n", ADC_REG6,
+				demod_read_demod_reg(ADC_REG6));
+		pr_dbg("[adc][%x]%x\n", ADC_REG7,
+				demod_read_demod_reg(ADC_REG7));
+		pr_dbg("[adc][%x]%x\n", ADC_REG8,
+				demod_read_demod_reg(ADC_REG8));
+		pr_dbg("[adc][%x]%x\n", ADC_REG9,
+				demod_read_demod_reg(ADC_REG9));
+		pr_dbg("[adc][%x]%x\n", ADC_REGB,
+				demod_read_demod_reg(ADC_REGB));
+		pr_dbg("[adc][%x]%x\n", ADC_REGC,
+				demod_read_demod_reg(ADC_REGC));
+		pr_dbg("[adc][%x]%x\n", ADC_REGD,
+				demod_read_demod_reg(ADC_REGD));
+		pr_dbg("[adc][%x]%x\n", ADC_REGE,
+				demod_read_demod_reg(ADC_REGE));
+		pr_dbg("[demod][%x]%x\n", GXLX_DEMOD_REG1,
+				demod_read_demod_reg(GXLX_DEMOD_REG1));
+		pr_dbg("[demod][%x]%x\n", GXLX_DEMOD_REG2,
+				demod_read_demod_reg(GXLX_DEMOD_REG2));
+		pr_dbg("[demod][%x]%x\n", GXLX_DEMOD_REG3,
+				demod_read_demod_reg(GXLX_DEMOD_REG3));
 	} else {
 		demod_set_demod_reg(ADC_RESET_VALUE, ADC_REG3);	/* adc reset */
 		demod_set_demod_reg(adc_pll_cntl.d32, ADC_REG1);
@@ -475,6 +518,11 @@ if (is_meson_txlx_cpu()) {
 				 AO_RTI_GEN_PWR_SLEEP0);
 		/* [10] power on */
 	}
+} else if (is_meson_gxlx_cpu()) {
+	pr_dbg("[PWR]: GXLX not support power switch,power mem\n");
+	demod_set_demod_reg(
+		(demod_read_demod_reg(GXLX_HHI_DEMOD_MEM_PD_REG)
+				     & (~0x2fff)), GXLX_HHI_DEMOD_MEM_PD_REG);
 } else {
 	if (pwr_cntl == PWR_ON) {
 		pr_dbg("[PWR]: Power on demod_comp %x,%x\n",
@@ -553,6 +601,8 @@ void demod_set_mode_ts(unsigned char dvb_mode)
 	}
 	if (is_meson_txlx_cpu())
 		demod_set_demod_reg(cfg0.d32, TXLX_DEMOD_REG1);
+	else if (is_meson_gxlx_cpu())
+		demod_set_demod_reg(cfg0.d32, GXLX_DEMOD_REG1);
 	else
 		demod_set_demod_reg(cfg0.d32, DEMOD_REG1);
 }
@@ -622,6 +672,28 @@ static void clocks_set_sys_defaults(unsigned char dvb_mode)
 		demod_set_demod_reg(DEMOD_REG1_VALUE, DEMOD_REG1);
 		demod_set_demod_reg(DEMOD_REG2_VALUE, DEMOD_REG2);
 		demod_set_demod_reg(DEMOD_REG3_VALUE, DEMOD_REG3);
+	} else if (is_meson_gxlx_cpu()) {
+		pr_dbg("GXLX config\n");
+		/*demod_set_demod_reg(TXLX_ADC_REG3_VALUE, ADC_REG3);*/
+		/*demod_set_demod_reg(TXLX_ADC_REG1_VALUE, ADC_REG1);*/
+		demod_set_demod_reg(TXLX_ADC_REGB_VALUE, ADC_REGB);
+		/*demod_set_demod_reg(TXLX_ADC_REG2_VALUE, ADC_REG2);*/
+		/*demod_set_demod_reg(TXLX_ADC_REG3_VALUE, ADC_REG3);*/
+		/*demod_set_demod_reg(TXLX_ADC_REG4_VALUE, ADC_REG4);*/
+		demod_set_demod_reg(TXLX_ADC_REGC_VALUE, ADC_REGC);
+		demod_set_demod_reg(TXLX_ADC_REGD_VALUE, ADC_REGD);
+		/*demod_set_demod_reg(TXLX_ADC_RESET_VALUE, ADC_REG3);*/
+		/*demod_set_demod_reg(TXLX_ADC_REG3_VALUE, ADC_REG3);*/
+
+		/* dadc */
+		demod_set_demod_reg(TXLX_ADC_REG7_VALUE, ADC_REG7);
+		demod_set_demod_reg(TXLX_ADC_REG8_VALUE, ADC_REG8);
+		demod_set_demod_reg(TXLX_ADC_REG9_VALUE, ADC_REG9);
+		demod_set_demod_reg(TXLX_ADC_REGE_VALUE, ADC_REGE);
+
+		demod_set_demod_reg(DEMOD_REG1_VALUE, GXLX_DEMOD_REG1);
+		demod_set_demod_reg(DEMOD_REG2_VALUE, GXLX_DEMOD_REG2);
+		demod_set_demod_reg(DEMOD_REG3_VALUE, GXLX_DEMOD_REG3);
 	}
 	demod_set_mode_ts(dvb_mode);
 	cfg2.b.biasgen_en = 1;
@@ -631,6 +703,11 @@ static void clocks_set_sys_defaults(unsigned char dvb_mode)
 		pr_dbg("demod cfg[%x] is %x,dvb_mode is %d\n",
 			   TXLX_DEMOD_REG1,
 			   demod_read_demod_reg(TXLX_DEMOD_REG1), dvb_mode);
+	} else if (is_meson_gxlx_cpu()) {
+		demod_set_demod_reg(cfg2.d32, GXLX_DEMOD_REG3);
+		pr_dbg("demod cfg[%x] is %x,dvb_mode is %d\n",
+			   GXLX_DEMOD_REG1,
+			   demod_read_demod_reg(GXLX_DEMOD_REG1), dvb_mode);
 	} else {
 		demod_set_demod_reg(cfg2.d32, DEMOD_REG3);
 		pr_dbg("demod cfg[%x] is %x,dvb_mode is %d\n",
@@ -1208,8 +1285,8 @@ int demod_set_sys(struct aml_demod_sta *demod_sta,
 	mutex_init(&mp);
 	clocks_set_sys_defaults(dvb_mode);
 	/* open dtv adc pinmux */
-	if (is_meson_txlx_cpu()) {
-		pr_dbg("[R840][txlx]set adc pinmux\n");
+	if (is_meson_txlx_cpu() || is_meson_gxlx_cpu()) {
+		pr_dbg("[R840][txlx_gxlx]set adc pinmux\n");
 	} else if (is_meson_txl_cpu()) {
 		gpioDV_2 = demod_read_demod_reg(0xc8834400 + (0x2e << 2));
 		pr_dbg("[R840]set adc pinmux,gpioDV_2 %x\n", gpioDV_2);

@@ -53,15 +53,39 @@
 #define TXLX_DEMOD_REG3               (TXLX_DEMOD_BASE + 0xF08)
 #define TXLX_DEMOD_REG4               (TXLX_DEMOD_BASE + 0xF0c)
 
+#define GXLX_DEMOD_BASE 0xc8840000
+#define GXLX_IO_DEMOD_BASE 0xc8840000
+#define GXLX_DTMB_BASE  (GXLX_DEMOD_BASE+0x000)
+#define GXLX_DVBT_BASE  (GXLX_DEMOD_BASE+0x400)
+#define GXLX_ISDBT_BASE (GXLX_DEMOD_BASE+0x400)
+#define GXLX_ATSC_BASE  (GXLX_DEMOD_BASE+0x800)
+#define GXLX_QAM_BASE   (GXLX_DEMOD_BASE+0xC00)
+#define GXLX_DEMOD_CFG_BASE  (GXLX_DEMOD_BASE+0xF00)
+#define GXLX_DEMOD_REG_OFFSET(reg)           (reg & 0xfffff)
+#define GXLX_DEMOD_REG_ADDR(reg)	(GXLX_IO_DEMOD_BASE +\
+					GXLX_DEMOD_REG_OFFSET(reg))
+#define GXLX_DEMOD_REG1               (GXLX_DEMOD_BASE + 0xF00)
+#define GXLX_DEMOD_REG2               (GXLX_DEMOD_BASE + 0xF04)
+#define GXLX_DEMOD_REG3               (GXLX_DEMOD_BASE + 0xF08)
+#define GXLX_DEMOD_REG4               (GXLX_DEMOD_BASE + 0xF0c)
+#define GXLX_HHI_DEMOD_MEM_PD_REG	(0xc883c000 + (0x43 << 2))
+
+/*enable adc*/
+#define GXLX_HHI_VDAC_CNTL0  (0xc883c000 + (0xbd << 2))
+#define GXLX_HHI_VDAC_CNTL1  (0xc883c000 + (0xbe << 2))
+
+
+
+
 #ifdef safe_addr
 #define IO_DEMOD_BASE           (0xc8844000)
 #define IO_AOBUS_BASE           (0xc8100000)
 #define IO_HIU_BASE				(0xc883c000)
-#define PREG_PAD_GPIO3_O	(0xc8834400 + (0x16 << 2))
+/*#define PREG_PAD_GPIO3_O	(0xc8834400 + (0x16 << 2))
 #define PREG_PAD_GPIO3_EN_N	(0xc8834400 + (0x15 << 2))
 #define PREG_PAD_GPIO3_I	(0xc8834400 + (0x17 << 2))
 #define PERIPHS_PIN_MUX_3	(0xc8834400 + (0x2f << 2))
-#define PERIPHS_PIN_MUX_4	(0xc8834400 + (0x30 << 2))
+#define PERIPHS_PIN_MUX_4	(0xc8834400 + (0x30 << 2))*/
 
 #else
 #define IO_DEMOD_BASE           (0xda844000)
@@ -82,7 +106,6 @@
 #define DEMOD_AOBUS_REG_OFFSET(reg)             ((reg))
 #define DEMOD_AOBUS_REG_ADDR(reg)               (IO_AOBUS_BASE + \
 						 DEMOD_AOBUS_REG_OFFSET(reg))
-
 
 /* #define DEMOD_BASE     APB_REG_ADDR(0x20000) */
 #define DEMOD_BASE DEMOD_REG_ADDR(0x0)	/* 0xc8020000 */
@@ -396,7 +419,6 @@ void dtmb_reset(void);
 int dtmb_check_status_gxtv(struct dvb_frontend *fe);
 int dtmb_check_status_txl(struct dvb_frontend *fe);
 
-
 void dtmb_write_reg(int reg_addr, int reg_data);
 int dtmb_read_reg(int reg_addr);
 void dtmb_register_reset(void);
@@ -679,7 +701,7 @@ int get_dtvpll_init_flag(void);
 void demod_set_mode_ts(unsigned char dvb_mode);
 void qam_write_reg(int reg_addr, int reg_data);
 unsigned long qam_read_reg(int reg_addr);
-
+/*bool is_meson_txlx_cpu(void);*/
 
 
 #endif

@@ -50,11 +50,11 @@ module_param(debug_aml, int, 0644);
 			printk(a); \
 		} \
 	} while (0)
-#define pr_error(fmt, args ...) pr_err("GXTV_DEMOD: "fmt, ## args)
-#define pr_inf(fmt, args...)  pr_err("GXTV_DEMOD: " fmt, ## args)
+#define pr_error(fmt, args ...) pr_err("Amlogic_Demod: "fmt, ## args)
+#define pr_inf(fmt, args...)  pr_err("Amlogic_Demod: " fmt, ## args)
 
 static int last_lock = -1;
-#define DEMOD_DEVICE_NAME  "gxtv_demod"
+#define DEMOD_DEVICE_NAME  "Amlogic_Demod"
 static int cci_thread;
 static int freq_dvbc;
 static struct aml_demod_sta demod_status;
@@ -427,12 +427,12 @@ static int gxtv_demod_dvbc_read_status
 {
 /*      struct aml_fe_dev *dev = afe->dtv_demod;*/
 	struct aml_demod_sts demod_sts;
-/*      struct aml_demod_sta demod_sta;*/
-/*      struct aml_demod_i2c demod_i2c;*/
+	struct aml_demod_sta demod_sta;
+	struct aml_demod_i2c demod_i2c;
 	int ilock;
 
 	demod_sts.ch_sts = qam_read_reg(0x6);
-/*      dvbc_status(&demod_sta, &demod_i2c, &demod_sts);*/
+	dvbc_status(&demod_sta, &demod_i2c, &demod_sts);
 	if (demod_sts.ch_sts & 0x1) {
 		ilock = 1;
 		*status =
@@ -501,7 +501,6 @@ static int gxtv_demod_dvbc_set_frontend(struct dvb_frontend *fe)
 	struct aml_demod_i2c demod_i2c;
 	struct aml_fe *afe = fe->demodulator_priv;
 	struct aml_fe_dev *dev = afe->dtv_demod;
-
 	demod_i2c.tuner = dev->drv->id;
 	demod_i2c.addr = dev->i2c_addr;
 	memset(&param, 0, sizeof(param));
@@ -534,15 +533,13 @@ static int gxtv_demod_dvbc_set_frontend(struct dvb_frontend *fe)
 	aml_fe_analog_set_frontend(fe);
 	dvbc_set_ch(&demod_status, &demod_i2c, &param);
 	/*0xf33 dvbc mode, 0x10f33 j.83b mode*/
-	if (is_meson_txlx_cpu())
+	if (is_meson_txlx_cpu() || is_meson_gxlx_cpu())
 		qam_write_reg(0x7, 0xf33);
 	if (autoflags == 1) {
 		pr_dbg("QAM_PLAYING mode,start auto sym\n");
 		dvbc_set_auto_symtrack();
 		/*      flag=1;*/
 	}
-/*rsj_debug*/
-
 	dvbc_status(&demod_status, &demod_i2c, &demod_sts);
 	freq_dvbc = param.ch_freq;
 	afe->params = *c;
@@ -1118,7 +1115,8 @@ static int gxtv_demod_fe_get_ops(struct aml_fe_dev *dev, int mode, void *ops)
 {
 	struct dvb_frontend_ops *fe_ops = (struct dvb_frontend_ops *)ops;
 
-	if (is_meson_txlx_cpu() && (mode == AM_FE_DTMB))
+	if ((is_meson_txlx_cpu() || is_meson_gxlx_cpu())
+		&& (mode == AM_FE_DTMB))
 		return -1;
 	if (!is_meson_txlx_cpu() && (mode == AM_FE_ATSC))
 		return -1;
@@ -1228,13 +1226,14 @@ static int gxtv_demod_fe_get_ops(struct aml_fe_dev *dev, int mode, void *ops)
 	return 0;
 }
 
+
 static int gxtv_demod_fe_resume(struct aml_fe_dev *dev)
 {
 	int memstart_dtmb;
 	pr_inf("gxtv_demod_fe_resume\n");
 	vdac_enable(1, 0x2);
 /*	demod_power_switch(PWR_ON);*/
-	if (!is_meson_txlx_cpu()) {
+	if (!is_meson_txlx_cpu() && !is_meson_gxlx_cpu()) {
 		Gxtv_Demod_Dtmb_Init(dev);
 		memstart_dtmb = dev->fe->dtv_demod->mem_start;
 		pr_dbg("[im]memstart is %x\n", memstart_dtmb);

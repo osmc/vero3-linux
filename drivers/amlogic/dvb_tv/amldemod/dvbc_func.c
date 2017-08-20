@@ -22,6 +22,8 @@ void qam_write_reg(int reg_addr, int reg_data)
 		return;
 	if (is_meson_txlx_cpu())
 		demod_set_demod_reg(reg_data, TXLX_QAM_BASE + (reg_addr << 2));
+	else if (is_meson_gxlx_cpu())
+		demod_set_demod_reg(reg_data, GXLX_QAM_BASE + (reg_addr << 2));
 	else
 		demod_set_demod_reg(reg_data, QAM_BASE + (reg_addr << 2));
 }
@@ -32,6 +34,8 @@ unsigned long qam_read_reg(int reg_addr)
 		return 0;
 	if (is_meson_txlx_cpu())
 		return demod_read_demod_reg(TXLX_QAM_BASE + (reg_addr << 2));
+	else if (is_meson_gxlx_cpu())
+		return demod_read_demod_reg(GXLX_QAM_BASE + (reg_addr << 2));
 	else
 		return demod_read_demod_reg(QAM_BASE + (reg_addr << 2));
 }
@@ -1091,7 +1095,7 @@ static void dvbc_reg_initial(struct aml_demod_sta *demod_sta)
 	/* QAM_STATUS */
 	qam_write_reg(0x7, 0x00000f00);
 	/* QAM_GCTL0 */
-	qam_write_reg(0x2, (ch_mode & 7));
+	qam_write_reg(0x2, (qam_read_reg(0x2) & ~7) | (ch_mode & 7));
 	/* qam mode */
 
 	switch (ch_mode) {
@@ -1184,7 +1188,7 @@ static void dvbc_reg_initial(struct aml_demod_sta *demod_sta)
 
 	/*apb_write_reg(QAM_BASE+0x030, 0x011bf400);
 	* // TIM_CTL0 start speed is 0,  when know symbol rate*/
-	qam_write_reg(0xc, 0x235cf451);
+	/*rsj//qam_write_reg(0xc, 0x235cf451);*/
 	/*MODIFIED BY QIANCHENG */
 /*      apb_write_reg(QAM_BASE+0x030, 0x245bf451);
  * //modified by ligg 20130613 --auto symb_rate scan*/
@@ -1202,7 +1206,7 @@ static void dvbc_reg_initial(struct aml_demod_sta *demod_sta)
 	/* blind search, configure max symbol_rate      for 7218  fb=3.6M */
 	/*apb_write_reg(QAM_BASE+0x048, 3600*256);
 	* // configure min symbol_rate fb = 6.95M*/
-	qam_write_reg(0x12, 3400 * 256);
+	qam_write_reg(0x12, (qam_read_reg(0x12) & ~(0xff<<8)) | 3400 * 256);
 	/* configure min symbol_rate fb = 6.95M */
 
 	/*apb_write_reg(QAM_BASE+0x0c0, 0xffffff68); // threshold */
@@ -1245,7 +1249,7 @@ static void dvbc_reg_initial(struct aml_demod_sta *demod_sta)
 	 * // AGC_RFGAIN_CTRL 0x0e020800 by raymond,
 	* if Adjcent channel test, maybe it need change.
 	20121208 ad invert*/
-	qam_write_reg(0x28, 0x0603cd10);
+	/*rsj//qam_write_reg(0x28, 0x0603cd10);*/
 	qam_write_reg(0x28,
 	qam_read_reg(0x28) | (adc_format << 27));
 	/* AGC_RFGAIN_CTRL 0x0e020800 by raymond,
@@ -1265,7 +1269,7 @@ static void dvbc_reg_initial(struct aml_demod_sta *demod_sta)
 
 	/* enable irq */
 	qam_write_reg(0x34, 0x7fff << 3);
-
+#if 0
 /*my_tool setting j83b mode*/
 	qam_write_reg(0x7, 0x10f33);
 	/*j83b filter para*/
@@ -1289,6 +1293,7 @@ static void dvbc_reg_initial(struct aml_demod_sta *demod_sta)
 	qam_write_reg(0x54, 0x606050d);
 	qam_write_reg(0x52, 0x346dc);
 	qam_auto_scan(1);
+#endif
 /*auto track*/
 	/*      dvbc_set_auto_symtrack(); */
 }
@@ -1358,7 +1363,7 @@ int dvbc_set_ch(struct aml_demod_sta *demod_sta,
 		demod_sta->ch_if = 5000;
 	demod_sta->symb_rate = symb_rate;
 	demod_sta->adc_freq = demod_dvbc->dat0;
-	if (is_meson_txlx_cpu())
+	if (is_meson_txlx_cpu() || is_meson_gxlx_cpu())
 		dvbc_reg_initial(demod_sta);
 	else
 		dvbc_reg_initial_old(demod_sta);
