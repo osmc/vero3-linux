@@ -1218,7 +1218,6 @@ static void vavs_fatal_error_handler(struct work_struct *work)
 
 static void vavs_notify_work(struct work_struct *work)
 {
-	pr_info("frame duration changed %d\n", frame_dur);
 	if (fr_hint_status == VDEC_NEED_HINT) {
 		vf_notify_receiver(PROVIDER_NAME ,
 			VFRAME_EVENT_PROVIDER_FR_HINT ,
