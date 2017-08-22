@@ -198,7 +198,8 @@ static void cvbs_cntl_output(unsigned int open)
 		/* must enable adc bandgap, the adc ref signal for demod */
 		vdac_enable(0, 0x8);
 	} else if (open == 1) { /* open */
-		if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXL))
+		if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXL) &&
+			!is_meson_gxlx_cpu())
 			cntl0 = 0x620001;
 		else if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXL))
 			cntl0 = 0xb0001;
@@ -266,14 +267,16 @@ static void cvbs_performance_enhancement(enum tvmode_e mode)
 		index = (index >= max) ? 0 : index;
 		s = tvregs_576cvbs_performance_gxtvbb[index];
 		type = 5;
-	} else if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXL)) {
+	} else if (is_meson_txl_cpu() || is_meson_txlx_cpu()) {
 		max = sizeof(tvregs_576cvbs_performance_txl)
 			/ sizeof(struct reg_s *);
 		index = (index >= max) ? 0 : index;
 		s = tvregs_576cvbs_performance_txl[index];
 		type = 8;
 	} else if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXL)) {
-		if (is_meson_gxl_package_905L()) {
+		if (is_meson_gxl_package_905L() ||
+			is_meson_gxlx_package_905L2() ||
+			is_meson_gxlx_package_905C()) {
 			max = sizeof(tvregs_576cvbs_performance_905l)
 				/ sizeof(struct reg_s *);
 			index = (index >= max) ? 0 : index;
