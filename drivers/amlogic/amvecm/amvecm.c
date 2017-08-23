@@ -192,14 +192,6 @@ __setup("pq=", amvecm_load_pq_val);
 static void amvecm_size_patch(void)
 {
 	unsigned int hs, he, vs, ve;
-	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXTVBB) {
-		hs = READ_VPP_REG_BITS(VPP_HSC_REGION12_STARTP, 16, 13);
-		he = READ_VPP_REG_BITS(VPP_HSC_REGION4_ENDP, 0, 13);
-
-		vs = READ_VPP_REG_BITS(VPP_VSC_REGION12_STARTP, 16, 13);
-		ve = READ_VPP_REG_BITS(VPP_VSC_REGION4_ENDP, 0, 13);
-		ve_frame_size_patch(he-hs+1, ve-vs+1);
-	}
 	hs = READ_VPP_REG_BITS(VPP_POSTBLEND_VD1_H_START_END, 16, 13);
 	he = READ_VPP_REG_BITS(VPP_POSTBLEND_VD1_H_START_END, 0, 13);
 

@@ -150,11 +150,14 @@ struct vpp_frame_par_s {
 extern bool reverse;
 #endif
 extern bool platform_type;
-extern unsigned int super_scaler;
 
 enum select_scaler_path_e {
-	sup0_pp_sp1_scpath,
-	sup0_pp_post_blender,
+	CORE0_PPS_CORE1 = 0,
+	CORE0_CORE1_PPS,
+	/*gxlx only have core1,support below tow mode*/
+	CORE1_BEFORE_PPS,
+	CORE1_AFTER_PPS,
+	SCALER_PATH_MAX,
 };
 /*
 * note frome vlsi!!!
@@ -162,6 +165,7 @@ enum select_scaler_path_e {
 * if core0 v disable,core0 input width max=2048;
 * if core1 v enable,core1 input width max=2048;
 * if core1 v disable,core1 input width max=4096;
+* gxlx only have core1
 */
 #define SUPER_CORE0_WIDTH_MAX  2048
 #define SUPER_CORE1_WIDTH_MAX  4096
