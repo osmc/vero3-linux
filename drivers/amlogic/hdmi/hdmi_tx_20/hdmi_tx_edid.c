@@ -1474,7 +1474,6 @@ static int hdmitx_edid_block_parse(struct hdmitx_dev *hdmitx_device,
 	pRXCap->number_of_dtd += BlockBuf[3] & 0xf;
 
 	pRXCap->native_VIC = 0xff;
-	pRXCap->AUD_count = 0;
 
 	Edid_Y420CMDB_Reset(&(hdmitx_device->hdmi_info));
 	for (offset = 4 ; offset < End ; ) {
@@ -2059,6 +2058,35 @@ static void Edid_CVT_timing(struct rx_cap *pRXCap, unsigned char *data)
 	}
 }
 
+static void edid_check_pcm_declare(struct rx_cap *pRXCap)
+{
+	int idx_pcm = 0;
+	int i;
+
+	if (!pRXCap->AUD_count)
+		return;
+
+	/* Try to find more than 1 PCMs, RxAudioCap[0] is always basic audio */
+	for (i = 1; i < pRXCap->AUD_count; i++) {
+		if (pRXCap->RxAudioCap[i].audio_format_code ==
+			pRXCap->RxAudioCap[0].audio_format_code) {
+			idx_pcm = i;
+			break;
+		}
+	}
+
+	/* Remove basic audio */
+	if (idx_pcm) {
+		for (i = 0; i < pRXCap->AUD_count - 1; i++)
+			memcpy(&pRXCap->RxAudioCap[i],
+				&pRXCap->RxAudioCap[i + 1],
+				sizeof(struct rx_audiocap));
+		/* Clear the last audio declaration */
+		memset(&pRXCap->RxAudioCap[i + 1], 0,
+			sizeof(struct rx_audiocap));
+		pRXCap->AUD_count--;
+	}
+}
 
 int hdmitx_edid_parse(struct hdmitx_dev *hdmitx_device)
 {
@@ -2196,7 +2224,7 @@ int hdmitx_edid_parse(struct hdmitx_dev *hdmitx_device)
 
 		hdmitx_edid_block_parse(hdmitx_device, &(EDID_buf[i*128]));
 	}
-
+	edid_check_pcm_declare(&hdmitx_device->RXCap);
 /*
  * Because DTDs are not able to represent some Video Formats, which can be
  * represented as SVDs and might be preferred by Sinks, the first DTD in the

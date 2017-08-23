@@ -1732,6 +1732,9 @@ static ssize_t show_aud_cap(struct device *dev,
 	pos += snprintf(buf + pos, PAGE_SIZE,
 		"CodingType MaxChannels SamplingFreq SampleSize\n");
 	for (i = 0; i < pRXCap->AUD_count; i++) {
+		/* Ingore ReferToStreamHeader */
+		if (pRXCap->RxAudioCap[i].audio_format_code == 0)
+			continue;
 		pos += snprintf(buf + pos, PAGE_SIZE, "%s, %d ch, ",
 			aud_coding_type[pRXCap->RxAudioCap[i].
 				audio_format_code],
