@@ -1176,6 +1176,7 @@ static void  hevc_sao_wait_done(struct vdec_h264_hw_s *hw)
 				dpb_print(DECODE_ID(hw),
 				PRINT_FLAG_MMU_DETAIL,
 				"wait h265_abort_sao_4k_set_done timeout!\n");
+				break;
 			}
 		}
 		hw->frame_busy = 0;
