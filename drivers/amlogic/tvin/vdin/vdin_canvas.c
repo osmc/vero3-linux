@@ -130,7 +130,8 @@ void vdin_canvas_start_config(struct vdin_dev_s *devp)
 		(devp->format_convert == VDIN_FORMAT_CONVERT_RGB_YUV444) ||
 		(devp->format_convert == VDIN_FORMAT_CONVERT_RGB_RGB) ||
 		(devp->format_convert == VDIN_FORMAT_CONVERT_YUV_GBR) ||
-		(devp->format_convert == VDIN_FORMAT_CONVERT_YUV_BRG)) {
+		(devp->format_convert == VDIN_FORMAT_CONVERT_YUV_BRG) ||
+		(devp->force_yuv444_malloc == 1)) {
 		if (devp->source_bitdepth > 8)
 			devp->canvas_w = max_buf_width * 4;
 		else
@@ -223,7 +224,8 @@ void vdin_canvas_auto_config(struct vdin_dev_s *devp)
 		(devp->format_convert == VDIN_FORMAT_CONVERT_RGB_YUV444) ||
 		(devp->format_convert == VDIN_FORMAT_CONVERT_RGB_RGB) ||
 		(devp->format_convert == VDIN_FORMAT_CONVERT_YUV_GBR) ||
-		(devp->format_convert == VDIN_FORMAT_CONVERT_YUV_BRG)) {
+		(devp->format_convert == VDIN_FORMAT_CONVERT_YUV_BRG) ||
+		(devp->force_yuv444_malloc == 1)) {
 		if (devp->source_bitdepth > 8)
 			devp->canvas_w = devp->h_active * 4;
 		else
@@ -328,7 +330,8 @@ unsigned int vdin_cma_alloc(struct vdin_dev_s *devp)
 		(devp->format_convert == VDIN_FORMAT_CONVERT_RGB_YUV444) ||
 		(devp->format_convert == VDIN_FORMAT_CONVERT_RGB_RGB) ||
 		(devp->format_convert == VDIN_FORMAT_CONVERT_YUV_GBR) ||
-		(devp->format_convert == VDIN_FORMAT_CONVERT_YUV_BRG)) {
+		(devp->format_convert == VDIN_FORMAT_CONVERT_YUV_BRG) ||
+		(devp->force_yuv444_malloc == 1)) {
 		if (devp->source_bitdepth > 8) {
 			h_size = roundup(h_size * 4, 32);
 			devp->canvas_alin_w = h_size / 4;
@@ -452,6 +455,21 @@ void vdin_cma_release(struct vdin_dev_s *devp)
 	devp->mem_start = 0;
 	devp->mem_size = 0;
 	devp->cma_mem_alloc = 0;
+}
+/*@20170823 new add for the case of csc change after signal stable*/
+void vdin_cma_malloc_mode(struct vdin_dev_s *devp)
+{
+	unsigned int h_size, v_size;
+
+	h_size = devp->h_active;
+	v_size = devp->v_active;
+	if ((h_size <= VDIN_YUV444_MAX_CMA_WIDTH) &&
+		(v_size <= VDIN_YUV444_MAX_CMA_HEIGH) &&
+		(devp->cma_mem_mode == 1))
+		devp->force_yuv444_malloc = 1;
+	else
+		devp->force_yuv444_malloc = 0;
+
 }
 #endif
 

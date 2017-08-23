@@ -187,5 +187,15 @@ extern void vdin_dolby_addr_update(struct vdin_dev_s *devp, unsigned int index);
 extern void vdin_dolby_addr_alloc(struct vdin_dev_s *devp, unsigned int size);
 extern void vdin_dolby_addr_release(struct vdin_dev_s *devp, unsigned int size);
 extern int vdin_event_cb(int type, void *data, void *op_arg);
+extern void vdin_hdmiin_patch(struct vdin_dev_s *devp);
+extern void vdin_set_top(unsigned int offset,
+		enum tvin_port_e port,
+		enum tvin_color_fmt_e input_cfmt, unsigned int h,
+		enum bt_path_e bt_path);
+extern void vdin_set_wr_ctrl_vsync(struct vdin_dev_s *devp,
+	unsigned int offset, enum vdin_format_convert_e format_convert,
+	unsigned int color_depth_mode, unsigned int source_bitdeth,
+	unsigned int rdma_enable);
+
 #endif
 

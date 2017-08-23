@@ -701,7 +701,7 @@ static void vdin_set_meas_mux(unsigned int offset, enum tvin_port_e port_,
 	b.BT_PATH_GPIO_B:gxtvbb & gxbb
 	c.txl and txlx don't suppport bt656
 */
-static inline void vdin_set_top(unsigned int offset,
+void vdin_set_top(unsigned int offset,
 		enum tvin_port_e port,
 		enum tvin_color_fmt_e input_cfmt, unsigned int h,
 		enum bt_path_e bt_path)
@@ -1661,6 +1661,80 @@ static inline void vdin_set_wr_ctrl(struct vdin_dev_s *devp,
 	/*  swap the 2 64bits word in 128 words */
 	/*if (is_meson_gxbb_cpu())*/
 	wr_bits(offset, VDIN_WR_CTRL, 1, 19, 1);
+}
+void vdin_set_wr_ctrl_vsync(struct vdin_dev_s *devp,
+	unsigned int offset, enum vdin_format_convert_e format_convert,
+	unsigned int color_depth_mode, unsigned int source_bitdeth,
+	unsigned int rdma_enable)
+{
+	unsigned int write_format444 = 0, swap_cbcr = 0;
+	unsigned int hconv_mode, vconv_mode;
+
+	switch (format_convert)	{
+	case VDIN_FORMAT_CONVERT_YUV_YUV422:
+	case VDIN_FORMAT_CONVERT_RGB_YUV422:
+		write_format444 = 0;
+		break;
+	case VDIN_FORMAT_CONVERT_YUV_NV12:
+	case VDIN_FORMAT_CONVERT_RGB_NV12:
+		write_format444 = 2;
+		swap_cbcr = 1;
+		break;
+	case VDIN_FORMAT_CONVERT_YUV_NV21:
+	case VDIN_FORMAT_CONVERT_RGB_NV21:
+		write_format444 = 2;
+		swap_cbcr = 0;
+		break;
+	default:
+		write_format444 = 1;
+		break;
+	}
+	/*yuv422 full pack mode for 10bit*/
+	if (((format_convert == VDIN_FORMAT_CONVERT_YUV_YUV422) ||
+		(format_convert == VDIN_FORMAT_CONVERT_RGB_YUV422) ||
+		(format_convert == VDIN_FORMAT_CONVERT_GBR_YUV422) ||
+		(format_convert == VDIN_FORMAT_CONVERT_BRG_YUV422)) &&
+		color_depth_mode && (source_bitdeth > 8))
+		write_format444 = 3;
+
+	/* hconv_mode */
+	hconv_mode = 0;
+	/* vconv_mode */
+	vconv_mode = 0;
+	if (write_format444 == 2) {
+		hconv_mode = 2;
+		vconv_mode = 0;
+	} else if (write_format444 == 1) {
+		vconv_mode = 3;
+	} else {
+		swap_cbcr = 0;
+	}
+#ifdef CONFIG_AML_RDMA
+	if (rdma_enable) {
+		rdma_write_reg_bits(devp->rdma_handle,
+			VDIN_WR_CTRL+devp->addr_offset,
+			hconv_mode, HCONV_MODE_BIT, HCONV_MODE_WID);
+		rdma_write_reg_bits(devp->rdma_handle,
+			VDIN_WR_CTRL+devp->addr_offset,
+			vconv_mode, VCONV_MODE_BIT, VCONV_MODE_WID);
+		rdma_write_reg_bits(devp->rdma_handle,
+			VDIN_WR_CTRL+devp->addr_offset,
+			swap_cbcr, SWAP_CBCR_BIT, SWAP_CBCR_WID);
+		rdma_write_reg_bits(devp->rdma_handle,
+			VDIN_WR_CTRL+devp->addr_offset,
+			write_format444, WR_FMT_BIT, WR_FMT_WID);
+	} else
+#endif
+	{
+	wr_bits(offset, VDIN_WR_CTRL, hconv_mode,
+		HCONV_MODE_BIT, HCONV_MODE_WID);
+	wr_bits(offset, VDIN_WR_CTRL, vconv_mode,
+		VCONV_MODE_BIT, VCONV_MODE_WID);
+	wr_bits(offset, VDIN_WR_CTRL, swap_cbcr,
+		SWAP_CBCR_BIT, SWAP_CBCR_WID);
+	wr_bits(offset, VDIN_WR_CTRL, write_format444,
+		WR_FMT_BIT, WR_FMT_WID);
+	}
 }
 
 /* set vdin_wr_mif for video only */

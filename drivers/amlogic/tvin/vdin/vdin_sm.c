@@ -171,6 +171,7 @@ static void hdmirx_color_fmt_handler(struct vdin_dev_s *devp)
 	struct tvin_state_machine_ops_s *sm_ops;
 	enum tvin_port_e port = TVIN_PORT_NULL;
 	enum tvin_color_fmt_e cur_color_fmt, pre_color_fmt;
+	enum tvin_color_fmt_e cur_dest_color_fmt, pre_dest_color_fmt;
 	struct tvin_sig_property_s *prop, *pre_prop;
 	unsigned int vdin_hdr_flag, pre_vdin_hdr_flag;
 	unsigned int vdin_fmt_range, pre_vdin_fmt_range;
@@ -197,6 +198,9 @@ static void hdmirx_color_fmt_handler(struct vdin_dev_s *devp)
 		cur_color_fmt = prop->color_format;
 		pre_color_fmt = pre_prop->color_format;
 
+		cur_dest_color_fmt = prop->dest_cfmt;
+		pre_dest_color_fmt = pre_prop->dest_cfmt;
+
 		vdin_hdr_flag = prop->vdin_hdr_Flag;
 		pre_vdin_hdr_flag = pre_prop->vdin_hdr_Flag;
 
@@ -205,13 +209,14 @@ static void hdmirx_color_fmt_handler(struct vdin_dev_s *devp)
 
 		if ((cur_color_fmt != pre_color_fmt) ||
 			(vdin_hdr_flag != pre_vdin_hdr_flag) ||
-			(vdin_fmt_range != pre_vdin_fmt_range)
-			) {
-			pr_info("[smr.%d] color fmt(%d->%d), hdr_flag(%d->%d)csc_cfg:0x%x\n",
-					devp->index,
-					pre_color_fmt, cur_color_fmt,
-					pre_vdin_hdr_flag, vdin_hdr_flag,
-					devp->csc_cfg);
+			(vdin_fmt_range != pre_vdin_fmt_range) ||
+			(cur_dest_color_fmt != pre_dest_color_fmt)) {
+			pr_info("[smr.%d] cur color fmt(%d->%d), hdr_flag(%d->%d), dest color fmt(%d->%d), csc_cfg:0x%x\n",
+				devp->index,
+				pre_color_fmt, cur_color_fmt,
+				pre_vdin_hdr_flag, vdin_hdr_flag,
+				pre_dest_color_fmt, cur_dest_color_fmt,
+				devp->csc_cfg);
 			vdin_get_format_convert(devp);
 			devp->csc_cfg = 1;
 		} else

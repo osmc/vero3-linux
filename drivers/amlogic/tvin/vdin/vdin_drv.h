@@ -44,7 +44,7 @@
 #include "vdin_vf.h"
 #include "vdin_regs.h"
 
-#define VDIN_VER "Ref.2017/09/08"
+#define VDIN_VER "Ref.2017/09/05"
 
 /*the counter of vdin*/
 #define VDIN_MAX_DEVS			2
@@ -245,6 +245,10 @@ struct vdin_dev_s {
 	struct page			*venc_pages;
 	unsigned int			cma_mem_size;/*BYTE*/
 	unsigned int			cma_mem_alloc;
+	/*cma_mem_mode:0:according to input size and output fmt;
+	**1:according to input size and ouput fmt force as YUV444*/
+	unsigned int			cma_mem_mode;
+	unsigned int			force_yuv444_malloc;
 #endif
 	/* bit0: enable/disable; bit4: luma range info */
 	unsigned int            csc_cfg;

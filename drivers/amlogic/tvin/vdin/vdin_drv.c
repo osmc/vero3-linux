@@ -696,6 +696,22 @@ static inline void vdin_set_source_bitdepth(struct vdin_dev_s *devp,
 		(devp->format_convert == VDIN_FORMAT_CONVERT_BRG_YUV422)))
 		vf->bitdepth |= FULL_PACK_422_MODE;
 }
+/*@20170905new add for support dynamic adj dest_format yuv422/yuv444,
+*not support nv21 dynamic adj!!!*/
+static void vdin_source_bitdepth_reinit(struct vdin_dev_s *devp)
+{
+	int i = 0;
+	struct vf_entry *master;
+	struct vframe_s *vf;
+	struct vf_pool *p = devp->vfp;
+
+	for (i = 0; i < p->size; ++i) {
+		master = vf_get_master(p, i);
+		vf = &master->vf;
+		vdin_set_source_bitdepth(devp, vf);
+	}
+}
+
 
 /*
 *based on the bellow parameters:
@@ -880,15 +896,12 @@ void vdin_start_dec(struct vdin_dev_s *devp)
 	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_TXL)
 		vdin_fix_nonstd_vsync(devp);
 
-#ifdef CONFIG_AML_RDMA
-	if (rdma_enable && devp->rdma_handle > 0)
-		devp->flags |= VDIN_FLAG_RDMA_ENABLE;
-#endif
     /*reverse / disable reverse write buffer*/
 	vdin_wr_reverse(devp->addr_offset,
 				devp->parm.h_reverse,
 				devp->parm.v_reverse);
 #ifdef CONFIG_CMA
+	vdin_cma_malloc_mode(devp);
 	if (vdin_cma_alloc(devp)) {
 		pr_err(KERN_ERR "\nvdin%d %s fail for alloc fail!!!\n",
 			devp->index, __func__);
@@ -962,6 +975,12 @@ void vdin_start_dec(struct vdin_dev_s *devp)
 		((devp->flags & VDIN_FLAG_SNOW_FLAG) == 0)))
 		devp->frontend->dec_ops->start(devp->frontend,
 				devp->parm.info.fmt);
+
+#ifdef CONFIG_AML_RDMA
+	/*it is better put after all reg init*/
+	if (rdma_enable && devp->rdma_handle > 0)
+		devp->flags |= VDIN_FLAG_RDMA_ENABLE;
+#endif
 
 	/* register provider, so the receiver can get the valid vframe */
 	udelay(start_provider_delay);
@@ -1810,10 +1829,25 @@ irqreturn_t vdin_isr(int irq, void *dev_id)
 	if (devp->csc_cfg != 0) {
 		prop = &devp->prop;
 		pre_prop = &devp->pre_prop;
-		vdin_set_matrix(devp);
+		if ((prop->color_format != pre_prop->color_format) ||
+			(prop->vdin_hdr_Flag != pre_prop->vdin_hdr_Flag) ||
+			(prop->color_fmt_range != pre_prop->color_fmt_range))
+			vdin_set_matrix(devp);
+		if (prop->dest_cfmt != pre_prop->dest_cfmt) {
+			vdin_set_bitdepth(devp);
+			vdin_source_bitdepth_reinit(devp);
+			vdin_set_wr_ctrl_vsync(devp, devp->addr_offset,
+				devp->format_convert,
+				devp->color_depth_mode, devp->source_bitdepth,
+				devp->flags&VDIN_FLAG_RDMA_ENABLE);
+			vdin_set_top(devp->addr_offset, devp->parm.port,
+				devp->prop.color_format, devp->h_active,
+				devp->bt_path);
+		}
 		pre_prop->color_format = prop->color_format;
 		pre_prop->vdin_hdr_Flag = prop->vdin_hdr_Flag;
 		pre_prop->color_fmt_range = prop->color_fmt_range;
+		pre_prop->dest_cfmt = prop->dest_cfmt;
 	}
 	/* change cutwindow */
 	if ((devp->cutwindow_cfg != 0) && (devp->auto_cutwindow_en == 1)) {
@@ -3075,6 +3109,9 @@ static int vdin_drv_probe(struct platform_device *pdev)
 	if (vdevp->index == 0) {
 		vdevp->auto_cutwindow_en = 1;
 		vdevp->auto_ratio_en = 1;
+		#ifdef CONFIG_CMA
+		vdevp->cma_mem_mode = 1;
+		#endif
 	}
 	vdevp->rdma_enable = rdma_enable;
 	vdevp->game_mode = game_mode;

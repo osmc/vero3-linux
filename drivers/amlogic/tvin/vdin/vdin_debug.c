@@ -457,6 +457,8 @@ static void vdin_dump_state(struct vdin_dev_s *devp)
 	pr_info("auto_ratio_en:%d\n", devp->auto_ratio_en);
 	pr_info("cma_mem_alloc:%d\n", devp->cma_mem_alloc);
 	pr_info("cma_mem_size:0x%x\n", devp->cma_mem_size);
+	pr_info("cma_mem_mode:%d\n", devp->cma_mem_mode);
+	pr_info("force_yuv444_malloc:%d\n", devp->force_yuv444_malloc);
 	vdin_dump_vf_state(devp->vfp);
 	if (vf) {
 		pr_info("current vframe index(%u):\n", vf->index);
@@ -1371,6 +1373,21 @@ start_chk:
 			devp->vshrk_en = val;
 			pr_info("vshrk_en(%d):%d\n\n", devp->index,
 				devp->vshrk_en);
+		}
+	} else if (!strcmp(parm[0], "cma_mem_mode")) {
+		if (!parm[1]) {
+			kfree(buf_orig);
+			pr_err("miss parameters .\n");
+			pr_err("usage: echo cma_mem_mode 0(1) /sys/class/vdin/vdinx/attr.\n");
+			return len;
+		} else {
+			if (kstrtoul(parm[1], 10, &val) < 0) {
+				kfree(buf_orig);
+				return -EINVAL;
+			}
+			devp->cma_mem_mode = val;
+			pr_info("cma_mem_mode(%d):%d\n\n", devp->index,
+				devp->cma_mem_mode);
 		}
 	} else {
 		pr_info("unknow command\n");
