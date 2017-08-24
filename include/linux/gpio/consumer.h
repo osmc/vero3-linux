@@ -7,6 +7,12 @@
 struct device;
 struct gpio_chip;
 
+enum gpiod_pull_type {
+	GPIOD_PULL_DOWN = 0,
+	GPIOD_PULL_UP = 1,
+	GPIOD_PULL_DIS = 2,
+};
+
 /**
  * Opaque descriptor for a GPIO. These are obtained using gpiod_get() and are
  * preferable to the old integer-based handles.

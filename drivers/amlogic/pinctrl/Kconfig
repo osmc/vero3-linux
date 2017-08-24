@@ -6,6 +6,7 @@ config PINCTRL_AMLOGIC
     select PINCTRL
     select PINMUX
     select PINCONF
+    select GENERIC_PINCONF
     select ARCH_REQUIRE_GPIOLIB
     select REGMAP_MMIO
     help

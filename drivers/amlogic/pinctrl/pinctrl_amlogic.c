@@ -154,7 +154,7 @@ static void amlogic_pin_dbg_show(struct pinctrl_dev *pctldev,
 }
 #endif
 #if CONFIG_OF
-void amlogic_pinctrl_dt_free_map(struct pinctrl_dev *pctldev,
+static void amlogic_pinctrl_dt_free_map(struct pinctrl_dev *pctldev,
 			       struct pinctrl_map *map, unsigned num_maps)
 {
 	u32 i;
@@ -167,7 +167,7 @@ void amlogic_pinctrl_dt_free_map(struct pinctrl_dev *pctldev,
 
 
 
-int amlogic_pinctrl_dt_node_to_map(struct pinctrl_dev *pctldev,
+static int amlogic_pinctrl_dt_node_to_map(struct pinctrl_dev *pctldev,
 				 struct device_node *np,
 				 struct pinctrl_map **map, unsigned *num_maps)
 {
@@ -236,13 +236,13 @@ free_group:
 	return ret;
 }
 #else
-int amlogic_pinctrl_dt_node_to_map(struct pinctrl_dev *pctldev,
+static int amlogic_pinctrl_dt_node_to_map(struct pinctrl_dev *pctldev,
 				 struct device_node *np_config,
 				 struct pinctrl_map **map, unsigned *num_maps)
 {
 	return 0;
 }
-void amlogic_pinctrl_dt_free_map(struct pinctrl_dev *pctldev,
+static void amlogic_pinctrl_dt_free_map(struct pinctrl_dev *pctldev,
 			       struct pinctrl_map *map, unsigned num_maps)
 {
 	return;
@@ -379,21 +379,21 @@ static struct pinctrl_gpio_range amlogic_gpio_ranges = {
 };
 
 
-int amlogic_pin_config_get(struct pinctrl_dev *pctldev,
+static int amlogic_pin_config_get(struct pinctrl_dev *pctldev,
 			unsigned pin,
 			unsigned long *config)
 {
 	return 0;
 }
 
-int amlogic_pin_config_set(struct pinctrl_dev *pctldev,
+static int amlogic_pin_config_set(struct pinctrl_dev *pctldev,
 			       unsigned pin,
 			       unsigned long *configs,
 			       unsigned num_configs)
 {
 	return 0;
 }
-int meson_config_pullup(unsigned int pin,
+static int meson_config_pullup(unsigned int pin,
 					struct meson_domain *domain,
 					struct meson_bank *bank,
 					unsigned int config)
@@ -415,7 +415,7 @@ int meson_config_pullup(unsigned int pin,
 	return ret;
 
 }
-int amlogic_pin_config_group_set(struct pinctrl_dev *pctldev,
+static int amlogic_pin_config_group_set(struct pinctrl_dev *pctldev,
 				     unsigned group,
 				     unsigned long *configs,
 				     unsigned num_configs)

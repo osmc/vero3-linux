@@ -633,12 +633,35 @@ static ssize_t gpio_active_low_store(struct device *dev,
 	return status ? : size;
 }
 
+
+static ssize_t pull_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct gpio_desc *desc = dev_get_drvdata(dev);
+	ssize_t    status;
+
+	mutex_lock(&sysfs_lock);
+	if (sysfs_streq(buf, "disable"))
+		status = gpiod_set_pullup(desc, GPIOD_PULL_DIS);
+	else if (sysfs_streq(buf, "down"))
+		status = gpiod_set_pullup(desc, GPIOD_PULL_DOWN);
+	else if (sysfs_streq(buf, "up"))
+		status = gpiod_set_pullup(desc, GPIOD_PULL_UP);
+	else
+		status = -EINVAL;
+	mutex_unlock(&sysfs_lock);
+
+	return status ? : size;
+}
+static DEVICE_ATTR_WO(pull);
+
 static const DEVICE_ATTR(active_low, 0644,
 		gpio_active_low_show, gpio_active_low_store);
 
 static const struct attribute *gpio_attrs[] = {
 	&dev_attr_value.attr,
 	&dev_attr_active_low.attr,
+	&dev_attr_pull.attr,
 	NULL,
 };
 
