@@ -389,20 +389,25 @@ static unsigned int vbi_vcnt_search(struct vbi_dev_s *devp)
 	unsigned int i, j;
 	unsigned char burst_data[VBI_WRITE_BURST_BYTE] = {0};
 	unsigned char burst_data_vcnt[VBI_WRITE_BURST_BYTE] = {0};
-	unsigned int match_cnt, ret;
-	ret = 0;
+	unsigned int match_cnt = 0;
+	unsigned int ret = 0;
+
 	for (i = 0; i < VBI_WRITE_BURST_BYTE; i++) {
 		burst_data_vcnt[i] = 0;
 		burst_data[i] = 0;
 	}
 	burst_data_vcnt[0] = vcnt&0xff;
 	burst_data_vcnt[1] = (vcnt >> 8)&0xff;
+	if (rptr >= devp->pac_addr_end + 1)
+		rptr = devp->pac_addr_start;
 	for (i = 0; i < size; i += VBI_WRITE_BURST_BYTE) {
-		if (rptr >= devp->pac_addr_end + 1)
-			rptr = devp->pac_addr_start;
 		match_cnt = 0;
 		for (j = 0; j < VBI_WRITE_BURST_BYTE; j++) {
-			burst_data[j] = *(rptr+i+j);
+			if (rptr+i+j >= devp->pac_addr_end + 1)
+				burst_data[j] = *(rptr+i+j-devp->pac_addr_end+
+					devp->pac_addr_start-1);
+			else
+				burst_data[j] = *(rptr+i+j);
 			if (burst_data[j] != burst_data_vcnt[j]) {
 				match_cnt = 0;
 				break;
@@ -417,13 +422,10 @@ static unsigned int vbi_vcnt_search(struct vbi_dev_s *devp)
 		vcnt = 1;
 	else
 		vcnt++;
-	if ((i < size) && i >= VBI_WRITE_BURST_BYTE &&
-		match_cnt == VBI_WRITE_BURST_BYTE) {
+	if ((i < size) && (match_cnt == VBI_WRITE_BURST_BYTE))
 		ret = i + VBI_WRITE_BURST_BYTE;
-		return ret;
-	} else {
-		return ret;
-	}
+
+	return ret;
 }
 static void vbi_slicer_task(unsigned long arg)
 {
