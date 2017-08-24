@@ -1483,13 +1483,6 @@ enum tvin_sig_fmt_e hdmirx_hw_get_fmt(void)
 	return fmt;
 }
 
-void rx_set_eq_run_state(enum run_eq_state state)
-{
-	run_eq_flag = state;
-	rx_pr("run_eq_flag: %d\n", run_eq_flag);
-}
-
-
 bool rx_sig_is_ready(void)
 {
 	if (rx.state == FSM_SIG_READY)
@@ -2117,7 +2110,7 @@ void hdmirx_hw_monitor(void)
 		default:
 			/*if (hdcp22_on)
 				esm_recovery();*/
-			run_eq_flag = E_EQ_START;
+			rx_set_eq_run_state(E_EQ_START);
 			rx.state = FSM_WAIT_EQ_DONE;
 			rx_pr("EQ_INIT-->FSM_WAIT_EQ_DONE\n");
 			break;
@@ -2247,6 +2240,7 @@ void hdmirx_hw_monitor(void)
 				rx.no_signal = false;
 				memset(&rx.aud_info, 0,
 					sizeof(struct aud_info_s));
+				rx_set_eq_run_state(E_EQ_PASS);
 				hdmirx_config_video();
 				hdmirx_audio_fifo_rst();
 				rx_pr("STABLE->READY\n");

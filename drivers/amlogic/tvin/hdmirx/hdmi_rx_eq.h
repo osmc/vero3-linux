@@ -132,6 +132,7 @@ void hdmirx_phy_conf_eq_setting(int rx_port_sel,
 	int ch0Setting,	int ch1Setting, int ch2Setting);
 void eq_cfg(void);
 void eq_run(void);
+void rx_set_eq_run_state(enum run_eq_state state);
 
 
 /*function declare end*/

@@ -188,6 +188,15 @@ uint16_t hdmi_rx_phy_CoreStatusCh2(void)
 	return hdmirx_rd_phy(PHY_CORESTATUS_CH2);
 }
 
+void rx_set_eq_run_state(enum run_eq_state state)
+{
+	if (state <= E_EQ_FAIL) {
+		run_eq_flag = state;
+		rx_pr("run_eq_flag: %d\n", run_eq_flag);
+	} else
+		rx_pr("run_eq_flag err: %d\n", run_eq_flag);
+}
+
 void eq_algorithm(struct work_struct *work)
 {
 	unsigned int i;
@@ -221,7 +230,6 @@ void eq_algorithm(struct work_struct *work)
 			rx_pr("EQ fail-retry\n");
 	}
 	eq_cfg();
-	run_eq_flag = E_EQ_PASS;
 	return;
 }
 
