@@ -249,6 +249,10 @@ static unsigned int enable_itu_t35 = 1;
 
 static unsigned int frmbase_cont_bitlevel = 0x40;
 
+static unsigned int frmbase_cont_bitlevel2 = 0x1;
+
+static void vmh264_dump_state(struct vdec_s *vdec);
+
 #define is_in_parsing_state(status) \
 		((status == H264_ACTION_SEARCH_HEAD) || \
 			((status & 0xf0) == 0x80))
@@ -1305,6 +1309,7 @@ int get_free_buf_idx(struct vdec_s *vdec)
 	struct vdec_h264_hw_s *hw = (struct vdec_h264_hw_s *)vdec->private;
 	int buf_total = BUFSPEC_POOL_SIZE;
 	spin_lock_irqsave(&hw->bufspec_lock, flags);
+	/*hw->start_search_pos = 0;*/
 	for (i = hw->start_search_pos; i < buf_total; i++) {
 		if (mmu_enable)
 			addr = hw->buffer_spec[i].alloc_header_addr;
@@ -1337,6 +1342,11 @@ int get_free_buf_idx(struct vdec_s *vdec)
 	dpb_print(DECODE_ID(hw), PRINT_FLAG_DPB_DETAIL,
 			"%s, buf_spec_num %d\n", __func__, index);
 
+	if (index < 0) {
+		dpb_print(DECODE_ID(hw), PRINT_FLAG_ERROR,
+			"%s fail\n", __func__);
+		vmh264_dump_state(vdec);
+	}
 	return index;
 }
 
@@ -3265,6 +3275,10 @@ static bool is_buffer_available(struct vdec_s *vdec)
 		is_there_unused_frame_from_dpb(&p_H264_Dpb->mDPB)
 		);
 		buffer_available = 0;
+		if (dpb_is_debug(DECODE_ID(hw),
+			DEBUG_DISABLE_RUNREADY_RMBUF))
+			return buffer_available;
+
 		if ((error_proc_policy & 0x4) &&
 			(error_proc_policy & 0x8)) {
 			if ((kfifo_len(&hw->display_q) <= 0) &&
@@ -3362,6 +3376,20 @@ static irqreturn_t vh264_isr_thread_fn(struct vdec_s *vdec)
 		/*unsigned char is_idr;*/
 		unsigned short *p = (unsigned short *)hw->lmem_addr;
 		reset_process_time(hw);
+
+		if (input_frame_based(vdec) &&
+			frmbase_cont_bitlevel2 != 0 &&
+			READ_VREG(VIFF_BIT_CNT) <
+			frmbase_cont_bitlevel2 &&
+			hw->get_data_count >= 0x70000000) {
+			dpb_print(DECODE_ID(hw), PRINT_FLAG_VDEC_STATUS,
+			"%s H264_SLICE_HEAD_DONE with small bitcnt %d, goto empty_proc\n",
+			__func__,
+			READ_VREG(VIFF_BIT_CNT));
+
+			goto empty_proc;
+		}
+
 		dma_sync_single_for_cpu(
 			amports_get_dma_device(),
 			hw->lmem_addr_remap,
@@ -5660,6 +5688,10 @@ MODULE_PARM_DESC(first_i_policy, "\n amvdec_h264 first_i_policy\n");
 
 module_param(frmbase_cont_bitlevel, uint, 0664);
 MODULE_PARM_DESC(frmbase_cont_bitlevel,
+	"\n amvdec_h264 frmbase_cont_bitlevel\n");
+
+module_param(frmbase_cont_bitlevel2, uint, 0664);
+MODULE_PARM_DESC(frmbase_cont_bitlevel2,
 	"\n amvdec_h264 frmbase_cont_bitlevel\n");
 
 module_param(udebug_flag, uint, 0664);

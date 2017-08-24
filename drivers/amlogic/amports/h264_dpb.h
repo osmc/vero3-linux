@@ -16,6 +16,7 @@
 #define PRINT_FRAMEBASE_DATA          0x0100
 #define PRINT_FLAG_DEBUG_POC          0x0200
 #define RRINT_FLAG_RPM                0x0400
+#define DEBUG_DISABLE_RUNREADY_RMBUF  0x0800
 #define DISABLE_ERROR_HANDLE          0x10000
 #define DEBUG_DUMP_STAT               0x80000
 
