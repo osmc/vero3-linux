@@ -29,7 +29,7 @@
 struct gate_swtch_node {
 	struct reset_control *reset_ctl;
 	const char *name;
-	spinlock_t lock;
+	struct mutex mutex;
 	unsigned long flags;
 	int ref_count;
 };
@@ -78,16 +78,14 @@ int amports_clock_gate_init(struct device *dev)
 				gates[i].reset_ctl);
 		}
 		gates[i].ref_count = 0;
-		spin_lock_init(&gates[i].lock);
+		mutex_init(&gates[i].mutex);
 	}
 	return 0;
 }
 
 static int amports_gate_reset(struct gate_swtch_node *gate_node, int enable)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&gate_node->lock, flags);
+	mutex_lock(&gate_node->mutex);
 	if (enable) {
 		if (DEBUG_REF)
 			pr_info("amports_gate_reset,count: %d\n",
@@ -106,7 +104,7 @@ static int amports_gate_reset(struct gate_swtch_node *gate_node, int enable)
 			reset_control_assert(
 				gate_node->reset_ctl);
 	}
-	spin_unlock_irqrestore(&gate_node->lock, flags);
+	mutex_unlock(&gate_node->mutex);
 	return 0;
 }
 
