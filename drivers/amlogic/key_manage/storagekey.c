@@ -113,7 +113,7 @@ EXPORT_SYMBOL(storage_ops_write);
 int32_t amlkey_init(uint8_t *seed, uint32_t len)
 {
 	int32_t ret = 0;
-	uint32_t buffer_size, actual_size;
+	uint32_t actual_size;
 
 #ifndef OTHER_METHOD_CALL
 	ret = store_operation_init();
@@ -131,7 +131,8 @@ int32_t amlkey_init(uint8_t *seed, uint32_t len)
 	}
 
 	/* get buffer from bl31 */
-	storagekey_info.buffer = secure_storage_getbuffer(&buffer_size);
+	storagekey_info.buffer = secure_storage_getbuffer(
+				&storagekey_info.size);
 	if (storagekey_info.buffer == NULL) {
 		pr_err("%s() %d: can't get buffer from bl31!\n",
 				__func__, __LINE__);
