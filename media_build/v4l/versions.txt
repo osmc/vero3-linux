@@ -7,10 +7,6 @@ DVB_CXD2880
 # needs i2c_mux_alloc
 DVB_LGDT3306A
 
-[4.4.0]
-# needs regmap_write_bits
-DVB_CXD2820R
-
 [4.2.0]
 # needs led_trigger_remove
 V4L2_FLASH_LED_CLASS
