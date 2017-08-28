@@ -51,13 +51,22 @@ struct NR4_PARM_s {
 	unsigned short border_offset;
 };
 
+struct CUE_PARM_s {
+	int glb_mot_framethr;
+	int glb_mot_fieldnum;
+	int glb_mot_fieldthr;
+	int field_count;
+	int frame_count;
+};
+
 struct NR_PARM_s {
 	unsigned short width;
 	unsigned short height;
-	unsigned short nr_level;
 	unsigned short frame_count;
+	bool           prog_flag;
 	struct DNR_PARM_s *pdnr_parm;
 	struct NR4_PARM_s *pnr4_parm;
+	struct CUE_PARM_s *pcue_parm;
 };
 #ifndef SGN2
 #define SGN2(x) ((x) > 0 ? 1 : ((x) < 0 ? -1 : 0))
@@ -118,12 +127,14 @@ int ver_blk_ofst_calc_sw(int *pVbOfVldCnt,
 			 int prm_vbof_vldcntthd,
 			 int nRow,
 			 int nCol);
-/* software parameters initialization£¬ initializing before used */
+/* software parameters initialization before used */
+void adaptive_cue_adjust(unsigned int frame_diff, unsigned int field_diff);
 void nr_hw_init(void);
 void nr_gate_control(bool gate);
 void nr_drv_init(struct device *dev);
 void nr_drv_uninit(struct device *dev);
 void nr_process_in_irq(void);
-void nr_all_config(unsigned short nCol, unsigned short nRow);
+void nr_all_config(unsigned short nCol, unsigned short nRow,
+	unsigned short type);
 #endif
 

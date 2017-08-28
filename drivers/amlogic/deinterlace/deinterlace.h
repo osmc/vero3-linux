@@ -338,7 +338,7 @@ void enable_mc_di_pre(struct DI_MC_MIF_s *di_mcinford_mif,
 	struct DI_MC_MIF_s *di_mcinfowr_mif,
 	struct DI_MC_MIF_s *di_mcvecwr_mif, int urgent);
 void enable_mc_di_post(struct DI_MC_MIF_s *di_mcvecrd_mif,
-	int urgent, bool reverse);
+	int urgent, bool reverse, int invert_mv);
 #endif
 
 void read_new_pulldown_info(struct FlmModReg_t *pFMRegp);

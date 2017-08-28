@@ -3337,6 +3337,10 @@ ycbcr blending gain for cbcr in ycbcr. default = 0 */
 #define MCDI_MCVECRD_CANVAS_SIZE                   ((0x2f66))
 #define MCDI_MCINFOWR_CANVAS_SIZE                  ((0x2f67))
 #define MCDI_MCINFORD_CANVAS_SIZE                  ((0x2f68))
+#define MCDI_LMVLCKSTEXT_0                         ((0x2f69))
+#define MCDI_LMVLCKSTEXT_1                         ((0x2f6a))
+#define MCDI_LMVLCKEDEXT_0                         ((0x2f6b))
+#define MCDI_LMVLCKEDEXT_1                         ((0x2f6c))
 #define MCDI_MCVECWR_X                             ((0x2f92))
 #define MCDI_MCVECWR_Y                             ((0x2f93))
 #define MCDI_MCVECWR_CTRL                          ((0x2f94))
@@ -3724,6 +3728,7 @@ column cofidence value 5. initial = 0 */
 #define DIPD_RO_COMB_18					0x2fe8
 #define DIPD_RO_COMB_19					0x2fe9
 #define DIPD_RO_COMB_20					0x2fea
+#define DIPD_COMB_CTRL6					0x2feb
 /* nr3 */
 #define NR3_MODE					0x2ff0
 		/* d010bfc0 */

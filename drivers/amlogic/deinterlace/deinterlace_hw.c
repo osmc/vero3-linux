@@ -35,7 +35,6 @@
 uint di_mtn_1_ctrl1 = 0xa0202015;
 uint mtn_ctrl1;
 
-static bool cue_enable;
 
 pd_detect_threshold_t win_pd_th[MAX_WIN_NUM];
 pd_win_prop_t pd_win_prop[MAX_WIN_NUM];
@@ -51,9 +50,6 @@ module_param(frame_dynamic_dbg, bool, 0664);
 static int frame_dynamic_level;
 MODULE_PARM_DESC(frame_dynamic_level, "\n frame_dynamic_level\n");
 module_param(frame_dynamic_level, int, 0664);
-
-MODULE_PARM_DESC(cue_enable, "\n cue_enable\n");
-module_param(cue_enable, bool, 0664);
 
 static unsigned short mcen_mode = 1;
 MODULE_PARM_DESC(mcen_mode, "\n mcen mode\n");
@@ -155,6 +151,10 @@ static void ma_di_init(void)
 	DI_Wr(DI_MTN_1_CTRL1, 0xa0202015);
 	/* invert chan2 field num */
 	DI_Wr(DI_MTN_CTRL1, (1 << 17) | 2);
+		/* no invert chan2 field num from gxlx*/
+	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXLX))
+		DI_Wr(DI_MTN_CTRL1, 2);
+
 }
 
 static void ei_hw_init(void)
@@ -193,6 +193,8 @@ void init_field_mode(unsigned short height)
 		DI_Wr(DIPD_COMB_CTRL5, 0x04041020);
 	else
 		DI_Wr(DIPD_COMB_CTRL5, 0x04040804);
+	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXLX))
+		DI_Wr(DIPD_COMB_CTRL6, 0x00107064);
 }
 void mc_pre_mv_irq(void)
 {
@@ -212,6 +214,7 @@ void mc_pre_mv_irq(void)
 	} else {
 		RDMA_WR_BITS(MCDI_CTRL_MODE, 1, 15, 1);
 	}
+
 	RDMA_WR_BITS(MCDI_FIELD_MV, val1, 8, 6);
 
 	val1 = RDMA_RD_BITS(MCDI_RO_GMV_LOCK_FLG, 0, 1);
@@ -234,6 +237,123 @@ void mc_pre_mv_irq(void)
 
 	val1 = RDMA_RD(MCDI_RO_FLD_LUMA_AVG_SUM);
 	RDMA_WR(MCDI_FIELD_LUMA_AVG_SUM_1, val1);
+
+}
+
+static void lmvs_init(struct mcinfo_lmv_s *lmvs, unsigned short lmv)
+{
+		lmvs->lock_flag = (lmv>>14) & 3;
+		lmvs->lmv = (lmv>>8)&63;
+		lmvs->lmv = lmvs->lmv > 32 ? (32 - lmvs->lmv) : lmvs->lmv;
+		lmvs->lock_cnt = (lmv & 255);
+}
+
+static bool lmv_lock_win_en;
+module_param_named(lmv_lock_win_en, lmv_lock_win_en, bool, 0644);
+
+void calc_lmv_init(void)
+{
+	if (lmv_lock_win_en) {
+		RDMA_WR_BITS(MCDI_REL_DET_LMV_DIF_CHK, 3, 12, 2);
+		RDMA_WR_BITS(MCDI_LMVLCKSTEXT_1, 3, 30, 2);
+	} else {
+		RDMA_WR_BITS(MCDI_REL_DET_LMV_DIF_CHK, 0, 12, 2);
+		RDMA_WR_BITS(MCDI_LMVLCKSTEXT_1, 0, 30, 2);
+	}
+}
+
+static short lmv_dist = 5;
+module_param_named(lmv_dist, lmv_dist, short, 0644);
+
+static unsigned short pr_mcinfo_cnt;
+module_param_named(pr_mcinfo_cnt, pr_mcinfo_cnt, ushort, 0644);
+static struct mcinfo_lmv_s lines_mv[540];
+static short offset_lmv = 100;
+module_param_named(offset_lmv, offset_lmv, short, 0644);
+
+void calc_lmv_base_mcinfo(unsigned int vf_height, unsigned long mcinfo_adr)
+{
+	unsigned short i, top_str, bot_str, top_end, bot_end, j = 0;
+	unsigned short *mcinfo_vadr = NULL, lck_num;
+	unsigned short flg_m1 = 0, flg_i = 0, nLmvLckSt = 0;
+	unsigned short lmv_lckstext[3] = {0, 0, 0}, nLmvLckEd;
+	unsigned short lmv_lckedext[3] = {0, 0, 0}, nLmvLckNum;
+
+	mcinfo_vadr = (unsigned short *)phys_to_virt(mcinfo_adr);
+	if (!lmv_lock_win_en)
+		return;
+	for (i = 0; i < (vf_height>>1); i++) {
+		lmvs_init(&lines_mv[i], *(mcinfo_vadr+i));
+		j = i + (vf_height>>1);
+		lmvs_init(&lines_mv[j], *(mcinfo_vadr+i+272));
+		if (pr_mcinfo_cnt && j < (vf_height - 10) &&
+			j > (vf_height - offset_lmv)) {
+			pr_info("MCINFO[%u]=0x%x\t", j,
+				*(mcinfo_vadr + i + 272));
+			if (i%16 == 0)
+				pr_info("\n");
+		}
+	}
+	pr_mcinfo_cnt ? pr_mcinfo_cnt-- : (pr_mcinfo_cnt = 0);
+	top_str = 0;
+	top_end = offset_lmv;
+	i = top_str;
+	j = 0;
+	lck_num = Rd_reg_bits(MCDI_LMVLCKSTEXT_1, 16, 12);
+
+	while (i < top_end) {
+		flg_m1 = (i == top_str) ? 0 :
+			(lines_mv[i-1].lock_flag > 0);
+		flg_i  = (i == top_end - 1) ? 0 :
+			lines_mv[i].lock_flag > 0;
+		if (!flg_m1 && flg_i) {
+			nLmvLckSt = (j == 0) ? i : ((i < (lmv_lckedext[j-1] +
+				lmv_dist)) ? lmv_lckstext[j-1] : i);
+			j = (nLmvLckSt != i) ? (j - 1) : j;
+		} else if (flg_m1 && !flg_i) {
+			nLmvLckEd = i;
+			nLmvLckNum = (nLmvLckEd - nLmvLckSt + 1);
+			if (nLmvLckNum >= lck_num) {
+				lmv_lckstext[j] = nLmvLckSt;
+				lmv_lckedext[j] = nLmvLckEd;
+				j++;
+			}
+		}
+		i++;
+		if (j > 2)
+			break;
+	}
+
+	bot_str = vf_height - offset_lmv - 1;
+	bot_end = vf_height;
+	i = bot_str;
+	while (i < bot_end && j < 3) {
+		flg_m1 = (i == bot_str) ? 0 :
+			(lines_mv[i-1].lock_flag > 0);
+		flg_i  = (i == bot_end - 1) ? 0 :
+			lines_mv[i].lock_flag > 0;
+		if (!flg_m1 && flg_i) {
+			nLmvLckSt = (j == 0) ? i : ((i < (lmv_lckedext[j-1] +
+				lmv_dist)) ? lmv_lckstext[j-1] : i);
+			j = (nLmvLckSt != i) ? (j - 1) : j;
+		} else if (flg_m1 && !flg_i) {
+			nLmvLckEd = i;
+			nLmvLckNum = (nLmvLckEd - nLmvLckSt + 1);
+			if (nLmvLckNum >= lck_num) {
+				lmv_lckstext[j] = nLmvLckSt;
+				lmv_lckedext[j] = nLmvLckEd;
+				j++;
+			}
+		}
+		i++;
+		if (j > 2)
+			break;
+	}
+
+	Wr(MCDI_LMVLCKSTEXT_0, lmv_lckstext[1]<<16 | lmv_lckstext[0]);
+	Wr_reg_bits(MCDI_LMVLCKSTEXT_1, lmv_lckstext[2], 0, 12);
+	Wr(MCDI_LMVLCKEDEXT_0, lmv_lckedext[1]<<16 | lmv_lckedext[0]);
+	Wr(MCDI_LMVLCKEDEXT_1, lmv_lckedext[2]);
 }
 
 void di_hw_init(void)
@@ -359,15 +479,8 @@ void enable_di_pre_aml(
 			set_di_inp_mif(di_inp_mif, urgent, hold_line);
 	}
 
-	if (pd22_check_en || hist_check_only) {
+	if (pd22_check_en || hist_check_only)
 		set_di_chan2_mif(di_chan2_mif, urgent, hold_line);
-		#ifdef NEW_DI_V1
-		RDMA_WR_BITS(DI_NR_CTRL0, cue_enable, 26, 1);
-		#endif
-	} else {
-		RDMA_WR_BITS(DI_NR_CTRL0, 0, 26, 1);
-	}
-
 	/* set nr wr mif interface. */
 	if (nr_en) {
 		RDMA_WR_BITS(DI_NRWR_X, di_nrwr_mif->end_x, 0, 14);
@@ -561,7 +674,7 @@ void enable_mc_di_pre(struct DI_MC_MIF_s *di_mcinford_mif,
 }
 
 void enable_mc_di_post(struct DI_MC_MIF_s *di_mcvecrd_mif,
-	int urgent, bool reverse)
+	int urgent, bool reverse, int invert_mv)
 {
 	di_mcvecrd_mif->size_y =
 			(di_mcvecrd_mif->end_y - di_mcvecrd_mif->start_y + 1);
@@ -588,6 +701,12 @@ void enable_mc_di_post(struct DI_MC_MIF_s *di_mcvecrd_mif,
 	if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXL)) {
 		DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MC_CRTL, mcuv_en, 10, 1);
 		DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MC_CRTL, 1, 11, 1);
+		if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXLX)) {
+			DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MC_CRTL,
+				invert_mv, 17, 1);
+			DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MC_CRTL,
+				3, 18, 2);
+			}
 	} else
 		DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MC_CRTL, mcuv_en, 9, 1);
 	DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MC_CRTL, mcdebug_mode, 2, 3);
@@ -1236,11 +1355,7 @@ static void set_di_if1_mif(struct DI_MIF_s *mif, int urgent, int hold_line)
 			((mif->set_separate_en != 0) << 1)|
 			(1 << 0)/* cntl_enable */
 		);
-	#if 0
-	/* post bit mode config, if0 config in video.c */
-	if (is_meson_gxtvbb_cpu() || is_meson_gxl_cpu() || is_meson_gxm_cpu())
-		DI_VSYNC_WR_MPEG_REG_BITS(DI_IF1_GEN_REG3, mif->bit_mode, 8, 2);
-	#endif
+
 	/* ---------------------- */
 	/* Canvas */
 	/* ---------------------- */
@@ -1661,6 +1776,13 @@ void di_post_switch_buffer(
 	(1<<9) |	  /* canvas enable */
 	di_mcvecrd_mif->canvas_num |  /* canvas index. */
 	(urgent << 8));
+	if (is_meson_gxlx_cpu())
+		DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MC_CRTL,
+			invert_mv, 17, 1);/* invert mv */
+	if (is_meson_txlx_cpu())
+		DI_VSYNC_WR_MPEG_REG_BITS(DI_POST_CTRL,
+			invert_mv, 14, 1);/* invert mv */
+
 		DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MC_CRTL,
 			di_mcvecrd_mif->vecrd_offset, 12, 3);
 		if (di_mcvecrd_mif->blend_en)
@@ -1684,7 +1806,7 @@ void di_post_switch_buffer(
 		(0 << 10) |		/* post drop first. */
 		(0 << 11) |
 		(di_vpp_en << 12) | /* post viu link */
-		(invert_mv << 14) | /* invert mv */
+
 		(hold_line << 16) | /* post hold line number */
 		(post_field_num << 29) |	/* post field number. */
 		(0x3 << 30)	/* post soft rst  post frame rst. */
@@ -1730,6 +1852,9 @@ blend_mtn_en,blend_mode); */
 (di_mtnprd_mif->canvas_num << 8) | (urgent << 16)
 	 ); /* current field mtn canvas index */
 	}
+	if (is_meson_txlx_cpu())
+		DI_VSYNC_WR_MPEG_REG_BITS(DI_POST_CTRL,
+			invert_mv, 14, 1);/* invert mv */
 
 	if (di_ddr_en) {
 		DI_VSYNC_WR_MPEG_REG(DI_DIWR_X,
@@ -1766,7 +1891,6 @@ blend_mtn_en,blend_mode); */
 (0 << 10) |	/* post drop first. */
 (0 << 11) |
 (di_vpp_en << 12) |	/* post viu link */
-(invert_mv << 14) | /* invert mv */
 (hold_line << 16) |	/* post hold line number */
 (post_field_num << 29) |	/* post field number. */
 (0x3 << 30)
@@ -2013,7 +2137,8 @@ void di_post_read_reverse_irq(bool reverse, unsigned char mc_pre_flag)
 			DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MCVECRD_X, 1, 30, 1);
 			DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MCVECRD_Y, 1, 30, 1);
 			if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXL)) {
-				if (get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX) {
+				if (is_meson_txlx_cpu() ||
+						is_meson_gxlx_cpu()) {
 					DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MC_CRTL,
 					pre_flag, 8, 2);
 				} else {
@@ -2022,11 +2147,21 @@ void di_post_read_reverse_irq(bool reverse, unsigned char mc_pre_flag)
 				}
 				/* disable if2 for wave if1 case,
 				 *disable mc for pq issue */
-				if (if2_disable) {
-					DI_VSYNC_WR_MPEG_REG_BITS(
-					DI_IF2_GEN_REG, 0, 0, 1);
+				if (mc_pre_flag != 2) {
 					DI_VSYNC_WR_MPEG_REG_BITS(
 					MCDI_MC_CRTL, 0, 11, 1);
+					if (is_meson_gxlx_cpu())
+						DI_VSYNC_WR_MPEG_REG_BITS(
+							MCDI_MC_CRTL, 0, 18, 1);
+				if (if2_disable)
+					DI_VSYNC_WR_MPEG_REG_BITS(
+					DI_IF2_GEN_REG, 0, 0, 1);
+				} else {
+					DI_VSYNC_WR_MPEG_REG_BITS(
+					MCDI_MC_CRTL, 1, 11, 1);
+					if (is_meson_gxlx_cpu())
+						DI_VSYNC_WR_MPEG_REG_BITS(
+							MCDI_MC_CRTL, 1, 18, 1);
 				}
 			} else
 				DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MC_CRTL,
@@ -2043,7 +2178,8 @@ void di_post_read_reverse_irq(bool reverse, unsigned char mc_pre_flag)
 			DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MCVECRD_X, 0, 30, 1);
 			DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MCVECRD_Y, 0, 30, 1);
 			if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXL)) {
-				if (get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX) {
+				if (is_meson_txlx_cpu() ||
+							is_meson_gxlx_cpu()) {
 					DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MC_CRTL,
 					pre_flag, 8, 2);
 				} else {
@@ -2051,11 +2187,21 @@ void di_post_read_reverse_irq(bool reverse, unsigned char mc_pre_flag)
 					mc_pre_flag, 8, 2);
 				}
 				/* disable if2 for wave if1 case */
-				if (if2_disable) {
-					DI_VSYNC_WR_MPEG_REG_BITS(
-						DI_IF2_GEN_REG, 0, 0, 1);
+				if (mc_pre_flag != 2) {
 					DI_VSYNC_WR_MPEG_REG_BITS(
 					MCDI_MC_CRTL, 0, 11, 1);
+					if (is_meson_gxlx_cpu())
+						DI_VSYNC_WR_MPEG_REG_BITS(
+							MCDI_MC_CRTL, 0, 18, 1);
+					if (if2_disable)
+						DI_VSYNC_WR_MPEG_REG_BITS(
+						DI_IF2_GEN_REG, 0, 0, 1);
+				} else {
+					DI_VSYNC_WR_MPEG_REG_BITS(
+					MCDI_MC_CRTL, 1, 11, 1);
+					if (is_meson_gxlx_cpu())
+						DI_VSYNC_WR_MPEG_REG_BITS(
+							MCDI_MC_CRTL, 1, 18, 1);
 				}
 			} else
 				DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MC_CRTL,
@@ -2273,7 +2419,7 @@ void enable_di_pre_mif(bool en)
 void combing_pd22_window_config(unsigned int width, unsigned int height)
 {
 	unsigned short y1 = 39, y2 = height - 41;
-	if (width >= 540) {
+	if (height >= 540) {
 		y1 = 79;
 		y2 = height - 81;
 	}
@@ -2296,7 +2442,6 @@ void combing_pd22_window_config(unsigned int width, unsigned int height)
 	DI_Wr_reg_bits(MCDI_PD_22_CHK_WND1_Y, (y1+1), 0, 13);/* pd y0 */
 	DI_Wr_reg_bits(MCDI_PD_22_CHK_WND1_Y, y2, 16, 13);/* pd y2 */
 }
-
 void di_load_regs(struct di_pq_parm_s *di_pq_ptr)
 {
 	unsigned int i = 0, addr = 0, value = 0, mask = 0, len;
@@ -2330,6 +2475,7 @@ void di_load_regs(struct di_pq_parm_s *di_pq_ptr)
 			pr_info("[%u][0x%x] = [0x%x]\n", i, addr, value);
 	}
 }
+
 #ifdef DEBUG_SUPPORT
 module_param_named(pre_mif_gate, pre_mif_gate, bool, 0644);
 #endif

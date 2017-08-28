@@ -19,4 +19,5 @@
 #define __DI_DBG_H
 #include "register.h"
 void dump_di_reg(void);
+void dump_pre_mif_state(void);
 #endif

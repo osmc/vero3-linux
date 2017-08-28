@@ -258,7 +258,12 @@ static void dnr_config(struct DNR_PARM_s *dnr_parm_p,
 	DI_Wr(DNR_DM_CTRL, Rd(DNR_DM_CTRL)|(1 << 11));
 	DI_Wr_reg_bits(DNR_CTRL, dnr_en?1:0, 16, 1);
 	/* dm for sd, hd will slower */
-	if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXLX)) {
+	DI_Wr(DNR_CTRL, 0x1df00);
+	if (is_meson_gxlx_cpu()) {
+		/* disable chroma dm according to baozheng */
+		DI_Wr_reg_bits(DNR_DM_CTRL, 0, 8, 1);
+		DI_Wr(DNR_CTRL, 0x1dd00);
+	} else if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXLX)) {
 		/*disable */
 		if (width > 1280) {
 			DI_Wr_reg_bits(DNR_DM_CTRL, 0, 8, 1);
@@ -310,133 +315,56 @@ static void nr4_config(struct NR4_PARM_s *nr4_parm_p,
 	nr4_parm_p->width = width - val - val - 1;
 	nr4_parm_p->height = height - val - val - 1;
 }
-static void nr_level_strong(void)
-{
-	DI_Wr(0x1751, 0x132f);
-	DI_Wr(0x1752, 0x8d);
-	DI_Wr(0x1753, 0x40ff00);
-	DI_Wr(0x1754, 0x4);
-	DI_Wr(0x1755, 0xc2b64);
-	DI_Wr(0x1756, 0x0);
-	DI_Wr(0x1757, 0x3608);
-	DI_Wr(0x1758, 0x420);
-	DI_Wr(0x1759, 0xa06664);
-	DI_Wr(0x175a, 0xe0000);
-	DI_Wr(0x175b, 0x991c00);
-	DI_Wr(0x175c, 0x991000);
-	DI_Wr(0x175d, 0xf9f3e);
-	DI_Wr(0x175e, 0x7292abcd);
-	DI_Wr(0x175f, 0x1c23314f);
-	DI_Wr(0x1760, 0xf111317);
-	DI_Wr(0x1761, 0x8090a0c);
-	DI_Wr(0x1762, 0x80a0e0ff);
-	DI_Wr(0x1763, 0x4102050);
-	DI_Wr(0x1764, 0x2);
-	DI_Wr(0x1765, 0x0);
-	DI_Wr(0x1766, 0x20100400);
-	DI_Wr(0x1767, 0xc4804030);
-	DI_Wr(0x1768, 0xfffff0e0);
-	DI_Wr(0x1769, 0xffffffff);
-	DI_Wr(0x176a, 0x1133);
-	DI_Wr(0x176b, 0x32020);
-	DI_Wr(0x176c, 0x3030);
-	DI_Wr(0x176d, 0x3f3f3e3f);
-	DI_Wr(0x176e, 0x153);
-	DI_Wr(0x176f, 0x50505050);
-	DI_Wr(0x1770, 0x5c4d3232);
-	DI_Wr(0x1771, 0x7b716a66);
-	DI_Wr(0x1772, 0xffffffa9);
-	DI_Wr(0x1773, 0x28282828);
-	DI_Wr(0x1774, 0x493f2828);
-	DI_Wr(0x1775, 0x7e625854);
-	DI_Wr(0x1776, 0xfffff99c);
-	DI_Wr(0x1777, 0xa06663);
-}
 
-static void nr_level_normal(void)
+static void nr2_config(unsigned short width, unsigned short height)
 {
-	DI_Wr(0x1745, 0x5056410);
-	DI_Wr(0x1746, 0x45056410);
-	DI_Wr(0x1747, 0x45056410);
-	DI_Wr(0x1748, 0x1);
-	DI_Wr(0x1749, 0x7c3a);
-	DI_Wr(0x174a, 0x29e77);
-	DI_Wr(0x174b, 0x9f1a);
-	DI_Wr(0x174c, 0x2822c);
-	DI_Wr(0x174d, 0x77);
-	DI_Wr(0x174e, 0x3030);
-	DI_Wr(0x174f, 0x20030);
-	DI_Wr(0x1750, 0xf002d0);
-	DI_Wr(0x1751, 0x132f);
-	DI_Wr(0x1752, 0x8d);
-	DI_Wr(0x1753, 0x40ff00);
-	DI_Wr(0x1754, 0x4);
-	DI_Wr(0x1755, 0xc2b64);
-	DI_Wr(0x1756, 0x0);
-	DI_Wr(0x1757, 0x3608);
-	DI_Wr(0x1758, 0x420);
-	DI_Wr(0x1759, 0xa06664);
-	DI_Wr(0x175a, 0xe0000);
-	DI_Wr(0x175b, 0x991c00);
-	DI_Wr(0x175c, 0x991000);
-	DI_Wr(0x175d, 0xf9f3e);
-	DI_Wr(0x175e, 0x7292abcd);
-	DI_Wr(0x175f, 0x1c23314f);
-	DI_Wr(0x1760, 0xf111317);
-	DI_Wr(0x1761, 0x8090a0c);
-	DI_Wr(0x1762, 0x80a0e0ff);
-	DI_Wr(0x1763, 0x4102050);
-	DI_Wr(0x1764, 0x2);
-	DI_Wr(0x1765, 0x0);
-	DI_Wr(0x1766, 0x20100400);
-	DI_Wr(0x1767, 0xc4804030);
-	DI_Wr(0x1768, 0xfffff0e0);
-	DI_Wr(0x1769, 0xffffffff);
-	DI_Wr(0x176a, 0x1132);
-	DI_Wr(0x176b, 0x32020);
-	DI_Wr(0x176c, 0x3333);
-	DI_Wr(0x176d, 0x4b4e4b4d);
-	DI_Wr(0x176e, 0x111);
-	DI_Wr(0x176f, 0x32181818);
-	DI_Wr(0x1770, 0x80644032);
-	DI_Wr(0x1771, 0x9e808080);
-	DI_Wr(0x1772, 0xffffffff);
-	DI_Wr(0x1773, 0x32181818);
-	DI_Wr(0x1774, 0x80644032);
-	DI_Wr(0x1775, 0xa5808080);
-	DI_Wr(0x1776, 0xffffffff);
-	DI_Wr(0x1777, 0xa06663);
-	DI_Wr(0x179c, 0x11b);
-	DI_Wr(0x179d, 0x202220);
-}
-
-static void nr2_config(unsigned short width,
-		unsigned short height, unsigned short level)
-{
-	if (is_meson_gxbb_cpu() || is_meson_gxl_cpu() ||
-		is_meson_gxm_cpu()) {
-		if (level == 1)
-			nr_level_strong();
-		else
-			nr_level_normal();
-	}
 	if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXLX))
 		DI_Wr_reg_bits(NR4_TOP_CTRL, nr2_en, 2, 1);
 	else {
+		/*set max height to disable nfram cnt in cue*/
+	if (is_meson_gxlx_cpu())
+		DI_Wr(NR2_FRM_SIZE, (0xfff<<16)|width);
+	else
 		DI_Wr(NR2_FRM_SIZE, (height<<16)|width);
 		DI_Wr_reg_bits(NR2_SW_EN, nr2_en, 4, 1);
 	}
 }
 
-void nr_all_config(unsigned short width, unsigned short height)
+static bool cue_en = true;
+module_param_named(cue_en, cue_en, bool, 0664);
+/*
+*workaround for nframe count
+*indicating error field type in cue
+*/
+static void cue_config(struct CUE_PARM_s *pcue_parm, unsigned short field_type)
+{
+	pcue_parm->field_count = 8;
+	pcue_parm->frame_count = 8;
+	if (field_type != VIDTYPE_PROGRESSIVE) {
+		DI_Wr_reg_bits(NR2_CUE_PRG_DIF, 0, 20, 1);
+		DI_Wr_reg_bits(DI_NR_CTRL0, 0, 26, 1);
+		/* cur row mode avoid seek error */
+		Wr_reg_bits(NR2_CUE_MODE, 5, 0, 4);
+	} else {
+		DI_Wr_reg_bits(NR2_CUE_PRG_DIF, 1, 20, 1);
+		/* disable cue for progressive issue */
+		DI_Wr_reg_bits(DI_NR_CTRL0, 0, 26, 1);
+	}
+}
+
+void nr_all_config(unsigned short width, unsigned short height,
+	unsigned short field_type)
 {
 	nr_param.width = width;
 	nr_param.height = height;
 	nr_param.frame_count = 0;
-	nr_param.nr_level = 0;
+	nr_param.prog_flag = field_type?false:true;
 	nr_gate_control(true);
-	nr2_config(width, height, nr_param.nr_level);
+	nr2_config(width, height);
 	dnr_config(nr_param.pdnr_parm, width, height);
+
+	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXLX))
+		cue_config(nr_param.pcue_parm, field_type);
 	if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXLX))
 		nr4_config(nr_param.pnr4_parm, width, height);
 }
@@ -687,12 +615,86 @@ reg_dnr_stat_yst=0,reg_dnr_stat_yed=0; */
 	}
 }
 
+static bool invert_cue_phase;
+module_param_named(invert_cue_phase, invert_cue_phase, bool, 0644);
+
+static unsigned int cue_pr_cnt;
+module_param_named(cue_pr_cnt, cue_pr_cnt, uint, 0644);
+
+static bool cue_glb_mot_check_en = true;
+module_param_named(cue_glb_mot_check_en, cue_glb_mot_check_en, bool, 0644);
+
+static void cue_process_irq(void)
+{
+
+	int pre_field_num = 0, cue_invert = 0;
+
+	pre_field_num = Rd_reg_bits(DI_PRE_CTRL, 29, 1);
+	if (invert_cue_phase)
+		cue_invert = (pre_field_num?3:0);
+	else
+		cue_invert = (pre_field_num?0:3);
+	if (cue_pr_cnt > 0) {
+		pr_info("[DI]: chan2 field num %d, cue_invert %d.\n",
+				pre_field_num, cue_invert);
+		cue_pr_cnt--;
+	}
+	Wr_reg_bits(NR2_CUE_MODE, cue_invert, 10, 2);
+	if (!nr_param.prog_flag) {
+		if (nr_param.frame_count > 1 && cue_glb_mot_check_en)
+			DI_Wr_reg_bits(DI_NR_CTRL0, cue_en?1:0, 26, 1);
+	}
+	if (nr_param.frame_count == 5)
+		Wr_reg_bits(NR2_CUE_MODE, 7, 0, 4);
+}
+
+static bool glb_fieldck_en = true;
+module_param_named(glb_fieldck_en, glb_fieldck_en, bool, 0644);
+
+void adaptive_cue_adjust(unsigned int frame_diff, unsigned int field_diff)
+{
+	struct CUE_PARM_s *pcue_parm = nr_param.pcue_parm;
+
+	if (frame_diff > pcue_parm->glb_mot_framethr) {
+		pcue_parm->frame_count = pcue_parm->frame_count > 0 ?
+			(pcue_parm->frame_count - 1) : 0;
+	} else if (pcue_parm->frame_count < pcue_parm->glb_mot_fieldnum) {
+			pcue_parm->frame_count = pcue_parm->frame_count + 1;
+	}
+	if (glb_fieldck_en) {
+		if (field_diff < pcue_parm->glb_mot_fieldthr)
+			pcue_parm->field_count = pcue_parm->field_count + 1;
+	    else if (pcue_parm->field_count < pcue_parm->glb_mot_fieldnum) {
+			pcue_parm->field_count = pcue_parm->field_count > 0 ?
+				(pcue_parm->field_count - 1) : 0;
+		}
+	}
+
+	if (cue_glb_mot_check_en) {
+		if (pcue_parm->frame_count > (pcue_parm->glb_mot_fieldnum - 6))
+			cue_en = true;
+		else
+			cue_en = false;
+		/* for clockfuliness clip */
+		if (pcue_parm->field_count >
+				(pcue_parm->glb_mot_fieldnum - 6)) {
+			Wr(NR2_CUE_MODE, 0x50322|(Rd(NR2_CUE_MODE)&0xc00));
+			Wr(NR2_CUE_CON_MOT_TH, 0x03010e01);
+		} else {
+			Wr(NR2_CUE_MODE, 0x00054377|(Rd(NR2_CUE_MODE)&0xc00));
+			Wr(NR2_CUE_CON_MOT_TH, 0xa03c8c3c);
+		}
+	}
+}
+
 void nr_process_in_irq(void)
 {
 	nr_param.frame_count++;
+	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXLX))
+		cue_process_irq();
 	if (dnr_en)
 		dnr_process(&dnr_param);
-	if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXLX)) {
+	if (is_meson_txlx_cpu()) {
 		noise_meter_process(nr_param.pnr4_parm, nr_param.frame_count);
 		luma_enhancement_process(nr_param.pnr4_parm,
 				nr_param.frame_count);
@@ -917,6 +919,14 @@ static void nr4_param_init(struct NR4_PARM_s *nr4_parm_p)
 	nr4_parm_p->sw_nr4_sad2gain_lut[15] = 9;
 }
 
+static void cue_param_init(struct CUE_PARM_s *cue_parm_p)
+{
+	cue_parm_p->glb_mot_framethr = 1000;
+	cue_parm_p->glb_mot_fieldnum = 20;
+	cue_parm_p->glb_mot_fieldthr = 10;
+	cue_parm_p->field_count = 8;
+	cue_parm_p->frame_count = 8;
+}
 static int dnr_prm_init(DNR_PRM_t *pPrm)
 {
 	pPrm->prm_sw_gbs_ctrl = 0;
@@ -1041,7 +1051,7 @@ void nr_hw_init(void)
 }
 void nr_gate_control(bool gate)
 {
-	if (!cpu_after_eq(MESON_CPU_MAJOR_ID_TXLX))
+	if (!is_meson_txlx_cpu())
 		return;
 	if (gate) {
 		/* enable nr auto gate */
@@ -1089,6 +1099,12 @@ void nr_drv_uninit(struct device *dev)
 		vfree(nr_param.pnr4_parm);
 		nr_param.pnr4_parm = NULL;
 	}
+
+	if (nr_param.pcue_parm) {
+		vfree(nr_param.pcue_parm);
+		nr_param.pcue_parm = NULL;
+	}
+
 	device_remove_file(dev, &dev_attr_nr4_param);
 	device_remove_file(dev, &dev_attr_dnr_param);
 	device_remove_file(dev, &dev_attr_nr_debug);
@@ -1104,6 +1120,13 @@ void nr_drv_init(struct device *dev)
 			nr4_param_init(nr_param.pnr4_parm);
 			device_create_file(dev, &dev_attr_nr4_param);
 		}
+	}
+	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXLX)) {
+		nr_param.pcue_parm = vmalloc(sizeof(struct CUE_PARM_s));
+		if (IS_ERR(nr_param.pcue_parm))
+			pr_err("%s allocate cue parm error.\n", __func__);
+		else
+			cue_param_init(nr_param.pcue_parm);
 	}
 	dnr_prm_init(&dnr_param);
 	nr_param.pdnr_parm = &dnr_param;

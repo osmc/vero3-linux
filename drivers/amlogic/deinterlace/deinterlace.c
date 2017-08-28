@@ -1962,7 +1962,7 @@ store_dump_mem(struct device *dev, struct device_attribute *attr,
 		}
 		dump_state_flag = 1;
 		if (de_devp->flags && DI_MAP_FLAG)
-			buff = phys_to_virt(di_buf->nr_adr);
+			buff = (void *)phys_to_virt(di_buf->nr_adr);
 		else
 			buff = ioremap(di_buf->nr_adr, nr_size);
 		if (buff == NULL)
@@ -3553,14 +3553,15 @@ static void config_di_mif(struct DI_MIF_s *di_mif, struct di_buf_s *di_buf)
 	}
 }
 
-static void di_pre_size_change(unsigned short width, unsigned short height);
+static void di_pre_size_change(unsigned short width,
+	unsigned short height, unsigned short vf_type);
 
 static void pre_de_process(void)
 {
 	unsigned short pre_width = 0, pre_height = 0;
 	int chan2_field_num = 1;
 	int canvases_idex = di_pre_stru.field_count_for_cont % 2;
-
+	unsigned short cur_inp_field_type = VIDTYPE_TYPEMASK;
 #ifdef NEW_DI_V1
 	int cont_rd = 1;
 #endif
@@ -3634,7 +3635,12 @@ static void pre_de_process(void)
 	pre_width = di_pre_stru.di_nrwr_mif.end_x + 1;
 	pre_height = di_pre_stru.di_nrwr_mif.end_y + 1;
 	if (di_pre_stru.input_size_change_flag) {
-		di_pre_size_change(pre_width, pre_height);
+		cur_inp_field_type =
+		(di_pre_stru.di_inp_buf->vframe->type & VIDTYPE_TYPEMASK);
+		cur_inp_field_type =
+	di_pre_stru.cur_prog_flag ? VIDTYPE_PROGRESSIVE : cur_inp_field_type;
+		di_pre_size_change(pre_width, pre_height,
+				cur_inp_field_type);
 		di_pre_stru.input_size_change_flag = false;
 	}
 	/* set interrupt mask for pre module. */
@@ -3683,8 +3689,6 @@ static void pre_de_process(void)
 		pre_hold_line,          /* hold line. */
 		pre_urgent
 		);
-	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXBB)
-		enable_afbc_input(di_pre_stru.di_inp_buf->vframe);
 
 	if (mcpre_en) {
 		if (!di_pre_stru.cur_prog_flag && mcpre_en)
@@ -3727,10 +3731,8 @@ static void pre_de_process(void)
 			if ((di_pre_stru.cur_prog_flag == 0) &&
 				(di_pre_stru.enable_mtnwr == 1)
 			   )
-				/*
-				bit12=0 disable autoen for
-				hw auto mode issue in mcdi
-				*/
+				/*bit12=0 disable autoen for
+				hw issue in mcdi*/
 				RDMA_WR(DI_MTN_CTRL1,
 					(mcpre_en ? 0x2000 : 0) |
 					RDMA_RD(DI_MTN_CTRL1));
@@ -3745,7 +3747,7 @@ static void pre_de_process(void)
 			}
 			if (di_pre_stru.field_count_for_cont == 5)
 				RDMA_WR(MCDI_CTRL_MODE,
-					(0x1bfe37ff | RDMA_RD(MCDI_CTRL_MODE)));
+					0x1bfe37ff | RDMA_RD(MCDI_CTRL_MODE));
 				/* disalbe reflinfo */
 		} else {
 			di_mtn_1_ctrl1 &= (~(1 << 30));
@@ -3901,7 +3903,7 @@ static unsigned int combing_setting_masks[MAX_NUM_DI_REG] = {
 	0xffffffff,
 	0xffffffff,
 	0xffffffff,
-	0xffffffff,
+	0xffffff9f,
 	0xffffffff,
 	0x0003ff1f,
 	0x01ff3fff,
@@ -3921,7 +3923,7 @@ static unsigned int combing_pure_still_setting[MAX_NUM_DI_REG] = {
 	0x1A1A2662,
 	0x0D200302,
 	0x02020202,
-	0x06090708,
+	0x06090748,
 	0x40020A04,
 	0x0001FF0C,
 	0x00400204,
@@ -3940,7 +3942,7 @@ static unsigned int combing_bias_static_setting[MAX_NUM_DI_REG] = {
 	0x1A1A2662,
 	0x0D200302,
 	0x02020202,
-	0x06090708,
+	0x06090748,
 	0x40020A04,
 	0x0001FF0C,
 	0x00400204,
@@ -3960,7 +3962,7 @@ static unsigned int combing_normal_setting[MAX_NUM_DI_REG] = {
 	0x1A1A2662,
 	0x0D200302,
 	0x02020606,
-	0x05080304,
+	0x05080344,
 	0x40020a04,
 	0x0001FF0C,
 	0x00400204,
@@ -3979,7 +3981,7 @@ static unsigned int combing_bias_motion_setting[MAX_NUM_DI_REG] = {
 	0x1A1A2662,
 	0x0D200302,
 	0x02020606,
-	0x05080304,
+	0x05080344,
 	0x40020a04,
 	0x0001ff0c, /* 0x0001FF12 */
 	0x00400204, /* 0x00200204 */
@@ -3998,7 +4000,7 @@ static unsigned int combing_very_motion_setting[MAX_NUM_DI_REG] = {
 	0x1A1A2662,
 	0x0D200302,
 	0x02020606,
-	0x05080304,
+	0x05080344,
 	0x40020a04,  /* 0x60000404,*/
 	0x0001ff0c, /* 0x0001FF12 */
 	0x00400204, /* 0x00200204 */
@@ -4017,7 +4019,7 @@ static unsigned int combing_resolution_setting[MAX_NUM_DI_REG] = {
 	0x1a1a2662,
 	0x0d200302,
 	0x01010101,
-	0x06090708,
+	0x06090748,
 	0x40020a04,
 	0x0001ff0c,
 	0x00400204,
@@ -4324,9 +4326,12 @@ unsigned int adp_set_mtn_ctrl10(unsigned int diff, unsigned int dlvel)
 
 	if (frame_diff_avg < small_local_mtn)
 		rst = combing_very_motion_setting[9];
-	else if (dlvel == 0)
-		rst = combing_pure_still_setting[9];
-	else if (dlvel == 1)
+	else if (dlvel == 0) {
+		if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXLX))
+			rst = 0x01010101;
+		else
+			rst = combing_pure_still_setting[9];
+	} else if (dlvel == 1)
 		rst = combing_very_motion_setting[9];
 	else {
 			istp = 64 * (diff - combing_glb_mot_thr_LH[0]) /
@@ -4506,6 +4511,10 @@ static void adaptive_combing_fixing(
 		 glb_mot[4]) / 5;
 	glb_mot_avg3 = (glb_mot[0] + glb_mot[1] + glb_mot[2]) / 3;
 	glb_mot_avg2 = (glb_mot[0] + glb_mot[1]) / 2;
+
+	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXLX))
+		adaptive_cue_adjust(field_pd_info->frame_diff_num,
+			field_pd_info->field_diff_num);
 
 	if (glb_mot[0] > combing_glb_mot_thr_LH[0])
 		still_field_count = 0;
@@ -6359,6 +6368,8 @@ static irqreturn_t de_irq(int irq, void *dev_instance)
 		if (mcpre_en) {
 			get_mcinfo_from_reg_in_irq();
 			mc_pre_mv_irq();
+			calc_lmv_base_mcinfo((di_pre_stru.cur_height>>1),
+				di_pre_stru.di_wr_buf->mcinfo_adr);
 		}
 #ifdef NEW_DI_V4
 		nr_process_in_irq();
@@ -7051,7 +7062,7 @@ di_buf, di_post_idx[di_post_stru.canvas_id][4], -1);
 			di_post_stru.di_mcvecrd_mif.canvas_num =
 				di_buf->di_buf_dup_p[2]->mcvec_canvas_idx;
 			mc_pre_flag = is_meson_txl_cpu()?0:(overturn?1:0);
-			if (get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX)
+			if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXLX))
 				invert_mv = true;
 			else if (!overturn)
 				di_post_stru.di_buf2_mif.canvas0_addr0 =
@@ -7181,8 +7192,8 @@ di_buf, di_post_idx[di_post_stru.canvas_id][4], -1);
 		if (mcpre_en)
 			enable_mc_di_post(
 				&di_post_stru.di_mcvecrd_mif, post_urgent,
-				overturn);
-		else if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXTVBB))
+				overturn, (invert_mv?1:0));
+		else if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXLX))
 			DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MC_CRTL, 0, 0, 2);
 	} else {
 		di_post_switch_buffer(
@@ -7214,8 +7225,12 @@ di_buf, di_post_idx[di_post_stru.canvas_id][4], -1);
 
 #endif
 	if (is_meson_gxtvbb_cpu() || is_meson_txl_cpu() || is_meson_txlx_cpu()
-		|| is_meson_gxlx_cpu())
+		|| is_meson_gxlx_cpu()) {
 		di_post_read_reverse_irq(overturn, mc_pre_flag);
+		/* disable mc for first 2 fieldes mv unreliable */
+		if (di_buf->seq < 2)
+			DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MC_CRTL, 0, 0, 2);
+	}
 	if (mcpre_en) {
 		if (di_buf->di_buf_dup_p[2])
 			set_post_mcinfo(&di_buf->di_buf_dup_p[2]
@@ -8355,18 +8370,19 @@ static struct rdma_op_s di_rdma_op = {
 };
 #endif
 
-static void di_pre_size_change(unsigned short width, unsigned short height)
+static void di_pre_size_change(unsigned short width,
+	unsigned short height, unsigned short vf_type)
 {
 	unsigned int blkhsize = 0;
 
-	nr_all_config(width, height);
+	nr_all_config(width, height, vf_type);
 	/* pulldown init */
 	field_count = 0;
 	flm22_sure_num = (height * 100)/480;
 	flm22_sure_smnum = (flm22_sure_num * flm22_ratio)/100;
 	combing_threshold_config(width);
 	init_field_mode(height);
-	if (is_meson_txl_cpu() || is_meson_txlx_cpu())
+	if (is_meson_txl_cpu() || is_meson_txlx_cpu() || is_meson_gxlx_cpu())
 		combing_pd22_window_config(width, height);
 	RDMA_WR(DI_PRE_SIZE, (width - 1) |
 		((height - 1) << 16));
@@ -8411,7 +8427,7 @@ static void di_reg_process_irq(void)
 	ulong flags = 0;
 	#endif
 	vframe_t *vframe;
-	unsigned short nr_height = 0;
+	unsigned short nr_height = 0, first_field_type;
 
 	if ((pre_run_flag != DI_RUN_FLAG_RUN) &&
 	    (pre_run_flag != DI_RUN_FLAG_STEP))
@@ -8531,7 +8547,11 @@ static void di_reg_process_irq(void)
 #endif
 		}
 		reset_pulldown_state();
-		di_pre_size_change(vframe->width, nr_height);
+		calc_lmv_init();
+		first_field_type = (vframe->type & VIDTYPE_TYPEMASK);
+		di_pre_size_change(vframe->width, nr_height,
+				first_field_type);
+
 		if (de_devp->flags & DI_LOAD_REG_FLAG) {
 			struct di_pq_parm_s *pos = NULL, *tmp = NULL;
 			mutex_lock(&de_devp->pq_lock);
@@ -9707,7 +9727,7 @@ unsigned int RDMA_WR_BITS(unsigned int adr, unsigned int val,
 static void set_di_flag(void)
 {
 	if (is_meson_gxtvbb_cpu() || is_meson_txl_cpu() ||
-		is_meson_txlx_cpu()) {
+		is_meson_txlx_cpu() || is_meson_gxlx_cpu()) {
 		mcpre_en = true;
 		pulldown_mode = 1;
 		pulldown_enable = 1;
@@ -9721,7 +9741,8 @@ static void set_di_flag(void)
 			di_force_bit_mode = 10;
 		else
 			di_force_bit_mode = 8;
-		if (is_meson_txl_cpu() || is_meson_txlx_cpu()) {
+		if (is_meson_txl_cpu() || is_meson_txlx_cpu() ||
+		is_meson_gxlx_cpu()) {
 			full_422_pack = true;
 			tff_bff_enable = false;
 			dejaggy_enable = 0;
@@ -9952,8 +9973,8 @@ static int di_probe(struct platform_device *pdev)
 
 	sema_init(&di_sema, 1);
 	di_sema_init_flag = 1;
-
-	init_pd_para();
+	if (!cpu_after_eq(MESON_CPU_MAJOR_ID_GXTVBB))
+		init_pd_para();
 	di_hw_init();
 
 	if (pulldown_enable)

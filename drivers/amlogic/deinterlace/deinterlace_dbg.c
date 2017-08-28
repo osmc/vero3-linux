@@ -55,7 +55,7 @@ void dump_di_reg(void)
 		0x17ec, 0x17ed, 0x2012,
 		0x2013, 0x2014, 0x2015
 	};
-	if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXLX))
+	if (is_meson_txlx_cpu())
 		base_addr = 0xff900000;
 	else
 		base_addr = 0xd0100000;
@@ -138,5 +138,45 @@ void dump_di_reg(void)
 		pr_info("[0x%x][0x%x]=0x%x\n",
 			base_addr + (i << 2),
 			i, RDMA_RD(i));
+	for (i = 0; i < 57; i++)
+		pr_info("[0x%x][0x%x]=0x%x\n",
+			base_addr + ((size_reg_addr[i]) << 2),
+			size_reg_addr[i], RDMA_RD(size_reg_addr[i]));
 	pr_info("----dump reg done----\n");
+}
+
+void dump_pre_mif_state(void)
+{
+	unsigned int i = 0;
+	Wr_reg_bits(DI_INP_GEN_REG3, 3, 10, 2);
+	Wr_reg_bits(DI_MEM_GEN_REG3, 3, 10, 2);
+	Wr_reg_bits(DI_CHAN2_GEN_REG3, 3, 10, 2);
+	pr_info("DI_INP_GEN_REG2=0x%x.\n", Rd(DI_INP_GEN_REG2));
+	pr_info("DI_INP_GEN_REG3=0x%x.\n", Rd(DI_INP_GEN_REG3));
+	pr_info("DI_INP_LUMA_FIFO_SIZE=0x%x.\n", Rd(DI_INP_LUMA_FIFO_SIZE));
+	pr_info("DI_INP_RANGE_MAP_Y=0x%x.\n", Rd(DI_INP_RANGE_MAP_Y));
+	pr_info("DI_INP_RANGE_MAP_CB=0x%x.\n", Rd(DI_INP_RANGE_MAP_CB));
+	pr_info("DI_INP_RANGE_MAP_CR=0x%x.\n", Rd(DI_INP_RANGE_MAP_CR));
+	pr_info("DI_INP_URGENT_CTRL=0x%x.\n", Rd(DI_INP_URGENT_CTRL));
+	for (i = 0; i < 10; i++)
+		pr_info("0x%x=0x%x.\n", 0x17ce + i, Rd(0x17ce + i));
+	pr_info("DI_MEM_GEN_REG2=0x%x.\n", Rd(DI_MEM_GEN_REG2));
+	pr_info("DI_MEM_GEN_REG3=0x%x.\n", Rd(DI_MEM_GEN_REG3));
+	pr_info("DI_MEM_LUMA_FIFO_SIZE=0x%x.\n", Rd(DI_MEM_LUMA_FIFO_SIZE));
+	pr_info("DI_MEM_RANGE_MAP_CB=0x%x.\n", Rd(DI_MEM_RANGE_MAP_CB));
+	pr_info("DI_MEM_RANGE_MAP_CR=0x%x.\n", Rd(DI_MEM_RANGE_MAP_CR));
+	pr_info("DI_MEM_URGENT_CTRL=0x%x.\n", Rd(DI_MEM_URGENT_CTRL));
+	for (i = 0; i < 10; i++)
+		pr_info("0x%x=0x%x.\n", 0x17db + i, Rd(0x17db + i));
+	pr_info("DI_CHAN2_GEN_REG2=0x%x.\n", Rd(DI_CHAN2_GEN_REG2));
+	pr_info("DI_CHAN2_GEN_REG3=0x%x.\n", Rd(DI_CHAN2_GEN_REG3));
+	pr_info("DI_CHAN2_LUMA_FIFO_SIZE=0x%x.\n", Rd(DI_CHAN2_LUMA_FIFO_SIZE));
+	pr_info("DI_CHAN2_RANGE_MAP_CB=0x%x.\n", Rd(DI_CHAN2_RANGE_MAP_CB));
+	pr_info("DI_CHAN2_RANGE_MAP_CR=0x%x.\n", Rd(DI_CHAN2_RANGE_MAP_CR));
+	pr_info("DI_CHAN2_URGENT_CTRL=0x%x.\n", Rd(DI_CHAN2_URGENT_CTRL));
+	for (i = 0; i < 10; i++)
+		pr_info("0x%x=0x%x.\n", 0x17f5 + i, Rd(0x17f5 + i));
+	Wr_reg_bits(DI_INP_GEN_REG3, 0, 10, 2);
+	Wr_reg_bits(DI_MEM_GEN_REG3, 0, 10, 2);
+	Wr_reg_bits(DI_CHAN2_GEN_REG3, 0, 10, 2);
 }
