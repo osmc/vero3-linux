@@ -112,6 +112,10 @@ unsigned int mmc_capacity(struct mmc_card *card)
 static int mmc_transfer(struct mmc_card *card, unsigned dev_addr,
 	unsigned blocks, void *buf, int write)
 {
+	u8 original_part_config;
+	u8 user_part_number = 0;
+	u8 cur_part_number;
+	bool switch_partition = false;
 	unsigned size;
 	struct scatterlist sg;
 	struct mmc_request mrq = {0};
@@ -119,6 +123,21 @@ static int mmc_transfer(struct mmc_card *card, unsigned dev_addr,
 	struct mmc_command stop = {0};
 	struct mmc_data data = {0};
 	int ret;
+	cur_part_number = card->ext_csd.part_config
+		&EXT_CSD_PART_CONFIG_ACC_MASK;
+	if (cur_part_number != user_part_number) {
+		switch_partition = true;
+		original_part_config = card->ext_csd.part_config;
+		cur_part_number = original_part_config
+			&(~EXT_CSD_PART_CONFIG_ACC_MASK);
+		ret = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+				EXT_CSD_PART_CONFIG, cur_part_number,
+				card->ext_csd.part_time);
+		if (ret)
+			return ret;
+
+		card->ext_csd.part_config = cur_part_number;
+	}
 
 	if ((dev_addr + blocks) >= mmc_capacity(card)) {
 		pr_info("[%s] %s range exceeds device capacity!\n",
@@ -140,6 +159,16 @@ static int mmc_transfer(struct mmc_card *card, unsigned dev_addr,
 	mmc_wait_for_req(card->host, &mrq);
 
 	ret = mmc_check_result(&mrq);
+
+	if (switch_partition == true) {
+		ret = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+				EXT_CSD_PART_CONFIG, original_part_config,
+				card->ext_csd.part_time);
+		if (ret)
+			return ret;
+		card->ext_csd.part_config = original_part_config;
+	}
+
 	return ret;
 }
 
