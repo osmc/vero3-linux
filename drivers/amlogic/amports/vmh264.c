@@ -5372,6 +5372,7 @@ static int ammvdec_h264_probe(struct platform_device *pdev)
 	mmu_enable = 0;
 	if (force_enable_mmu && pdata->sys_info &&
 		    (get_cpu_type() >= MESON_CPU_MAJOR_ID_TXLX) &&
+		    (get_cpu_type() != MESON_CPU_MAJOR_ID_GXLX) &&
 			(pdata->sys_info->height * pdata->sys_info->width
 			> 1920 * 1088))
 			mmu_enable = 1;

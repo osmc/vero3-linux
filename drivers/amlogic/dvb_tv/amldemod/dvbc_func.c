@@ -5,7 +5,10 @@
 #include "demod_func.h"
 #include <linux/kthread.h>
 
-static int debug_amldvbc = 1;
+MODULE_PARM_DESC(debug_amldvbc, "\n\t\t Enable frontend demod debug information");
+static int debug_amldvbc;
+module_param(debug_amldvbc, int, 0644);
+
 #define dprintk(a ...) do { if (debug_amldvbc) printk(a); } while (0)
 
 static struct task_struct *cci_task;

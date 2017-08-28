@@ -99,7 +99,11 @@ static struct tsdemux_ops aml_tsdemux_ops = {
 
 long aml_stb_get_base(int id)
 {
-	int newbase = (get_cpu_type() >= MESON_CPU_MAJOR_ID_TXLX) ? 1 : 0;
+	int newbase = 0;
+	if (MESON_CPU_MAJOR_ID_TXL < get_cpu_type()
+		&& MESON_CPU_MAJOR_ID_GXLX != get_cpu_type()) {
+		newbase = 1;
+	}
 
 	switch (id) {
 	case ID_STB_CBUS_BASE:

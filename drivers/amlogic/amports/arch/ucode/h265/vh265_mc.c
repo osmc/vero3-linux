@@ -3382,7 +3382,8 @@ const u32  vh265_mc_mmu[] __initconst = {
 #define FOR_CPUS_MMU {	MESON_CPU_MAJOR_ID_GXL, \
 						MESON_CPU_MAJOR_ID_GXM, \
 						MESON_CPU_MAJOR_ID_TXL, \
-						MESON_CPU_MAJOR_ID_TXLX, 0}
+						MESON_CPU_MAJOR_ID_TXLX, \
+						MESON_CPU_MAJOR_ID_GXLX, 0}
 
 #define REG_FIRMWARE_ALL()\
 	do {\

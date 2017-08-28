@@ -19,7 +19,7 @@
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/gxl.h>
-#include <dt-bindings/gpio/gxl.h>
+#include <dt-bindings/gpio/gxlx.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/reset/aml_gxl.h>
 #include "mesongxlx.dtsi"
@@ -112,6 +112,12 @@
 			size = <0x0 0x0>;
 			alignment = <0x0 0x0>;
 			linux,contiguous-region;
+		};
+		demod_reserved:linux,demod {
+			compatible = "amlogic, demod-mem";
+			size = <0x0 0x600000>; //20m
+			multi-use;
+			//no-map;
 		};
 		/* codec shared reserved */
 		codec_mm_reserved:linux,codec_mm_reserved {
@@ -213,6 +219,23 @@
 			memory-region = <&codec_mm_cma &codec_mm_reserved>;
 			dev_name = "codec_mm";
 			status = "okay";
+	};
+	ethmac: ethernet@0xc9410000 {
+		compatible = "amlogic, gxbb-rmii-dwmac";
+		reg = <0x0 0xc9410000 0x0 0x10000
+		0x0 0xc8834540 0x0 0x8
+		0x0 0xc8834558 0x0 0xc>;
+		interrupts = <0 8 1>;
+		phy-mode= "rmii";
+		pinctrl-names = "internal_eth_pins";
+		pinctrl-0 = <&internal_eth_pins>;
+		mc_val = <0x1800>;
+		resets = <&clock GCLK_IDX_ETHERNET>;
+		reset-names = "ethpower";
+		interrupt-names = "macirq";
+		clocks = <&clock CLK_81>;
+		clock-names = "ethclk81";
+		internal_phy=<1>;
 	};
 	mesonstream {
 		compatible = "amlogic, codec, streambuf";
@@ -420,13 +443,13 @@
 	wifi{
 		compatible = "amlogic, aml_wifi";
 		dev_name = "aml_wifi";
-		status = "disabled";
+		status = "okay";
 		interrupt_pin = <&gpio       GPIOX_7       GPIO_ACTIVE_HIGH>;
 		interrupts = <	0 68 4>;
 		irq_trigger_type = "GPIO_IRQ_HIGH";
 		power_on_pin = <&gpio       GPIOX_6       GPIO_ACTIVE_HIGH>;
+		dhd_static_buf;    //if use bcm wifi, config dhd_static_buf and 32k as bellow
 	};
-
     emmc{
         compatible = "amlogic, aml_sd_emmc";
         dev_name = "aml_newsd.0";
@@ -957,7 +980,7 @@
 		#sound-dai-cells = <0>;
 		compatible = "amlogic, aml-pcm-dai";
 		pinctrl-names = "aml_audio_btpcm";
-		pinctrl-0 = <&audio_btpcm_pins>;
+		//pinctrl-0 = <&audio_btpcm_pins>;
 		clocks = <&clock CLK_MPLL0>,
 			<&clock CLK_PCM_MCLK>,
 			<&clock CLK_PCM_SCLK>;
@@ -1106,6 +1129,80 @@
 			};
 		};
 	};
+	dvb {
+		compatible = "amlogic, dvb";
+		dev_name = "dvb";
+		status = "okay";
+		/*"parallel","serial","disable"*/
+		ts2 = "parallel";
+		ts2_control = <0>;
+		ts2_invert = <0>;
+		resets = <&clock GCLK_IDX_DEMUX
+				&clock GCLK_IDX_ASYNC_FIFO
+				&clock GCLK_IDX_AHB_ARB0
+				&clock GCLK_IDX_HIU_PARSER_TOP>;
+		reset-names = "demux", "asyncfifo", "ahbarb0", "uparsertop";
+	};
+	dvbfe {
+		compatible = "amlogic, dvbfe";
+		dev_name = "dvbfe";
+		status = "okay";
+		dtv_demod0 = "AMLDEMOD";
+		fe0_dtv_demod = <0>;
+		fe0_ts = <2>;
+		fe0_dev = <0>;
+		dtv_demod0_mem = <0>;
+		dtv_demod0_spectrum = <1>;
+		dtv_demod0_cma_flag = <0>;
+		dtv_demod0_cma_mem_size = <8>;
+		memory-region = <&demod_reserved>;//<&demod_reserved>;
+		tuner0 = "mxl608_tuner";
+		tuner0_i2c_adap_id = <4>;
+		tuner0_i2c_addr = <0x60>;
+		//tuner0_reset_value = <0>;
+		//tuner0_reset_gpio =  "GPIOY_10" ;  /*GPIOX_8   76*/
+		fe0_tuner = <0>;
+	};
+	smartcard {
+		compatible = "amlogic, smartcard";
+		irq_trigger_type = "GPIO_IRQ_LOW";
+
+		reset_pin-gpios = <&gpio GPIOX_11 GPIO_ACTIVE_HIGH >;	//Reset pin
+		detect_pin-gpios = <&gpio GPIOX_10 GPIO_ACTIVE_LOW >;	//Detect pin
+		enable_5v3v_pin-gpios = <&gpio_ao GPIOAO_3 GPIO_ACTIVE_LOW >;	//5V3V pin, can be ignored
+
+		interrupts = <0 69 4 >;	//smc irq
+
+		smc0_clock_source = <0 >;	//Smc clock source, if change this, you must adjust clk and divider in smartcard.c
+		smc0_irq = <69 >;		//smc irq
+		smc0_det_invert = <0 >;	//0: high voltage on detect pin indicates card in.
+		smc0_5v3v_level = <0 >;
+		smc_need_enable_pin = "no";	//Ordinarily, smartcard controller needs a enable pin.
+									//if board	controls smartcard directly, then we don 't need it.
+		reset_level = <0>;					//0: pull low reset pin to reset card
+		enable_level = <0>;
+
+		smc0_clk_pinmux_reg = <0x30>;
+		smc0_clk_pinmux_bit = <0x80>;
+
+		smc0_clk_oen_reg = <0x200f>;
+		smc0_clk_out_reg = <0x2010>;
+
+		smc0_clk_bit = <0x2000>;
+		smc0_clk_oebit = <0x2000000>;
+		smc0_clk_oubit = <0x1000000>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&smc_pins>;
+		resets = <&clock GCLK_IDX_SMART_CARD_MPEG_DOMAIN>;
+		reset-names = "smartcard";
+
+		status = "okay";
+	};
+};
+
+&i2c_d {
+  status = "okay";
 };
 
 &pinmux {
@@ -1121,12 +1218,18 @@
 		amlogic,pins ="GPIOH_4";		  /*spdif_out*/
 	};
 
-	audio_btpcm_pins:audio_btpcm_pins{
+	//audio_btpcm_pins:audio_btpcm_pins{
 		/* BT PCM PINMUX SETTING*/
-		amlogic,setmask=<5 0xf00000>;
-		amlogic,clrmask=<5 0x3c33
-				8 0x300000>;
-		amlogic,pins ="GPIOX_8", "GPIOX_9", "GPIOX_10", "GPIOX_11";
+		//amlogic,setmask=<5 0xf00000>;
+		//amlogic,clrmask=<5 0x3c33
+		//		8 0x300000>;
+		//amlogic,pins ="GPIOX_8", "GPIOX_9", "GPIOX_10", "GPIOX_11";
+	//};
+	smc_pins:smc_pins {							//Set gpio to 7816-clk 7816-data mode.
+		amlogic,setmask = <8 0xc0000>;       //Please refer to core-pin mux document
+		amlogic,clrmask = <5 0xc0300c
+		                   8 0xc00000>;
+		amlogic,pins = "GPIOX_8","GPIOX_9";
 	};
 };
 &efuse {

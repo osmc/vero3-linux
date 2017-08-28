@@ -102,7 +102,8 @@ static int __init vdec_reg_ops_init(void)
 	 * #define RESET0_REGISTER 0x0401
 	 * -0xd00 == (0x0401 - 0x1101)
 	 */
-	if (MESON_CPU_MAJOR_ID_TXL < get_cpu_type()) {
+	if (MESON_CPU_MAJOR_ID_TXL < get_cpu_type()
+		&& MESON_CPU_MAJOR_ID_GXLX != get_cpu_type()) {
 		for (i = 0; i < ARRAY_SIZE(m8_ops); i++) {
 			switch (m8_ops[i].bus_type) {
 			case IO_PARSER_BUS:

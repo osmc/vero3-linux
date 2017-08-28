@@ -2174,7 +2174,7 @@ static int smc_dev_init(struct smc_dev *smc, int id)
 	}
 #endif
 
-#if 0
+#if 1
 	smc->enable_5v3v_level = 0;
 	if (1) {
 		snprintf(buf, sizeof(buf), "smc%d_5v3v_level", id);
@@ -2183,7 +2183,7 @@ static int smc_dev_init(struct smc_dev *smc, int id)
 		if (!ret) {
 			smc->enable_5v3v_level = value;
 			pr_error("%s: %d\n", buf, smc->enable_5v3v_level);
-			if (smc->enable_5v3v_pin != -1) {
+			if (smc->enable_5v3v_pin != NULL) {
 				_gpio_out(smc->enable_5v3v_pin,
 					smc->enable_5v3v_level,
 					SMC_ENABLE_5V3V_PIN_NAME);

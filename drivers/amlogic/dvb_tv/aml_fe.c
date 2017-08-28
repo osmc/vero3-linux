@@ -272,6 +272,8 @@ struct dvb_frontend *get_si2177_tuner(void)
 			return dev->fe->fe;
 #else
 #endif
+		if (!strcmp(dev->drv->name, "mxl608_tuner"))
+			return dev->fe->fe;
 		if (!strcmp(dev->drv->name, "r842_tuner"))
 			return dev->fe->fe;
 		return dev->fe->fe;
