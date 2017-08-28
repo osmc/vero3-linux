@@ -17,6 +17,8 @@
 
 #include <linux/module.h>
 #include <linux/amlogic/amports/tsync.h>
+#include <linux/amlogic/vout/vinfo.h>
+#include <linux/amlogic/vout/vout_notify.h>
 #include "vdec_reg.h"
 #include "arch/register.h"
 #include "amports_priv.h"
@@ -199,6 +201,19 @@ void timestamp_pcrscr_set_adj(s32 inc)
 	system_time_inc_adj = inc;
 }
 EXPORT_SYMBOL(timestamp_pcrscr_set_adj);
+
+void timestamp_pcrscr_set_adj_pcr(s32 inc)
+{
+	const struct vinfo_s *info = get_current_vinfo();
+	if (inc != 0) {
+		system_time_inc_adj =
+			900 * info->sync_duration_den /
+			(info->sync_duration_num*inc);
+	} else {
+		system_time_inc_adj = 0;
+	}
+}
+EXPORT_SYMBOL(timestamp_pcrscr_set_adj_pcr);
 
 void timestamp_pcrscr_enable(u32 enable)
 {
