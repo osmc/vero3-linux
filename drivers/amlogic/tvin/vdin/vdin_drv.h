@@ -295,6 +295,7 @@ struct vdin_dev_s {
 	unsigned int		canvas_config_mode;
 	bool	prehsc_en;
 	bool	vshrk_en;
+	bool	urgent_en;
 	wait_queue_head_t queue;
 };
 

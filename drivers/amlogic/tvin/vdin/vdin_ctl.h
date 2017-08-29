@@ -197,5 +197,6 @@ extern void vdin_set_wr_ctrl_vsync(struct vdin_dev_s *devp,
 	unsigned int color_depth_mode, unsigned int source_bitdeth,
 	unsigned int rdma_enable);
 
+extern void vdin_urgent_patch_resume(unsigned int offset);
 #endif
 

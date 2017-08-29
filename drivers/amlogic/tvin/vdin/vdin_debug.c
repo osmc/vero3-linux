@@ -489,9 +489,9 @@ static void vdin_dump_state(struct vdin_dev_s *devp)
 		devp->canvas_max_num, devp->msr_clk_val);
 	pr_info("canvas buffer size %u, rdma_enable: %d, game_mode: %d.\n",
 		devp->canvas_max_size, devp->rdma_enable, devp->game_mode);
-	pr_info("range(%d),csc_cfg:0x%x\n",
+	pr_info("range(%d),csc_cfg:0x%x,urgent_en:%d\n",
 		devp->prop.color_fmt_range,
-		devp->csc_cfg);
+		devp->csc_cfg, devp->urgent_en);
 	for (i = 0; i < devp->canvas_max_num; i++) {
 		pr_info("dv_mem(%d):0x%x\n",
 			devp->vfp->dv_buf_size[i],

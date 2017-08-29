@@ -439,6 +439,9 @@ int vdin_open_fe(enum tvin_port_e port, int index,  struct vdin_dev_s *devp)
 	memset(&devp->prop, 0, sizeof(devp->prop));
 
 	vdin_set_default_regmap(devp->addr_offset);
+	/*only for vdin0*/
+	if (devp->urgent_en && (devp->index == 0))
+		vdin_urgent_patch_resume(devp->addr_offset);
 
 	/* vdin msr clock gate enable */
 	if (devp->msr_clk != NULL)
@@ -1063,6 +1066,9 @@ void vdin_stop_dec(struct vdin_dev_s *devp)
 		((devp->flags & VDIN_FLAG_SNOW_FLAG) == 0)))
 		devp->frontend->dec_ops->stop(devp->frontend, devp->parm.port);
 	vdin_set_default_regmap(devp->addr_offset);
+	/*only for vdin0*/
+	if (devp->urgent_en && (devp->index == 0))
+		vdin_urgent_patch_resume(devp->addr_offset);
 
 	/* reset default canvas  */
 	vdin_set_def_wr_canvas(devp);
@@ -1147,6 +1153,9 @@ int start_tvin_service(int no , struct vdin_parm_s  *para)
 	}
 	/*config the vdin use default value*/
 	vdin_set_default_regmap(devp->addr_offset);
+	/*only for vdin0*/
+	if (devp->urgent_en && (devp->index == 0))
+		vdin_urgent_patch_resume(devp->addr_offset);
 
 	devp->parm.port = para->port;
 	devp->parm.info.fmt = para->fmt;
@@ -2802,6 +2811,7 @@ static int vdin_drv_probe(struct platform_device *pdev)
 	int ret = 0;
 	struct vdin_dev_s *vdevp;
 	struct resource *res;
+	unsigned int urgent_en = 0;
 	unsigned int bit_mode = VDIN_WR_COLOR_DEPTH_8BIT;
 	/* const void *name; */
 	/* int offset, size; */
@@ -2999,6 +3009,14 @@ static int vdin_drv_probe(struct platform_device *pdev)
 			"vdin%d-irq", vdevp->index);
 	pr_info("vdin%d irq: %d rdma irq: %d\n", vdevp->index,
 			vdevp->irq, vdevp->rdma_irq);
+	/*vdin urgent en*/
+	ret = of_property_read_u32(pdev->dev.of_node,
+			"urgent_en", &urgent_en);
+	if (ret) {
+		vdevp->urgent_en = 0;
+		pr_info("no urgent_en found\n");
+	} else
+		vdevp->urgent_en = urgent_en;
 	/* init vdin parameters */
 	vdevp->flags = VDIN_FLAG_NULL;
 	vdevp->flags &= (~VDIN_FLAG_FS_OPENED);

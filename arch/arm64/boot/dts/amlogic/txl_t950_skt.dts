@@ -401,6 +401,7 @@
 		*bit3:support 12bit
 		*bit4:support yuv422 10bit full pack mode (from txl new add)*/
 		tv_bit_mode = <1>;
+		urgent_en = <1>;
 	};
 	vdin1 {
 		compatible = "amlogic, vdin";
