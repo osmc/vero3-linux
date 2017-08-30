@@ -7776,9 +7776,7 @@ static s32 vh265_init(struct hevc_state_s *hevc)
 		WRITE_VREG(HEVC_PARSER_IF_CONTROL,
 				READ_VREG(HEVC_PARSER_IF_CONTROL) | ((1 << 6) |
 					(1 << 3) | (1 << 1)));	/* 6, 3, 1 */
-		WRITE_VREG(HEVCD_IPP_DYNCLKGATE_CONFIG,
-				READ_VREG(HEVCD_IPP_DYNCLKGATE_CONFIG) |
-				0xffffffff);	/* 31:0 */
+		WRITE_VREG(HEVCD_IPP_DYNCLKGATE_CONFIG, 0xffffffff);
 		WRITE_VREG(HEVCD_MCRCC_CTL1, READ_VREG(HEVCD_MCRCC_CTL1) |
 				(1 << 3));	/* 3 */
 	}
