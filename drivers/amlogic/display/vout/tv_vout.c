@@ -112,6 +112,7 @@ static int tv_vdac_power_level;
 static DEFINE_MUTEX(setmode_mutex);
 
 static enum tvmode_e vmode_to_tvmode(enum vmode_e mode);
+static enum vmode_e tvmode_to_vmode(enum tvmode_e tvmode);
 static void cvbs_config_vdac(unsigned int flag, unsigned int cfg);
 
 #ifdef CONFIG_CVBS_PERFORMANCE_COMPATIBLITY_SUPPORT
@@ -150,9 +151,9 @@ static void set_tvmode_misc(enum tvmode_e mode)
 		if ((mode == TVMODE_480CVBS) || (mode == TVMODE_576CVBS) ||
 			(mode == TVMODE_NTSC_M) || (mode == TVMODE_PAL_M) ||
 			(mode == TVMODE_PAL_N))
-			set_vmode_clk(mode);
+			set_vmode_clk(tvmode_to_vmode(mode));
 	} else
-		set_vmode_clk(mode);
+		set_vmode_clk(tvmode_to_vmode(mode));
 }
 
 static unsigned int vdac_cfg_valid = 0, vdac_cfg_value;
@@ -600,7 +601,7 @@ int tv_out_setmode(enum tvmode_e mode)
 	return 0;
 }
 
-static const enum tvmode_e vmode_tvmode_map(enum vmode_e mode)
+static enum tvmode_e vmode_tvmode_map(enum vmode_e mode)
 {
 	int i = 0;
 	for (i = 0; i < ARRAY_SIZE(mode_tab); i++) {
@@ -608,6 +609,16 @@ static const enum tvmode_e vmode_tvmode_map(enum vmode_e mode)
 			return mode_tab[i].tvmode;
 	}
 	return TVMODE_MAX;
+}
+
+static enum vmode_e tvmode_vmode_map(enum tvmode_e tvmode)
+{
+	int i = 0;
+	for (i = 0; i < ARRAY_SIZE(mode_tab); i++) {
+		if (tvmode == mode_tab[i].tvmode)
+			return mode_tab[i].mode;
+	}
+	return VMODE_MAX;
 }
 
 static int vout_open(struct inode *inode, struct file *file)
@@ -745,6 +756,11 @@ static struct vinfo_s *tv_get_current_info(void)
 static enum tvmode_e vmode_to_tvmode(enum vmode_e mode)
 {
 	return vmode_tvmode_map(mode);
+}
+
+static enum vmode_e tvmode_to_vmode(enum tvmode_e tvmode)
+{
+	return tvmode_vmode_map(tvmode);
 }
 
 static struct vinfo_s *get_tv_info(enum vmode_e mode)
@@ -1425,7 +1441,7 @@ static void bist_test_store(char *para)
 	unsigned int start, width;
 	int ret;
 
-	mode = info->vinfo->mode;
+	mode = vmode_to_tvmode(info->vinfo->mode);
 	ret = kstrtoul(para, 10, (unsigned long *)&num);
 	if (num > 3) {
 		switch (mode) {
@@ -1708,6 +1724,8 @@ static void cvbs_debug_store(char *buf)
 		}
 
 		func_type_map(argv[1]);
+		if (func_read == NULL)
+			goto DEBUG_END;
 		ret = kstrtoul(argv[2], 16, &addr);
 
 		print_info("read %s[0x%x] = 0x%x\n",
@@ -1724,6 +1742,8 @@ static void cvbs_debug_store(char *buf)
 		}
 
 		func_type_map(argv[1]);
+		if (func_read == NULL)
+			goto DEBUG_END;
 		ret = kstrtoul(argv[2], 16, &addr);
 		ret = kstrtoul(argv[3], 10, &start);
 		ret = kstrtoul(argv[4], 10, &length);
@@ -1750,7 +1770,8 @@ static void cvbs_debug_store(char *buf)
 		}
 
 		func_type_map(argv[1]);
-
+		if (func_read == NULL)
+			goto DEBUG_END;
 		ret = kstrtoul(argv[2], 16, &start);
 		ret = kstrtoul(argv[3], 16, &end);
 
@@ -1768,7 +1789,8 @@ static void cvbs_debug_store(char *buf)
 		}
 
 		func_type_map(argv[2]);
-
+		if (func_write == NULL)
+			goto DEBUG_END;
 		ret = kstrtoul(argv[1], 16, &value);
 		ret = kstrtoul(argv[3], 16, &addr);
 
@@ -1792,6 +1814,8 @@ static void cvbs_debug_store(char *buf)
 		ret = kstrtoul(argv[4], 10, &start);
 		ret = kstrtoul(argv[5], 10, &length);
 
+		if (func_read == NULL)
+			goto DEBUG_END;
 		old = func_read(addr);
 		func_setb(addr, value, start, length);
 		print_info("write_bits %s[0x%x] old = 0x%x, new = 0x%x\n",
@@ -1826,7 +1850,8 @@ static void cvbs_debug_store(char *buf)
 		}
 		ret = kstrtoul(argv[1], 16, &value);
 		cvbs_performance_index = (value > 2) ? 0 : value;
-		cvbs_performance_enhancement(info->vinfo->mode);
+		cvbs_performance_enhancement(
+			vmode_to_tvmode(info->vinfo->mode));
 		cvbs_performance_regs_dump();
 		break;
 
@@ -1845,8 +1870,6 @@ static void cvbs_debug_store(char *buf)
 		"\twb value_hex c/h/v address_hex start_dec length_dec\n"
 		"\tbist 0/1/2/3/off\n"
 		"\tclkdump\n");
-		break;
-	default:
 		break;
 	}
 
