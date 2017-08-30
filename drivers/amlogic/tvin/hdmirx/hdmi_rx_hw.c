@@ -55,8 +55,9 @@
 
 /*------------------------variable define------------------------------*/
 static DEFINE_SPINLOCK(reg_rw_lock);
-
-static bool phy_fast_switching;
+/*should enable fast switching, since some devices in non-current port
+will suspend because of RxSense = 0, such as xiaomi-mtk box*/
+static bool phy_fast_switching = true;
 static bool phy_fsm_enhancement = true;
 unsigned int last_clk_rate;
 
