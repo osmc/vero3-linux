@@ -292,34 +292,14 @@ void Edid_DecodeStandardTiming(struct hdmitx_info *info,
 			hor_pixel = (int)((Data[i*2]+31)*8);
 			TmpVal = Data[i*2 + 1] & 0xC0;
 
-			frame_rate = (int)((Data[i*2 + 1]) & 0x3F) + 60;
+			frame_rate = (int)(Data[i*2 + 1] & 0x3F) + 60;
 
-			if ((hor_pixel == 720) && (frame_rate == 30))
-				info->hdmi_sup_480i  = 1;
-			else if ((hor_pixel == 720) && (frame_rate == 25))
-				info->hdmi_sup_576i  = 1;
-			else if ((hor_pixel == 720) && (frame_rate == 60))
+			if ((hor_pixel == 720) && (frame_rate == 60))
 				info->hdmi_sup_480p  = 1;
-			else if ((hor_pixel == 720) && (frame_rate == 50))
-				info->hdmi_sup_576p  = 1;
 			else if ((hor_pixel == 1280) && (frame_rate == 60))
 				info->hdmi_sup_720p_60hz  = 1;
-			else if ((hor_pixel == 1280) && (frame_rate == 50))
-				info->hdmi_sup_720p_50hz  = 1;
-			else if ((hor_pixel == 1920) && (frame_rate == 30))
-				info->hdmi_sup_1080i_60hz  = 1;
-			else if ((hor_pixel == 1920) && (frame_rate == 25))
-				info->hdmi_sup_1080i_50hz  = 1;
 			else if ((hor_pixel == 1920) && (frame_rate == 60))
 				info->hdmi_sup_1080p_60hz  = 1;
-			else if ((hor_pixel == 1920) && (frame_rate == 50))
-				info->hdmi_sup_1080p_50hz  = 1;
-			else if ((hor_pixel == 1920) && (frame_rate == 24))
-				info->hdmi_sup_1080p_24hz  = 1;
-			else if ((hor_pixel == 1920) && (frame_rate == 25))
-				info->hdmi_sup_1080p_25hz  = 1;
-			else if ((hor_pixel == 1920) && (frame_rate == 30))
-				info->hdmi_sup_1080p_30hz  = 1;
 		}
 	}
 }
@@ -2689,7 +2669,7 @@ static void hdmitx_edid_blk_print(unsigned char *blk, unsigned int blk_idx)
 		return;
 	}
 
-	memset(tmp_buf, 0, sizeof(TMP_EDID_BUF_SIZE));
+	memset(tmp_buf, 0, TMP_EDID_BUF_SIZE);
 	for (i = 0, pos = 0; i < 128; i++) {
 		pos += sprintf(tmp_buf + pos, "%02x", blk[i]);
 		if (((i+1) & 0x1f) == 0)    /* print 32bytes a line */
