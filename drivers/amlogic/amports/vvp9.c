@@ -7742,7 +7742,8 @@ static int __init amvdec_vp9_driver_init_module(void)
 		return -ENODEV;
 	}
 
-	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXL) {
+	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXL
+		&& get_cpu_type() != MESON_CPU_MAJOR_ID_GXLX) {
 		amvdec_vp9_profile.profile =
 			"4k, 10bit, dwrite, compressed";
 	} else {
