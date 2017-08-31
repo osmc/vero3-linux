@@ -3694,6 +3694,7 @@ void vpp_disable_lcd_gamma_table(void)
 	WRITE_VPP_REG_BITS(L_GAMMA_CNTL_PORT, 0, GAMMA_EN, 1);
 }
 
+/*write gamma first off gamma_en then on gamma_en*/
 void vpp_set_lcd_gamma_table(u16 *data, u32 rgb_mask)
 {
 	int i;
@@ -3737,8 +3738,8 @@ void vpp_set_lcd_gamma_table(u16 *data, u32 rgb_mask)
 
 	spin_unlock_irqrestore(&vpp_lcd_gamma_lock, flags);
 }
-
-void init_write_gamma_table(u16 *data, u32 rgb_mask)
+/*write gamma not off gamma_en*/
+void amve_write_gamma_table(u16 *data, u32 rgb_mask)
 {
 	int i;
 	int cnt = 0;

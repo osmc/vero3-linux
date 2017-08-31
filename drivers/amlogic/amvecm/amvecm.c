@@ -1643,17 +1643,26 @@ static ssize_t amvecm_cm_reg_store(struct class *cls,
 		 struct class_attribute *attr,
 		 const char *buffer, size_t count)
 {
-	int parsed[2], data[5] = {0};
-	int addr, value;
+	int data[5] = {0};
+	unsigned int addr, value;
+	long val = 0;
 	int i, node, reg_node;
 	unsigned int addr_port = VPP_CHROMA_ADDR_PORT;/* 0x1d70; */
 	unsigned int data_port = VPP_CHROMA_DATA_PORT;/* 0x1d71; */
+	char *buf_orig, *parm[2] = {NULL};
 
-	if (likely(parse_para_pq(buffer, 2, parsed) != 2))
+	if (!buffer)
+		return count;
+	buf_orig = kstrdup(buffer, GFP_KERNEL);
+	parse_param_amvecm(buf_orig, (char **)&parm);
+
+	if (kstrtoul(parm[0], 16, &val) < 0)
 		return -EINVAL;
+		addr = val;
+	if (kstrtoul(parm[1], 16, &val) < 0)
+		return -EINVAL;
+		value = val;
 
-	addr = parsed[0];
-	value = parsed[1];
 	node = (addr - 0x100) / 8;
 	reg_node = (addr - 0x100) % 8;
 
@@ -1744,15 +1753,15 @@ static ssize_t amvecm_gamma_store(struct class *cls,
 
 		switch (parm[0][2]) {
 		case 'r':
-			vpp_set_lcd_gamma_table(gammaR, H_SEL_R);
+			amve_write_gamma_table(gammaR, H_SEL_R);
 			break;
 
 		case 'g':
-			vpp_set_lcd_gamma_table(gammaR, H_SEL_G);
+			amve_write_gamma_table(gammaR, H_SEL_G);
 			break;
 
 		case 'b':
-			vpp_set_lcd_gamma_table(gammaR, H_SEL_B);
+			amve_write_gamma_table(gammaR, H_SEL_B);
 			break;
 		default:
 			break;
@@ -1772,7 +1781,8 @@ static ssize_t amvecm_gamma_store(struct class *cls,
 static ssize_t set_gamma_pattern_show(struct class *cla,
 			struct class_attribute *attr, char *buf)
 {
-	pr_info("	echo r g b > /sys/class/amvecm/gamma_pattern\n");
+	pr_info("8bit: echo r g b > /sys/class/amvecm/gamma_pattern\n");
+	pr_info("10bit: echo r g b 0xa > /sys/class/amvecm/gamma_pattern\n");
 	pr_info("	r g b should be hex\n");
 	return 0;
 }
@@ -1784,7 +1794,7 @@ static ssize_t set_gamma_pattern_store(struct class *cls,
 	unsigned short r_val[256], g_val[256], b_val[256];
 	int n = 0;
 	char *buf_orig, *ps, *token;
-	char *parm[3];
+	char *parm[4];
 	unsigned int gamma[3];
 	long val, i;
 	char deliml[3] = " ";
@@ -1793,6 +1803,7 @@ static ssize_t set_gamma_pattern_store(struct class *cls,
 	buf_orig = kstrdup(buffer, GFP_KERNEL);
 	ps = buf_orig;
 	strcat(deliml, delim2);
+	*(parm + 3) = NULL;
 	while (1) {
 		token = strsep(&ps, deliml);
 		if (token == NULL)
@@ -1801,17 +1812,39 @@ static ssize_t set_gamma_pattern_store(struct class *cls,
 			continue;
 		parm[n++] = token;
 	}
-	if (kstrtol(parm[0], 16, &val) < 0)
-		return -EINVAL;
-	gamma[0] = val << 2;
 
-	if (kstrtol(parm[1], 16, &val) < 0)
-		return -EINVAL;
-	gamma[1] = val << 2;
+	if (*(parm + 3) != NULL) {
+		if (kstrtol(parm[3], 16, &val) < 0)
+			return -EINVAL;
+		if (val == 10) {
+			if (kstrtol(parm[0], 16, &val) < 0)
+				return -EINVAL;
+			gamma[0] = val;
 
-	if (kstrtol(parm[2], 16, &val) < 0)
-		return -EINVAL;
-	gamma[2] = val << 2;
+			if (kstrtol(parm[1], 16, &val) < 0)
+				return -EINVAL;
+			gamma[1] = val;
+
+			if (kstrtol(parm[2], 16, &val) < 0)
+				return -EINVAL;
+			gamma[2] = val;
+		} else {
+			kfree(buf_orig);
+			return count;
+		}
+	} else {
+		if (kstrtol(parm[0], 16, &val) < 0)
+			return -EINVAL;
+		gamma[0] = val << 2;
+
+		if (kstrtol(parm[1], 16, &val) < 0)
+			return -EINVAL;
+		gamma[1] = val << 2;
+
+		if (kstrtol(parm[2], 16, &val) < 0)
+			return -EINVAL;
+		gamma[2] = val << 2;
+	}
 
 	for (i = 0; i < 256; i++) {
 		r_val[i] = gamma[0];
@@ -1819,11 +1852,11 @@ static ssize_t set_gamma_pattern_store(struct class *cls,
 		b_val[i] = gamma[2];
 	}
 
-	vpp_set_lcd_gamma_table(r_val, H_SEL_R);
+	amve_write_gamma_table(r_val, H_SEL_R);
+	amve_write_gamma_table(g_val, H_SEL_G);
+	amve_write_gamma_table(b_val, H_SEL_B);
 
-	vpp_set_lcd_gamma_table(g_val, H_SEL_G);
-
-	vpp_set_lcd_gamma_table(b_val, H_SEL_B);
+	kfree(buf_orig);
 	return count;
 
 }
@@ -3678,7 +3711,7 @@ void init_pq_setting(void)
 	WRITE_VPP_REG_BITS(VPP_VE_ENABLE_CTRL,
 				0, DNLP_EN_BIT, DNLP_EN_WID);
 	/*end*/
-	if (is_meson_txl_cpu()) {
+	if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXL)) {
 		WRITE_VPP_REG_BITS(SRSHARP1_PK_FINALGAIN_HP_BP, 2, 16, 2);
 
 		/*sr0 sr1 chroma filter bypass*/
@@ -3701,13 +3734,13 @@ static void amvecm_gamma_init(bool en)
 
 		for (i = 0; i < 256; i++)
 			data[i] = i << 2;
-		init_write_gamma_table(
+		amve_write_gamma_table(
 					data,
 					H_SEL_R);
-		init_write_gamma_table(
+		amve_write_gamma_table(
 					data,
 					H_SEL_G);
-		init_write_gamma_table(
+		amve_write_gamma_table(
 					data,
 					H_SEL_B);
 	}
