@@ -932,7 +932,9 @@ void hdcp22_resume(void)
 	hdmirx_hw_config();
 	switch_set_state(&rx.hpd_sdev, 0x01);
 	hpd_to_esm = 1;
-	mdelay(900);
+	/* dont need to delay 900ms to wait sysctl start hdcp_rx22,
+	sysctl is userspace it wakes up later than driver */
+	/* mdelay(900); */
 	rx_set_hpd(1);
 	rx_pr("hdcp22 on\n");
 }
