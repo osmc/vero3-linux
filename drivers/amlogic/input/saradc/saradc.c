@@ -249,10 +249,11 @@ int get_adc_sample_early(int dev_id, int ch, char if_10bit)
 		min = min_12bit;
 
 	adc = gp_saradc;
-	mem_base = adc->mem_base;
 
 	if (!adc)
 		return -1;
+
+	mem_base = adc->mem_base;
 
 	count = 0;
 	while (getb(mem_base, FLAG_BUSY_BL30) ||
@@ -605,16 +606,29 @@ static struct platform_driver saradc_driver = {
 
 static int __init saradc_init(void)
 {
+	int ret;
+
 	/* printk(KERN_INFO "SARADC Driver init.\n"); */
-	class_register(&saradc_class);
-	return platform_driver_register(&saradc_driver);
+	ret = platform_driver_register(&saradc_driver);
+	if (ret) {
+		pr_err("fail to register saradc driver.\n");
+		return ret;
+	}
+
+	ret = class_register(&saradc_class);
+	if (ret) {
+		pr_err("fail to create saradc calss.\n");
+		return ret;
+	}
+
+	return 0;
 }
 
 static void __exit saradc_exit(void)
 {
 	/* printk(KERN_INFO "SARADC Driver exit.\n"); */
-	platform_driver_unregister(&saradc_driver);
 	class_unregister(&saradc_class);
+	platform_driver_unregister(&saradc_driver);
 }
 
 module_init(saradc_init);
