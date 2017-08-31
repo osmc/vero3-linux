@@ -5635,8 +5635,9 @@ jiffies_to_msecs(jiffies_64 - vframe->ready_jiffies64));
 				}
 			}
 			pr_info(
-			"%s:%d source change: 0x%x/%d/%d/%d=>0x%x/%d/%d/%d\n",
+			"%s:%ums %dth source change: 0x%x/%d/%d/%d=>0x%x/%d/%d/%d\n",
 				__func__,
+				jiffies_to_msecs(jiffies_64),
 				di_pre_stru.in_seq,
 				di_pre_stru.cur_inp_type,
 				di_pre_stru.cur_width,
@@ -8001,10 +8002,6 @@ VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL);
 					queue_out(di_buf->di_buf[1]);
 				}
 #endif
-				if ((check_start_drop_prog &&
-				     is_progressive(ready_di_buf->vframe))
-				    || !is_progressive(ready_di_buf->vframe))
-					check_drop = true;
 				drop_frame(check_drop,
 					di_buf->di_buf[0]->throw_flag, di_buf);
 
