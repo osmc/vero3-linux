@@ -3302,7 +3302,7 @@ static ssize_t emmc_debug_help(struct class *class,
 static ssize_t emmc_debug(struct class *class, struct class_attribute *attr,
 			const char *buf, size_t count)
 {
-	unsigned int ret;
+	unsigned int ret = -EINVAL;
 	unsigned int t[6];
 	struct mmc_host *mmc = host_emmc->mmc;
 	struct amlsd_platform *pdata = mmc_priv(mmc);
@@ -3405,15 +3405,15 @@ static ssize_t emmc_debug(struct class *class, struct class_attribute *attr,
 		pr_err("warning: adjust is not change!\n");
 	}
 
-	if (ret != 1 || ret != 2)
-		return -EINVAL;
-	return count;
+	if (ret == 1 || ret == 2)
+		return count;
+	return -EINVAL;
 }
 static ssize_t emmc_read_debug(struct class *class,
 					struct class_attribute *attr,
 					const char *buf, size_t count)
 {
-	unsigned int ret;
+	unsigned int ret = -EINVAL;
 	struct sd_emmc_regs *sd_emmc_regs = host_emmc->sd_emmc_regs;
 	u32 vclkc = sd_emmc_regs->gclock;
 	struct sd_emmc_clock *pclkc = (struct sd_emmc_clock *)&vclkc;
@@ -3464,9 +3464,9 @@ static ssize_t emmc_read_debug(struct class *class,
 	default:
 		break;
 	}
-	if (ret != 1 || ret != 2)
-		return -EINVAL;
-	return count;
+	if (ret == 1 || ret == 2)
+		return count;
+	return -EINVAL;
 }
 static struct class_attribute emmc_debug_class_attrs[] = {
 	__ATTR(debug, S_IRUGO | S_IWUSR, emmc_debug_help, emmc_debug),
