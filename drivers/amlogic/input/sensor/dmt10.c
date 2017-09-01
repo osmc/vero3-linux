@@ -192,9 +192,6 @@ static bool get_value_as_int64(char const *buf, size_t size, long long *value)
 			return false;
 	}
 
-	if (tmp > LLONG_MAX)
-		return false;
-
 	*value = tmp;
 	return true;
 }
