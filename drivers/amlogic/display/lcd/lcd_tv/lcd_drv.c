@@ -1080,7 +1080,7 @@ static void lcd_venc_set(struct lcd_config_s *pconf)
 	lcd_vcbus_write(VPU_VIU_VENC_MUX_CTRL, (0 << 0) | (3 << 2));
 	/* Enable Hsync and equalization pulse switch in center;
 	bit[14] cfg_de_v = 1 */
-	lcd_vcbus_write(ENCL_VIDEO_MODE,       40);
+	lcd_vcbus_write(ENCL_VIDEO_MODE,       0x8000);/*bit[15] shadown en*/
 	lcd_vcbus_write(ENCL_VIDEO_MODE_ADV,   0x18); /* Sampling rate: 1 */
 
 	/* bypass filter */
