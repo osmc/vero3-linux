@@ -180,8 +180,24 @@ err:
 
 static int aml_dmic_platform_remove(struct platform_device *pdev)
 {
+	struct aml_dmic_priv *dmic_priv = dev_get_drvdata(&pdev->dev);
+
+	if (dmic_priv && dmic_priv->clk_pdm)
+		clk_disable_unprepare(dmic_priv->clk_pdm);
+
 	snd_soc_unregister_codec(&pdev->dev);
 	return 0;
+}
+
+static void aml_dmic_platform_shutdown(struct platform_device *pdev)
+{
+	struct aml_dmic_priv *dmic_priv = dev_get_drvdata(&pdev->dev);
+
+	if (dmic_priv && dmic_priv->clk_pdm)
+		clk_disable_unprepare(dmic_priv->clk_pdm);
+
+	snd_soc_unregister_codec(&pdev->dev);
+	return;
 }
 
 static const struct of_device_id amlogic_dmic_of_match[] = {
@@ -197,6 +213,7 @@ static struct platform_driver aml_dmic_driver = {
 		   },
 	.probe = aml_dmic_platform_probe,
 	.remove = aml_dmic_platform_remove,
+	.shutdown = aml_dmic_platform_shutdown,
 };
 
 module_platform_driver(aml_dmic_driver);

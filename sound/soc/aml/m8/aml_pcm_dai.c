@@ -340,6 +340,17 @@ static int aml_pcm_dai_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void aml_pcm_dai_plat_shutdown(struct platform_device *pdev)
+{
+	struct aml_pcm *pcm_priv = dev_get_drvdata(&pdev->dev);
+
+	clk_disable_unprepare(pcm_priv->clk_pcm_mclk);
+	clk_disable_unprepare(pcm_priv->clk_pcm_sync);
+
+	snd_soc_unregister_component(&pdev->dev);
+	return;
+}
+
 #ifdef CONFIG_OF
 static const struct of_device_id amlogic_pcm_dai_match[] = {
 	{.compatible = "amlogic, aml-pcm-dai",
@@ -359,6 +370,7 @@ static struct platform_driver aml_pcm_dai_driver = {
 
 	.probe = aml_pcm_dai_probe,
 	.remove = aml_pcm_dai_remove,
+	.shutdown = aml_pcm_dai_plat_shutdown,
 };
 
 static int __init aml_pcm_dai_modinit(void)
