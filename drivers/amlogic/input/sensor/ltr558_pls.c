@@ -609,7 +609,7 @@ static long ltr558_ps_ioctl(struct file *file, unsigned int cmd,
 
 	case LTR_IOCTL_GET_PFLAG:
 		buffer = ltr558_ps_read_status();
-		if (&buffer < 0) {
+		if (buffer < 0) {
 			ret = -EFAULT;
 			break;
 		}
