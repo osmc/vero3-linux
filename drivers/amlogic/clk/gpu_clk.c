@@ -424,6 +424,7 @@ static int gpu_clkgen_probe(struct platform_device *pdev)
 	const char *clk_name;
 	struct resource *mem;
 	struct clk *clk;
+	int ret = 0;
 
 	dprintk(3, "%s, %d\n", __func__, __LINE__);
 	gpu_clkgen = devm_kzalloc(&pdev->dev, sizeof(*gpu_clkgen), GFP_KERNEL);
@@ -438,8 +439,10 @@ static int gpu_clkgen_probe(struct platform_device *pdev)
 
 	dprintk(3, "%s, %d\n", __func__, __LINE__);
 	clk_name = pdev->dev.of_node->name;
-	of_property_read_string(pdev->dev.of_node, "clock-output-names",
+	ret = of_property_read_string(pdev->dev.of_node, "clock-output-names",
 			&clk_name);
+	if (ret)
+		dev_notice(&pdev->dev, "read clk_parent failed\n");
 
 	dprintk(3, "dev_get_drvdata=%p\n", dev_get_drvdata(&pdev->dev));
 	dev_set_drvdata(&pdev->dev, gpu_clkgen);
