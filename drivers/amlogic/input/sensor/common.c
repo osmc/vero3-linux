@@ -104,6 +104,7 @@ int dt_sensor_setup_i2c_dev(struct device_node *node,  struct i2c_board_info
 	u32 acc_dir, mag_dir, gyr_dir;
 	const char *value;
 	struct gpio_desc *desc;
+	char tmp[I2C_NAME_SIZE] = {0};
 	ret = of_property_read_string(node, "status", &value);
 	if (ret < 0) {
 		pr_info("%s: Failed to read status from device tree for dev",
@@ -120,7 +121,12 @@ int dt_sensor_setup_i2c_dev(struct device_node *node,  struct i2c_board_info
 			return ret;
 		}
 
-		strncpy(i2c_info->type, value, I2C_NAME_SIZE);
+		ret = strlen(value);
+		if (ret >= I2C_NAME_SIZE) {
+			strncpy(tmp, value, I2C_NAME_SIZE-1);
+			strncpy(i2c_info->type, tmp, I2C_NAME_SIZE);
+		} else
+			strncpy(i2c_info->type, value, I2C_NAME_SIZE);
 
 		ret = of_property_read_u32(node, "address", &addr);
 		if (ret < 0) {
