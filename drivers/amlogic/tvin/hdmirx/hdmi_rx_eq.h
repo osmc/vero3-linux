@@ -84,8 +84,9 @@ enum phy_eq_cmd_e {
 };
 
 enum run_eq_state {
-	E_EQ_PASS,
 	E_EQ_START,
+	E_EQ_FINISH,
+	E_EQ_PASS,
 	E_EQ_FAIL
 };
 
@@ -133,7 +134,7 @@ void hdmirx_phy_conf_eq_setting(int rx_port_sel,
 void eq_cfg(void);
 void eq_run(void);
 void rx_set_eq_run_state(enum run_eq_state state);
-
+enum run_eq_state rx_get_eq_run_state(void);
 
 /*function declare end*/
 

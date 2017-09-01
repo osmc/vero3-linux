@@ -326,6 +326,9 @@ bool hdcp22_esm_reset2_enable;
 static int sm_pause;
 int pre_port = 0xff;
 /*uint32_t irq_flag;*/
+/*for some device pll unlock too long,send a hpd reset*/
+int pll_unlock_check_times;
+int pll_unlock_check_times_max = 5;
 
 /*------------------------external function------------------------------*/
 static void dump_state(unsigned char enable);
@@ -1705,8 +1708,8 @@ static void Signal_status_init(void)
 	#ifdef HDCP22_ENABLE
 	/*if (hdcp22_on)
 		esm_set_stable(0);*/
-	hdmirx_hdcp_version_set(HDCP_VERSION_NONE);
 	#endif
+	hdmirx_hdcp_version_set(HDCP_VERSION_NONE);
 	rx.skip = 0;
 }
 
@@ -1952,6 +1955,44 @@ bool hdcp_14_auth_success(void)
 	}
 }
 
+bool is_unnormal_format(uint8_t wait_cnt)
+{
+	bool ret = false;
+	if ((rx.pre.sw_vic == HDMI_UNSUPPORT) ||
+		(rx.pre.sw_vic == HDMI_UNKNOW)) {
+		if (wait_cnt < unnormal_wait_max)
+			ret = true;
+		if (log_level & VIDEO_LOG)
+			rx_pr("*unsupport*\n");
+		}
+	if (rx.pre.sw_dvi == 1) {
+		if (wait_cnt < unnormal_wait_max)
+			ret = true;
+		if (log_level & VIDEO_LOG)
+			rx_pr("*DVI*\n");
+		}
+	if ((is_hdcp_source) &&
+		(rx.pre.hdcp14_state != 3) &&
+		(rx.pre.hdcp14_state != 0) &&
+		(rx.hdcp.hdcp_version != HDCP_VERSION_22)) {
+		if (wait_cnt < unnormal_wait_max)
+			ret = true;
+		if (log_level & VIDEO_LOG)
+			rx_pr("hdcp14 unfinished\n");
+		}
+	/*
+	if ((rx.pre.hdcp_type == E_HDCP22) &&
+	(rx.pre.hdcp_enc_state != 1) &&
+	(hdcp22_capable_sts != 0)) {
+	if ((wait_cnt < unnormal_wait_max))
+	ret = true;
+	if (log_level & VIDEO_LOG)
+	rx_pr("hdcp22 sts unstable\n");
+	} */
+	return ret;
+}
+
+
 void rx_nosig_monitor(void)
 {
 	if (rx.cur_5v_sts == 0)
@@ -2116,7 +2157,7 @@ void hdmirx_hw_monitor(void)
 			break;
 		}
 	case FSM_WAIT_EQ_DONE:
-		if (run_eq_flag == E_EQ_PASS)
+		if (rx_get_eq_run_state() == E_EQ_FINISH)
 			rx.state = FSM_SIG_UNSTABLE;
 		break;
 	case FSM_SIG_UNSTABLE:
@@ -2146,13 +2187,19 @@ void hdmirx_hw_monitor(void)
 				}
 				#endif
 				pll_lock_cnt = 0;
+				pll_unlock_check_times = 0;
 				rx_pr("UNSTABLE->WAIT_STABLE\n");
 			}
 		} else {
 			pll_lock_cnt = 0;
 			if (pll_unlock_cnt++ >= pll_unlock_max) {
 				hdmirx_error_count_config();
-				rx.state = FSM_WAIT_CLK_STABLE;
+				if (pll_unlock_check_times++ >=
+					pll_unlock_check_times_max) {
+					pll_unlock_check_times = 0;
+					rx.state = FSM_HPD_LOW;
+				} else
+					rx.state = FSM_WAIT_CLK_STABLE;
 				pll_unlock_cnt = 0;
 				rx_set_eq_run_state(E_EQ_FAIL);
 				rx_pr("UNSTABLE->HPD_LOW\n");
@@ -2188,47 +2235,8 @@ void hdmirx_hw_monitor(void)
 		if (is_timing_stable() && is_hdcp_enc_stable()) {
 			if (sig_stable_cnt++ > sig_stable_max) {
 				get_timing_fmt();
-				if ((rx.pre.sw_vic == HDMI_UNSUPPORT) ||
-					(rx.pre.sw_vic == HDMI_UNKNOW)) {
-					if (log_level & VIDEO_LOG)
-						rx_pr("*unsupport*\n");
-					if (sig_stable_cnt < (sig_stable_max*5))
-						break;
-					sig_stable_cnt = 0;
-					if (log_level & VIDEO_LOG)
-						rx_pr("unsupport->wait_clk\n");
-					if (log_level & VIDEO_LOG)
-						dump_state(1);
-					rx_set_eq_run_state(E_EQ_FAIL);
-					rx.state = FSM_WAIT_CLK_STABLE;
+				if (is_unnormal_format(sig_stable_cnt))
 					break;
-				}
-				if (rx.pre.sw_dvi == 1) {
-					if (sig_stable_cnt < (sig_stable_max*7))
-						break;
-				}
-				/*For 1.4 source after esm reset,hdcp type will
-				be 2.2 untill tx send aksv,for some sources
-				which send aksv too late,this state will keep
-				2.2,so this state is correct */
-				if ((is_hdcp_source) &&
-					/* (rx.pre.hdcp_type == E_HDCP14) && */
-					(rx.pre.hdcp14_state != 3) &&
-					(rx.pre.hdcp14_state != 0)) {
-					if (log_level & VIDEO_LOG)
-						rx_pr("hdcp14 sts unstable\n");
-					if (sig_stable_cnt < (sig_stable_max*7))
-						break;
-				}
-				/*
-				if ((rx.pre.hdcp_type == E_HDCP22) &&
-					(rx.pre.hdcp_enc_state != 1) &&
-					(hdcp22_capable_sts != 0)) {
-					if (log_level & VIDEO_LOG)
-						rx_pr("hdcp22 sts unstable\n");
-					if (sig_stable_cnt < (sig_stable_max*7))
-						break;
-				} */
 				sig_stable_cnt = 0;
 				sig_unstable_cnt = 0;
 				rx.skip = 0;
@@ -3227,6 +3235,8 @@ void rx_set_global_varaible(const char *buf, int size)
 	set_pr_var(tmpbuf, hdcp22_stop_auth, value, index);
 	set_pr_var(tmpbuf, hdcp22_esm_reset2_enable, value, index);
 	set_pr_var(tmpbuf, hdcp22_esm_reset2, value, index);
+	set_pr_var(tmpbuf, pll_unlock_check_times, value, index);
+	set_pr_var(tmpbuf, pll_unlock_check_times_max, value, index);
 }
 
 void rx_get_global_varaible(const char *buf)
@@ -3317,6 +3327,8 @@ void rx_get_global_varaible(const char *buf)
 	pr_var(hdcp22_stop_auth, i++);
 	pr_var(hdcp22_esm_reset2_enable, i++);
 	pr_var(hdcp22_esm_reset2, i++);
+	pr_var(pll_unlock_check_times, i++);
+	pr_var(pll_unlock_check_times_max, i++);
 }
 
 void print_reg(uint start_addr, uint end_addr)

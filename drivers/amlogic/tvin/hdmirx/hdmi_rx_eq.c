@@ -197,6 +197,11 @@ void rx_set_eq_run_state(enum run_eq_state state)
 		rx_pr("run_eq_flag err: %d\n", run_eq_flag);
 }
 
+enum run_eq_state rx_get_eq_run_state(void)
+{
+	return run_eq_flag;
+}
+
 void eq_algorithm(struct work_struct *work)
 {
 	unsigned int i;
@@ -230,6 +235,7 @@ void eq_algorithm(struct work_struct *work)
 			rx_pr("EQ fail-retry\n");
 	}
 	eq_cfg();
+	rx_set_eq_run_state(E_EQ_FINISH);
 	return;
 }
 
@@ -613,11 +619,12 @@ enum eq_states_e rx_need_eq_algorithm(void)
 	} else if (hdmirx_tmds_6g()) {
 		fat_bit_status = EQ_FATBIT_MASK_HDMI20;
 		min_max_diff = MINMAX_maxDiff_HDMI20;
-		if ((pre_eq_freq == E_EQ_6G) && (run_eq_flag == E_EQ_PASS)) {
+		if ((pre_eq_freq == E_EQ_6G) &&
+			(rx_get_eq_run_state() == E_EQ_PASS)) {
 			if (log_level & EQ_LOG)
 				rx_pr("EQ_6G_same\n");
 			ret = EQ_USE_PRE;
-		} else if (run_eq_flag == E_EQ_START) {
+		} else if (rx_get_eq_run_state() == E_EQ_START) {
 			if (log_level & EQ_LOG)
 				rx_pr("EQ_6G_def\n");
 			eq_ch0.bestsetting = eq_cfg_6g;
@@ -633,11 +640,12 @@ enum eq_states_e rx_need_eq_algorithm(void)
 	} else if ((mfsm_status & 0x600) == 0x00) {
 		fat_bit_status = EQ_FATBIT_MASK_4k;
 		min_max_diff = MINMAX_maxDiff;
-		if ((pre_eq_freq == E_EQ_3G) && (run_eq_flag == E_EQ_PASS)) {
+		if ((pre_eq_freq == E_EQ_3G) &&
+			(rx_get_eq_run_state() == E_EQ_PASS)) {
 			if (log_level & EQ_LOG)
 				rx_pr("EQ_3G_same\n");
 			ret = EQ_USE_PRE;
-		} else if (run_eq_flag == E_EQ_START) {
+		} else if (rx_get_eq_run_state() == E_EQ_START) {
 			if (log_level & EQ_LOG)
 				rx_pr("EQ_3G_def\n");
 			pre_eq_freq = E_EQ_3G;
@@ -653,10 +661,11 @@ enum eq_states_e rx_need_eq_algorithm(void)
 	} else if ((mfsm_status & 0x400) == 0x400) {
 		fat_bit_status = EQ_FATBIT_MASK;
 		min_max_diff = MINMAX_maxDiff;
-		if ((pre_eq_freq == E_EQ_SD) && (run_eq_flag == E_EQ_PASS)) {
+		if ((pre_eq_freq == E_EQ_SD) &&
+			(rx_get_eq_run_state() == E_EQ_PASS)) {
 			ret = EQ_USE_PRE;
 			hdmirx_wr_phy(PHY_MAIN_FSM_OVERRIDE2, 0x0);
-		} else if (E_EQ_FAIL == run_eq_flag) {
+		} else if (E_EQ_FAIL == rx_get_eq_run_state()) {
 			eq_ch0.bestsetting = eq_cfg_hd;
 			eq_ch1.bestsetting = eq_cfg_hd;
 			eq_ch2.bestsetting = eq_cfg_hd;
@@ -672,11 +681,12 @@ enum eq_states_e rx_need_eq_algorithm(void)
 		/* 94.5 ~ 148.5 */
 		fat_bit_status = EQ_FATBIT_MASK;
 		min_max_diff = MINMAX_maxDiff;
-		if ((pre_eq_freq == E_EQ_HD) && (run_eq_flag == E_EQ_PASS)) {
+		if ((pre_eq_freq == E_EQ_HD) &&
+			(rx_get_eq_run_state() == E_EQ_PASS)) {
 			if (log_level & EQ_LOG)
 				rx_pr("EQ_HD_same\n");
 			ret = EQ_USE_PRE;
-		} else if (run_eq_flag == E_EQ_START) {
+		} else if (rx_get_eq_run_state() == E_EQ_START) {
 			if (log_level & EQ_LOG)
 				rx_pr("EQ_HD_def\n");
 			eq_ch0.bestsetting = eq_cfg_hd;
