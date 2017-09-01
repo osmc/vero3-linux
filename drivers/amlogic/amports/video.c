@@ -4075,6 +4075,19 @@ static void dmc_adjust_for_mali_vpu(unsigned int width, unsigned int height)
 				DMC_AXI2_HOLD_CTRL,
 				0x08040804);
 		} else {
+			/* vpu dmc */
+			WRITE_DMCREG(
+				DMC_AM1_CHAN_CTRL,
+				0x43028);
+			WRITE_DMCREG(
+				DMC_AM1_HOLD_CTRL,
+				0x18101818);
+			WRITE_DMCREG(
+				DMC_AM3_CHAN_CTRL,
+				0x85f403f4);
+			WRITE_DMCREG(
+				DMC_AM4_CHAN_CTRL,
+				0x85f403f4);
 			/* mali dmc */
 			WRITE_DMCREG(
 				DMC_AXI1_HOLD_CTRL,
@@ -4093,10 +4106,22 @@ static void dmc_adjust_for_mali_vpu(unsigned int width, unsigned int height)
 			0x8FF003C4);
 		WRITE_DMCREG(
 			DMC_AM1_CHAN_CTRL,
-			0x8FF003C4);
+			0x3028);
+		WRITE_DMCREG(
+			DMC_AM1_HOLD_CTRL,
+			0x18101810);
 		WRITE_DMCREG(
 			DMC_AM2_CHAN_CTRL,
 			0x8FF003C4);
+		WRITE_DMCREG(
+			DMC_AM2_HOLD_CTRL,
+			0x3028);
+		WRITE_DMCREG(
+			DMC_AM3_CHAN_CTRL,
+			0x85f003f4);
+		WRITE_DMCREG(
+			DMC_AM4_CHAN_CTRL,
+			0x85f003f4);
 
 		/* mali dmc */
 		WRITE_DMCREG(

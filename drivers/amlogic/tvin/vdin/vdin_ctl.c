@@ -3079,7 +3079,9 @@ void vdin_set_bitdepth(struct vdin_dev_s *devp)
 			(devp->prop.color_format == TVIN_RGGB) ||
 			(devp->prop.color_format == TVIN_GBRG) ||
 			(devp->prop.color_format == TVIN_GRBG)) &&
-			(devp->prop.colordepth <= 8)) {
+			((devp->prop.colordepth <= 8) ||
+			is_meson_txlx_cpu())) {
+			/*txlx dmc is diff & bandwidth tension*/
 			devp->source_bitdepth = 8;
 			wr_bits(offset, VDIN_WR_CTRL2, 0,
 				VDIN_WR_10BIT_MODE_BIT, VDIN_WR_10BIT_MODE_WID);
