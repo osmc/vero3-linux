@@ -164,11 +164,6 @@ static int _cm3232_I2C_Read_Word(uint16_t slaveAddr, uint16_t *pdata)
 	}
 	*pdata = (buffer[1]<<8) | buffer[0];
 
-#if 0
-	/* Debug use */
-	pr_debug("[CM3232] %s: I2C_RxData[0x%x] = 0x%x\n",
-			__func__, slaveAddr, *pdata);
-#endif
 	return ret;
 }
 
@@ -180,12 +175,6 @@ static int _cm3232_I2C_Write_Byte(uint16_t SlaveAddress,
 
 	buffer[0] = CM3232_ALS_COMMAND_CODE;
 	buffer[1] = data;
-#if 0
-	/* Debug use */
-	pr_debug("[CM3232] %s: _cm3232_I2C_Write_Byte[0x%x, 0x%x, 0x%x]\n",
-		__func__, SlaveAddress, buffer[0], buffer[1]);
-#endif
-
 	ret = I2C_TxData(SlaveAddress, buffer, 2);
 	if (ret < 0) {
 		pr_err("[ERR][CM3232 error]%s: I2C_TxData fail\n", __func__);
@@ -744,7 +733,11 @@ static ssize_t ls_conf_store(struct device *dev,
 		return -EINVAL;
 	ALS_CONF = value;
 	pr_info("[LS]set ALS_CONF = %x\n", ALS_CONF);
-	_cm3232_I2C_Write_Byte(CM3232_SLAVE_addr, ALS_CONF);
+	ret = _cm3232_I2C_Write_Byte(CM3232_SLAVE_addr, ALS_CONF);
+	if (ret < 0) {
+		pr_info("i2c write failed!\n");
+		return ret;
+	}
 	return count;
 }
 
