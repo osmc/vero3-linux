@@ -1367,6 +1367,7 @@ static const u32 vreal_mc_9[] __initconst = {
 		MESON_CPU_MAJOR_ID_GXL,\
 		MESON_CPU_MAJOR_ID_GXM,\
 		MESON_CPU_MAJOR_ID_TXL,\
+		MESON_CPU_MAJOR_ID_GXLX,\
 		0}
 
 #define REG_FIRMWARE_ALL()\
