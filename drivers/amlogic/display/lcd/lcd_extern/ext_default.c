@@ -65,7 +65,7 @@ static unsigned char init_off_table[] = {
 };
 
 static int lcd_extern_i2c_write(struct i2c_client *i2client,
-		unsigned char *buff, unsigned len)
+		unsigned char *buff, unsigned int len)
 {
 	int ret = 0;
 	struct i2c_msg msg[] = {
@@ -181,7 +181,7 @@ static int lcd_extern_power_cmd_dynamic_size(unsigned char *init_table,
 
 	switch (ext_config->type) {
 	case LCD_EXTERN_I2C:
-		while (i <= max_len) {
+		while ((i + 2) < max_len) {
 			type = init_table[i];
 			if (type == LCD_EXTERN_INIT_END)
 				break;
@@ -191,6 +191,9 @@ static int lcd_extern_power_cmd_dynamic_size(unsigned char *init_table,
 					init_table[i], init_table[i+1]);
 			}
 			cmd_size = init_table[i+1];
+			if ((i + 2 + cmd_size) > max_len)
+				break;
+
 			if (type == LCD_EXTERN_INIT_NONE) {
 				if (cmd_size < 1) {
 					EXTERR("step %d: invalid cmd_size %d\n",
@@ -238,7 +241,7 @@ static int lcd_extern_power_cmd_dynamic_size(unsigned char *init_table,
 		}
 		break;
 	case LCD_EXTERN_SPI:
-		while (i <= max_len) {
+		while ((i + 2) < max_len) {
 			type = init_table[i];
 			if (type == LCD_EXTERN_INIT_END)
 				break;
@@ -248,6 +251,9 @@ static int lcd_extern_power_cmd_dynamic_size(unsigned char *init_table,
 					init_table[i], init_table[i+1]);
 			}
 			cmd_size = init_table[i+1];
+			if ((i + 2 + cmd_size) > max_len)
+				break;
+
 			if (type == LCD_EXTERN_INIT_NONE) {
 				if (cmd_size < 1) {
 					EXTERR("step %d: invalid cmd_size %d\n",
@@ -311,7 +317,7 @@ static int lcd_extern_power_cmd_fixed_size(unsigned char *init_table, int flag)
 	cmd_size = ext_config->cmd_size;
 	switch (ext_config->type) {
 	case LCD_EXTERN_I2C:
-		while (i <= max_len) {
+		while ((i + cmd_size) <= max_len) {
 			type = init_table[i];
 			if (type == LCD_EXTERN_INIT_END)
 				break;
@@ -346,7 +352,7 @@ static int lcd_extern_power_cmd_fixed_size(unsigned char *init_table, int flag)
 		}
 		break;
 	case LCD_EXTERN_SPI:
-		while (i <= max_len) {
+		while ((i + cmd_size) <= max_len) {
 			type = init_table[i];
 			if (type == LCD_EXTERN_INIT_END)
 				break;
@@ -548,6 +554,7 @@ int aml_lcd_extern_default_probe(struct aml_lcd_extern_driver_s *ext_drv)
 		}
 
 		strncpy(i2c_info.type, ext_drv->config.name, I2C_NAME_SIZE);
+		i2c_info.type[I2C_NAME_SIZE-1] = '\0';
 		i2c_info.addr = ext_drv->config.i2c_addr;
 		i2c_info.platform_data = &ext_drv->config;
 		i2c_info.flags = 0;

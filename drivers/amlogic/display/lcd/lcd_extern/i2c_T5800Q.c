@@ -51,7 +51,7 @@ static unsigned char init_off_table[] = {
 };
 
 static int lcd_extern_i2c_write(struct i2c_client *i2client,
-		unsigned char *buff, unsigned len)
+		unsigned char *buff, unsigned int len)
 {
 	int ret = 0;
 	struct i2c_msg msg[] = {
@@ -71,7 +71,7 @@ static int lcd_extern_i2c_write(struct i2c_client *i2client,
 }
 #if 0
 static int lcd_extern_i2c_read(struct i2c_client *i2client,
-		unsigned char *buff, unsigned len)
+		unsigned char *buff, unsigned int len)
 {
 	int ret = 0;
 	struct i2c_msg msgs[] = {
@@ -136,7 +136,7 @@ static int lcd_extern_power_cmd(unsigned char *init_table, int flag)
 	else
 		max_len = LCD_EXTERN_INIT_OFF_MAX;
 
-	while (i <= max_len) {
+	while ((i + cmd_size) <= max_len) {
 		if (init_table[i] == LCD_EXTERN_INIT_END)
 			break;
 		if (lcd_debug_print_flag) {
@@ -154,7 +154,7 @@ static int lcd_extern_power_cmd(unsigned char *init_table, int flag)
 			ret = lcd_extern_i2c_write(aml_T5800Q_i2c_client,
 				&init_table[i+1], (cmd_size-2));
 		} else {
-			EXTERR("%s(%d: %s): pwoer_type %d is invalid\n",
+			EXTERR("%s(%d: %s): power_type %d is invalid\n",
 				__func__, ext_config->index,
 				ext_config->name, ext_config->type);
 		}
@@ -352,6 +352,7 @@ int aml_lcd_extern_i2c_T5800Q_probe(struct aml_lcd_extern_driver_s *ext_drv)
 	}
 
 	strncpy(i2c_info.type, ext_drv->config.name, I2C_NAME_SIZE);
+	i2c_info.type[I2C_NAME_SIZE-1] = '\0';
 	i2c_info.addr = ext_drv->config.i2c_addr;
 	i2c_info.platform_data = &ext_drv->config;
 	i2c_info.flags = 0;

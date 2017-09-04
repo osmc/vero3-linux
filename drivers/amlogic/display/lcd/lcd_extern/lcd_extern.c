@@ -248,7 +248,7 @@ static int lcd_extern_init_table_dynamic_size_load_dts(
 	}
 
 	i = 0;
-	while (i < max_len) {
+	while ((i + 2) < max_len) { /* type & cmd_size detect */
 		/* step1: type */
 		ret = of_property_read_u32_index(of_node, propname, i, &val);
 		if (ret) {
@@ -276,6 +276,8 @@ static int lcd_extern_init_table_dynamic_size_load_dts(
 			i += 2;
 			continue;
 		}
+		if ((i + 2 + cmd_size) > max_len)
+			break;
 		/* step3: data */
 		for (j = 0; j < cmd_size; j++) {
 			ret = of_property_read_u32_index(
@@ -322,7 +324,7 @@ static int lcd_extern_init_table_fixed_size_load_dts(
 	}
 
 	i = 0;
-	while (i < max_len) {
+	while ((i + cmd_size) <= max_len) { /* group detect */
 		for (j = 0; j < cmd_size; j++) {
 			ret = of_property_read_u32_index(
 				of_node, propname, (i+j), &val);
@@ -386,7 +388,9 @@ static int lcd_extern_get_config_dts(struct device_node *of_node,
 		str = "none";
 		EXTERR("get extern_name failed\n");
 	}
-	strcpy(extconf->name, str);
+	strncpy(extconf->name, str, LCD_EXTERN_NAME_LEN_MAX);
+	/* ensure string ending */
+	extconf->name[LCD_EXTERN_NAME_LEN_MAX-1] = '\0';
 	EXTPR("load config: %s[%d]\n", extconf->name, extconf->index);
 
 	ret = of_property_read_u32(of_node, "type", &extconf->type);
@@ -413,7 +417,7 @@ static int lcd_extern_get_config_dts(struct device_node *of_node,
 		}
 		ret = of_property_read_u32(of_node, "i2c_second_address", &val);
 		if (ret) {
-			EXTERR("get %s i2c_second_address failed, exit\n",
+			EXTPR("get %s i2c_second_address failed\n",
 				extconf->name);
 			extconf->i2c_addr2 = 0xff;
 		} else {
@@ -439,7 +443,12 @@ static int lcd_extern_get_config_dts(struct device_node *of_node,
 
 		ret = of_property_read_u32(of_node, "cmd_size", &val);
 		if (ret) {
-			EXTERR("get %s cmd_size failed\n", extconf->name);
+			if (extconf->index == 0) {
+				EXTERR("get %s cmd_size failed\n",
+					extconf->name);
+			} else {
+				EXTPR("%s no cmd_size\n", extconf->name);
+			}
 			extconf->cmd_size = 0;
 		} else {
 			extconf->cmd_size = (unsigned char)val;
@@ -449,7 +458,10 @@ static int lcd_extern_get_config_dts(struct device_node *of_node,
 				extconf->name, extconf->cmd_size);
 		}
 		if (extconf->cmd_size <= 1) {
-			EXTERR("cmd_size %d is invalid\n", extconf->cmd_size);
+			if (extconf->index == 0) {
+				EXTERR("cmd_size %d is invalid\n",
+					extconf->cmd_size);
+			}
 			break;
 		}
 
@@ -540,7 +552,12 @@ static int lcd_extern_get_config_dts(struct device_node *of_node,
 		}
 		ret = of_property_read_u32(of_node, "cmd_size", &val);
 		if (ret) {
-			EXTERR("get %s cmd_size failed\n", extconf->name);
+			if (extconf->index == 0) {
+				EXTERR("get %s cmd_size failed\n",
+					extconf->name);
+			} else {
+				EXTPR("%s no cmd_size\n", extconf->name);
+			}
 			extconf->cmd_size = 0;
 		} else {
 			extconf->cmd_size = (unsigned char)val;
@@ -550,7 +567,10 @@ static int lcd_extern_get_config_dts(struct device_node *of_node,
 				extconf->name, extconf->cmd_size);
 		}
 		if (extconf->cmd_size <= 1) {
-			EXTERR("cmd_size %d is invalid\n", extconf->cmd_size);
+			if (extconf->index == 0) {
+				EXTERR("cmd_size %d is invalid\n",
+					extconf->cmd_size);
+			}
 			break;
 		}
 
@@ -626,7 +646,7 @@ static int lcd_extern_init_table_dynamic_size_load_unifykey(
 	}
 
 	i = 0;
-	while (i < max_len) {
+	while ((i + 2) < max_len) { /* type & cmd_size detect */
 		/* step1: type */
 		len += 1;
 		ret = lcd_unifykey_len_check(key_len, len);
@@ -657,6 +677,8 @@ static int lcd_extern_init_table_dynamic_size_load_unifykey(
 			i += 2;
 			continue;
 		}
+		if ((i + 2 + cmd_size) > max_len)
+			break;
 
 		/* step3: data */
 		len += cmd_size;
@@ -710,7 +732,7 @@ static int lcd_extern_init_table_fixed_size_load_unifykey(
 	}
 
 	i = 0;
-	while (i < max_len) {
+	while ((i + cmd_size) <= max_len) { /* group detect */
 		len += cmd_size;
 		ret = lcd_unifykey_len_check(key_len, len);
 		if (ret) {
@@ -785,9 +807,10 @@ static int lcd_extern_get_config_unifykey(struct lcd_extern_config_s *extconf)
 
 	/* basic: 33byte */
 	p = para + LCD_UKEY_HEAD_SIZE;
-	*(p + LCD_UKEY_EXT_NAME - 1) = '\0'; /* ensure string ending */
 	str = (const char *)p;
-	strcpy(extconf->name, str);
+	strncpy(extconf->name, str, LCD_EXTERN_NAME_LEN_MAX);
+	/* ensure string ending */
+	extconf->name[LCD_EXTERN_NAME_LEN_MAX-1] = '\0';
 	p += LCD_UKEY_EXT_NAME;
 	extconf->index = *p;
 	p += LCD_UKEY_EXT_INDEX;
@@ -1325,7 +1348,7 @@ static ssize_t lcd_extern_debug_help(struct class *class,
 static ssize_t lcd_extern_info_dump(struct class *class,
 		struct class_attribute *attr, const char *buf, size_t count)
 {
-	unsigned int ret;
+	unsigned int ret = 0;
 	int i, index;
 	struct aml_lcd_extern_driver_s *ext_drv;
 
@@ -1333,8 +1356,12 @@ static ssize_t lcd_extern_info_dump(struct class *class,
 	switch (buf[0]) {
 	case 'i':
 		ret = sscanf(buf, "index %d", &index);
-		ext_drv = aml_lcd_extern_get_driver(index);
-		lcd_extern_config_dump(ext_drv);
+		if (ret == 1) {
+			ext_drv = aml_lcd_extern_get_driver(index);
+			lcd_extern_config_dump(ext_drv);
+		} else {
+			EXTERR("invalid parameters\n");
+		}
 		break;
 	case 'a':
 		for (i = 0; i < lcd_ext_driver_num; i++)
@@ -1492,6 +1519,7 @@ static struct platform_driver aml_lcd_extern_driver = {
 static int __init aml_lcd_extern_init(void)
 {
 	int ret;
+
 	if (lcd_debug_print_flag)
 		EXTPR("%s\n", __func__);
 
