@@ -35,138 +35,120 @@
 #else
 #include <sys/ioctl.h>
 #endif
+#include <linux/types.h>
 
+/* need update the version when update firmware */
+#define ESM_VERSION	"2.4.84.11.D3"
+#define HDCP_RX22_VER "New FW T0905"
 
-#define ESM_STATE int32_t
+#define ESM_HL_DRIVER_SUCCESS                0
+#define ESM_HL_DRIVER_FAILED               (-1)
+#define ESM_HL_DRIVER_NO_MEMORY            (-2)
+#define ESM_HL_DRIVER_NO_ACCESS            (-3)
+#define ESM_HL_DRIVER_INVALID_PARAM        (-4)
+#define ESM_HL_DRIVER_TOO_MANY_ESM_DEVICES (-5)
+#define ESM_HL_DRIVER_USER_DEFINED_ERROR   (-6)
 
-#define ESM_STATE_SUCCESS                0
-#define ESM_STATE_FAILED               (-1)
-#define ESM_STATE_NO_MEMORY            (-2)
-#define ESM_STATE_NO_ACCESS            (-3)
-#define ESM_STATE_PARAM_ERR			(-4)
-#define ESM_STATE_NO_DEVICE			(-5)
-#define ESM_STATE_ERR_USER_DEFINE	(-6)
-
-/* ESM_HLD_IOCTL_LOAD_CODE */
-struct esm_hld_ioctl_load_code {
-	uint8_t *code;
-	uint32_t code_size;
-	ESM_STATE returned_status;
+/* ioctl numbers */
+enum {
+	ESM_NR_MIN = 0x10,
+	ESM_NR_INIT,
+	ESM_NR_MEMINFO,
+	ESM_NR_LOAD_CODE,
+	ESM_NR_READ_DATA,
+	ESM_NR_WRITE_DATA,
+	ESM_NR_MEMSET_DATA,
+	ESM_NR_READ_HPI,
+	ESM_NR_WRITE_HPI,
+	ESM_NR_MAX
 };
 
-struct compact_esm_hld_ioctl_load_code {
-	u32 code;
-	uint32_t code_size;
-	ESM_STATE returned_status;
+/*
+ * ESM_IOC_INIT: associate file descriptor with the indicated memory.  This
+ * must be called before any other ioctl on the file descriptor.
+ *
+ *   - hpi_base = base address of ESM HPI registers.
+ *   - code_base = base address of firmware memory (0 to allocate internally)
+ *   - data_base = base address of data memory (0 to allocate internally)
+ *   - code_len, data_len = length of firmware and data memory, respectively.
+ */
+#define ESM_IOC_INIT    _IOW('E', ESM_NR_INIT, struct esm_ioc_meminfo)
+
+/*
+ * ESM_IOC_MEMINFO: retrieve memory information from file descriptor.
+ *
+ * Fills out the meminfo struct, returning the values passed to ESM_IOC_INIT
+ * except that the actual base addresses of internal allocations (if any) are
+ * reported.
+ */
+#define ESM_IOC_MEMINFO _IOR('E', ESM_NR_MEMINFO, struct esm_ioc_meminfo)
+
+struct esm_ioc_meminfo {
+	__u32 hpi_base;
+	__u32 code_base;
+	__u32 code_size;
+	__u32 data_base;
+	 __u32 data_size;
 };
 
-/* ESM_HLD_IOCTL_GET_CODE_PHYS_ADDR */
-struct esm_hld_ioctl_get_code_phys_addr {
-	uint32_t returned_phys_addr;
-	ESM_STATE returned_status;
+/*
+ * ESM_IOC_LOAD_CODE: write the provided buffer to the firmware memory.
+ *
+ *   - len = number of bytes in data buffer
+ *   - data = data to write to firmware memory.
+ *
+ * This can only be done once (successfully).  Subsequent attempts will
+ * return -EBUSY.
+ */
+#define ESM_IOC_LOAD_CODE _IOW('E', ESM_NR_LOAD_CODE, struct esm_ioc_code)
+
+struct esm_ioc_code {
+	__u32 len;
+	__u8 data[];
 };
 
-/* ESM_HLD_IOCTL_GET_DATA_PHYS_ADDR */
-struct esm_hld_ioctl_get_data_phys_addr {
-	uint32_t returned_phys_addr;
-	ESM_STATE returned_status;
+/*
+ * ESM_IOC_READ_DATA: copy from data memory.
+ * ESM_IOC_WRITE_DATA: copy to data memory.
+ *
+ *   - offset = start copying at this byte offset into the data memory.
+ *   - len    = number of bytes to copy.
+ *   - data   = for write, buffer containing data to copy.
+ *              for read, buffer to which read data will be written.
+ *
+ */
+#define ESM_IOC_READ_DATA  _IOWR('E', ESM_NR_READ_DATA, struct esm_ioc_data)
+#define ESM_IOC_WRITE_DATA  _IOW('E', ESM_NR_WRITE_DATA, struct esm_ioc_data)
+
+/*
+ * ESM_IOC_MEMSET_DATA: initialize data memory.
+ *
+ *   - offset  = start initializatoin at this byte offset into the data memory.
+ *   - len     = number of bytes to set.
+ *   - data[0] = byte value to write to all indicated memory locations.
+ */
+#define ESM_IOC_MEMSET_DATA _IOW('E', ESM_NR_MEMSET_DATA, struct esm_ioc_data)
+
+struct esm_ioc_data {
+	__u32 offset;
+	__u32 len;
+	__u8 data[];
 };
 
-/* ESM_HLD_IOCTL_GET_DATA_SIZE */
-struct esm_hld_ioctl_get_data_size {
-	uint32_t returned_data_size;
-	ESM_STATE returned_status;
+/*
+ * ESM_IOC_READ_HPI: read HPI register.
+ * ESM_IOC_WRITE_HPI: write HPI register.
+ *
+ *   - offset = byte offset of HPI register to access.
+ *   - value  = for write, value to write.
+ *              for read, location to which result is stored.
+ */
+#define ESM_IOC_READ_HPI _IOWR('E', ESM_NR_READ_HPI, struct esm_ioc_hpi_reg)
+#define ESM_IOC_WRITE_HPI _IOW('E', ESM_NR_WRITE_HPI, struct esm_ioc_hpi_reg)
+
+struct esm_ioc_hpi_reg {
+	__u32 offset;
+	__u32 value;
 };
 
-/* ESM_HLD_IOCTL_HPI_READ */
-struct esm_hld_ioctl_hpi_read {
-	uint32_t offset;
-	uint32_t returned_data;
-	ESM_STATE returned_status;
-};
-
-/* ESM_HLD_IOCTL_HPI_WRITE */
-struct esm_hld_ioctl_hpi_write {
-	uint32_t offset;
-	uint32_t data;
-	ESM_STATE returned_status;
-};
-
-/* ESM_HLD_IOCTL_DATA_READ */
-struct esm_hld_ioctl_data_read {
-	uint32_t offset;
-	uint32_t nbytes;
-	uint8_t *dest_buf;
-	ESM_STATE returned_status;
-};
-
-struct compact_esm_hld_ioctl_data_read {
-	uint32_t offset;
-	uint32_t nbytes;
-	u32 dest_buf;
-	ESM_STATE returned_status;
-};
-
-/* ESM_HLD_IOCTL_DATA_WRITE */
-struct esm_hld_ioctl_data_write {
-	uint32_t offset;
-	uint32_t nbytes;
-	uint8_t *src_buf;
-	ESM_STATE returned_status;
-};
-
-struct compact_esm_hld_ioctl_data_write {
-	uint32_t offset;
-	uint32_t nbytes;
-	u32 src_buf;
-	ESM_STATE returned_status;
-};
-
-/* ESM_HLD_IOCTL_DATA_SET */
-struct esm_hld_ioctl_data_set {
-	uint32_t offset;
-	uint32_t nbytes;
-	uint8_t data;
-	ESM_STATE returned_status;
-};
-
-/* ESM_HLD_IOCTL_ESM_OPEN */
-struct esm_hld_ioctl_esm_open {
-	uint32_t hpi_base;
-	uint32_t code_base;
-	uint32_t code_size;
-	uint32_t data_base;
-	uint32_t data_size;
-	ESM_STATE returned_status;
-};
-
-/* IOCTL commands */
-#define ESM_HLD_IOC_MAGIC  'E'
-#define ESM_HLD_IOCTL_LOAD_CODE \
-	_IOWR(ESM_HLD_IOC_MAGIC, 1000, struct esm_hld_ioctl_load_code)
-#define ESM_HLD_IOCTL_GET_CODE_PHYS_ADDR \
-	_IOR(ESM_HLD_IOC_MAGIC, 1001, struct esm_hld_ioctl_get_code_phys_addr)
-#define ESM_HLD_IOCTL_GET_DATA_PHYS_ADDR \
-	_IOR(ESM_HLD_IOC_MAGIC, 1002, struct esm_hld_ioctl_get_data_phys_addr)
-#define ESM_HLD_IOCTL_GET_DATA_SIZE \
-	_IOR(ESM_HLD_IOC_MAGIC, 1003, struct esm_hld_ioctl_get_data_size)
-#define ESM_HLD_IOCTL_HPI_READ \
-	_IOWR(ESM_HLD_IOC_MAGIC, 1004, struct esm_hld_ioctl_hpi_read)
-#define ESM_HLD_IOCTL_HPI_WRITE \
-	_IOWR(ESM_HLD_IOC_MAGIC, 1005, struct esm_hld_ioctl_hpi_write)
-#define ESM_HLD_IOCTL_DATA_READ \
-	_IOWR(ESM_HLD_IOC_MAGIC, 1006, struct esm_hld_ioctl_data_read)
-#define ESM_HLD_IOCTL_DATA_WRITE \
-	_IOWR(ESM_HLD_IOC_MAGIC, 1007, struct esm_hld_ioctl_data_write)
-#define ESM_HLD_IOCTL_DATA_SET \
-	_IOWR(ESM_HLD_IOC_MAGIC, 1008, struct esm_hld_ioctl_data_set)
-#define ESM_HLD_IOCTL_ESM_OPEN \
-	_IOWR(ESM_HLD_IOC_MAGIC, 1009, struct esm_hld_ioctl_esm_open)
-#define ESM_HLD_IOCTL_LOAD_CODE32 \
-	_IOWR(ESM_HLD_IOC_MAGIC, 1000, struct compact_esm_hld_ioctl_load_code)
-#define ESM_HLD_IOCTL_DATA_READ32 \
-	_IOWR(ESM_HLD_IOC_MAGIC, 1006, struct compact_esm_hld_ioctl_data_read)
-#define ESM_HLD_IOCTL_DATA_WRITE32 \
-	_IOWR(ESM_HLD_IOC_MAGIC, 1007, struct compact_esm_hld_ioctl_data_write)
-
-#endif /* _HDCP_MAIN_H_ */
+#endif

@@ -3094,8 +3094,10 @@ static void dump_state(unsigned char enable)
 			rx_pr("sts81c = %x",
 				hdmirx_rd_dwc(DWC_HDCP22_CONTROL));
 			dump_hdcp_data();
+			/*
 			if (!esm_print_device_info())
 				rx_pr("\n !!No esm rx opened\n");
+			*/
 		}
 		/*--------------edid-------------------*/
 		rx_pr("edid index: %d\n", edid_mode);
