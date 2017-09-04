@@ -557,7 +557,7 @@ int request_vpu_clk_vmod(unsigned int vclk, unsigned int vmod)
 {
 	int ret = 0;
 #ifdef CONFIG_VPU_DYNAMIC_ADJ
-	unsigned clk_level;
+	unsigned int clk_level;
 
 	ret = vpu_chip_valid_check();
 	if (ret)
@@ -622,7 +622,7 @@ int release_vpu_clk_vmod(unsigned int vmod)
 {
 	int ret = 0;
 #ifdef CONFIG_VPU_DYNAMIC_ADJ
-	unsigned clk_level;
+	unsigned int clk_level;
 
 	ret = vpu_chip_valid_check();
 	if (ret)
@@ -680,9 +680,9 @@ static const char *vpu_usage_str = {
 "	request & release will change vpu clk if the max level in all vmod vpu clk holdings is unequal to current vpu clk level.\n"
 "	vclk both support level(1~10) and frequency value (unit in Hz).\n"
 "	vclk level & frequency:\n"
-"		0: 100M        1: 160M        2: 200M\n"
-"		3: 250M        4: 350M        5: 400M\n"
-"		6: 500M        7: 650M        8: 700M\n"
+"		0: 100M        1: 167M        2: 200M\n"
+"		3: 250M        4: 333M        5: 400M\n"
+"		6: 500M        7: 667M        8: 696M\n"
 "\n"
 "	echo <0|1> > print ; set debug print flag\n"
 };
@@ -696,7 +696,7 @@ static ssize_t vpu_debug_help(struct class *class,
 static ssize_t vpu_clk_debug(struct class *class, struct class_attribute *attr,
 		const char *buf, size_t count)
 {
-	unsigned int ret;
+	unsigned int ret = 0;
 	unsigned int tmp[2], n;
 	unsigned int fclk_type;
 
@@ -708,36 +708,46 @@ static ssize_t vpu_clk_debug(struct class *class, struct class_attribute *attr,
 	case 's': /* set */
 		tmp[0] = 4;
 		ret = sscanf(buf, "set %u", &tmp[0]);
-		if (tmp[0] > 100)
-			VPUPR("set clk frequency: %uHz\n", tmp[0]);
-		else
-			VPUPR("set clk level: %u\n", tmp[0]);
-		set_vpu_clk(tmp[0]);
+		if (ret == 1) {
+			if (tmp[0] > 100)
+				VPUPR("set clk frequency: %uHz\n", tmp[0]);
+			else
+				VPUPR("set clk level: %u\n", tmp[0]);
+			set_vpu_clk(tmp[0]);
+		} else {
+			VPUERR("invalid parameters\n");
+		}
 		break;
 	case 'r':
 		if (buf[2] == 'q') { /* request */
 			tmp[0] = 0;
 			tmp[1] = VPU_MAX;
 			ret = sscanf(buf, "request %u %u", &tmp[0], &tmp[1]);
-			request_vpu_clk_vmod(tmp[0], tmp[1]);
+			if (ret == 2)
+				request_vpu_clk_vmod(tmp[0], tmp[1]);
+			else
+				VPUERR("invalid parameters\n");
 		} else if (buf[2] == 'l') { /* release */
 			tmp[0] = VPU_MAX;
 			ret = sscanf(buf, "release %u", &tmp[0]);
-			release_vpu_clk_vmod(tmp[0]);
+			if (ret == 1)
+				release_vpu_clk_vmod(tmp[0]);
+			else
+				VPUERR("invalid parameters\n");
 		}
 		break;
 	case 'd':
 		tmp[0] = VPU_MAX;
 		ret = sscanf(buf, "dump %u", &tmp[0]);
-		if (tmp[0] == VPU_MAX) {
-			n = get_vpu_clk_level_max_vmod();
-			VPUPR("clk max holdings: %uHz(%u)\n",
-				vpu_clk_table[fclk_type][n][0], n);
-		} else {
+		if (ret == 1) {
 			VPUPR("clk holdings:\n");
 			pr_info("%s:  %uHz(%u)\n", vpu_mod_table[tmp[0]],
 			vpu_clk_table[fclk_type][clk_vmod[tmp[0]]][0],
 			clk_vmod[tmp[0]]);
+		} else {
+			n = get_vpu_clk_level_max_vmod();
+			VPUPR("clk max holdings: %uHz(%u)\n",
+				vpu_clk_table[fclk_type][n][0], n);
 		}
 		break;
 	default:
@@ -745,17 +755,13 @@ static ssize_t vpu_clk_debug(struct class *class, struct class_attribute *attr,
 		break;
 	}
 
-	if (ret != 1 || ret != 2)
-		return -EINVAL;
-
 	return count;
-	/* return 0; */
 }
 
 static ssize_t vpu_mem_debug(struct class *class, struct class_attribute *attr,
 				const char *buf, size_t count)
 {
-	unsigned int ret;
+	unsigned int ret = 0;
 	unsigned int tmp[2];
 	unsigned int _reg0, _reg1, _reg2;
 
@@ -776,28 +782,29 @@ static ssize_t vpu_mem_debug(struct class *class, struct class_attribute *attr,
 		break;
 	case 'w':
 		ret = sscanf(buf, "w %u %u", &tmp[0], &tmp[1]);
-		tmp[0] = (tmp[0] > VPU_MAX) ? VPU_MAX : tmp[0];
-		tmp[1] = (tmp[1] == VPU_MEM_POWER_ON) ? 0 : 1;
-		VPUPR("switch_vpu_mem_pd: %s %s\n",
-			vpu_mod_table[tmp[0]], (tmp[1] ? "DOWN" : "ON"));
-		switch_vpu_mem_pd_vmod(tmp[0], tmp[1]);
+		if (ret == 2) {
+			tmp[0] = (tmp[0] > VPU_MAX) ? VPU_MAX : tmp[0];
+			tmp[1] = (tmp[1] == VPU_MEM_POWER_ON) ? 0 : 1;
+			VPUPR("switch_vpu_mem_pd: %s %s\n",
+				vpu_mod_table[tmp[0]],
+				(tmp[1] ? "DOWN" : "ON"));
+			switch_vpu_mem_pd_vmod(tmp[0], tmp[1]);
+		} else {
+			VPUERR("invalid parameters\n");
+		}
 		break;
 	default:
 		VPUERR("wrong mem_pd command\n");
 		break;
 	}
 
-	if (ret != 1 || ret != 2)
-		return -EINVAL;
-
 	return count;
-	/* return 0; */
 }
 
 static ssize_t vpu_clk_gate_debug(struct class *class,
 		struct class_attribute *attr, const char *buf, size_t count)
 {
-	unsigned int ret;
+	unsigned int ret = 0;
 	unsigned int tmp[2];
 
 	switch (buf[0]) {
@@ -831,22 +838,22 @@ static ssize_t vpu_clk_gate_debug(struct class *class,
 		break;
 	case 'w':
 		ret = sscanf(buf, "w %u %u", &tmp[0], &tmp[1]);
-		tmp[0] = (tmp[0] > VPU_MAX) ? VPU_MAX : tmp[0];
-		tmp[1] = (tmp[1] == VPU_CLK_GATE_ON) ? 1 : 0;
-		VPUPR("switch_vpu_clk_gate: %s %s\n",
-			vpu_mod_table[tmp[0]], (tmp[1] ? "ON" : "OFF"));
-		switch_vpu_clk_gate_vmod(tmp[0], tmp[1]);
+		if (ret == 2) {
+			tmp[0] = (tmp[0] > VPU_MAX) ? VPU_MAX : tmp[0];
+			tmp[1] = (tmp[1] == VPU_CLK_GATE_ON) ? 1 : 0;
+			VPUPR("switch_vpu_clk_gate: %s %s\n",
+				vpu_mod_table[tmp[0]], (tmp[1] ? "ON" : "OFF"));
+			switch_vpu_clk_gate_vmod(tmp[0], tmp[1]);
+		} else {
+			VPUERR("invalid parameters\n");
+		}
 		break;
 	default:
 		VPUERR("wrong clk_gate command\n");
 		break;
 	}
 
-	if (ret != 1 || ret != 2)
-		return -EINVAL;
-
 	return count;
-	/* return 0; */
 }
 
 static unsigned int vcbus_reg[] = {
@@ -891,33 +898,21 @@ static void vcbus_test(void)
 static ssize_t vpu_test_debug(struct class *class, struct class_attribute *attr,
 		const char *buf, size_t count)
 {
-	unsigned int ret;
-
 	vcbus_test();
 
-	if (ret != 1 || ret != 2)
-		return -EINVAL;
-
 	return count;
-	/* return 0; */
 }
 
 static ssize_t vpu_print_debug(struct class *class,
 		struct class_attribute *attr, const char *buf, size_t count)
 {
 	unsigned int ret;
-	unsigned int temp;
 
-	temp = 0;
-	ret = sscanf(buf, "%u", &temp);
-	vpu_debug_print_flag = temp;
+	/*ret = sscanf(buf, "%u", &temp);*/
+	ret = kstrtoint(buf, 10, &vpu_debug_print_flag);
 	pr_info("set vpu debug_print_flag: %d\n", vpu_debug_print_flag);
 
-	if (ret != 1 || ret != 2)
-		return -EINVAL;
-
 	return count;
-	/* return 0; */
 }
 
 static ssize_t vpu_debug_info(struct class *class,

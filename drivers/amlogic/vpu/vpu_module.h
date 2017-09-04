@@ -50,6 +50,11 @@ static char *vpu_mod_table[] = {
 	"viu2_ofifo",
 	"viu2_scaler",
 	"viu2_osd_scaler",
+	"vkstone",
+	"dolby_core3",
+	"dolby0",
+	"dolby_1a",
+	"dolby_1b",
 	"vdin_arbitor_am_async",
 	"vpu_arb",
 	"display_arbitor_am_async",
@@ -57,6 +62,7 @@ static char *vpu_mod_table[] = {
 	"afbc_dec0",
 	"afbc_dec",
 	"vpu_arbitor2_am_async",
+	"osd_afbcd",
 	"vencp",
 	"vencl",
 	"venci",
@@ -78,6 +84,11 @@ static char *vpu_mod_table[] = {
 	"di",
 	"vpp",
 
+	"none",
+	"none",
+	"none",
+	"none",
+	"none",
 	"none",
 };
 
