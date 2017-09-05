@@ -852,6 +852,15 @@ static const struct of_device_id aml_atvdemod_dt_match[] = {
 	},
 	{},
 };
+static void aml_atvdemod_shutdown(struct platform_device *pdev)
+{
+	pr_info("%s\n", __func__);
+	if (ATVDEMOD_STATE_IDEL != atvdemod_state) {
+		aml_atvdemod_leave_mode(NULL, 0);
+		atvdemod_state = ATVDEMOD_STATE_SLEEP;
+	}
+	return;
+}
 
 static struct platform_driver aml_atvdemod_driver = {
 	.driver = {
@@ -859,6 +868,7 @@ static struct platform_driver aml_atvdemod_driver = {
 		.owner = THIS_MODULE,
 		.of_match_table = aml_atvdemod_dt_match,
 	},
+	.shutdown   = aml_atvdemod_shutdown,
 	.probe = aml_atvdemod_probe,
 	.remove = __exit_p(aml_atvdemod_remove),
 };
