@@ -111,14 +111,16 @@ static void lcd_lvds_phy_set(struct lcd_config_s *pconf, int status)
 
 static void lcd_vbyone_phy_set(struct lcd_config_s *pconf, int status)
 {
-	unsigned int vswing, preem;
+	unsigned int vswing, preem, ext_pullup;
 	unsigned int data32;
 
 	if (lcd_debug_print_flag)
 		LCDPR("%s: %d\n", __func__, status);
 
 	if (status) {
-		vswing = pconf->lcd_control.vbyone_config->phy_vswing;
+		ext_pullup =
+			(pconf->lcd_control.vbyone_config->phy_vswing >> 4) & 1;
+		vswing = pconf->lcd_control.vbyone_config->phy_vswing & 0xf;
 		preem = pconf->lcd_control.vbyone_config->phy_preem;
 		if (vswing > 7) {
 			LCDERR("%s: wrong vswing_level=%d, use default\n",
@@ -130,7 +132,9 @@ static void lcd_vbyone_phy_set(struct lcd_config_s *pconf, int status)
 				__func__, preem);
 			preem = VX1_PHY_PREEM_DFT;
 		}
-		data32 = 0x6e0ec900 | (vswing << 3);
+		data32 = 0x6e0ec900 | (vswing << 3) | (ext_pullup << 10);
+		if (ext_pullup)
+			data32 &= ~(1 << 15);
 		lcd_hiu_write(HHI_DIF_CSI_PHY_CNTL1, data32);
 		data32 = 0x00000a7c | (preem << 20);
 		lcd_hiu_write(HHI_DIF_CSI_PHY_CNTL2, data32);

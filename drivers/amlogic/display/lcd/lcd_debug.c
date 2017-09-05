@@ -425,14 +425,37 @@ static void lcd_lvds_reg_print(void)
 static void lcd_vbyone_reg_print(void)
 {
 	unsigned int reg;
+	struct aml_lcd_drv_s *lcd_drv = aml_lcd_get_driver();
 
 	pr_info("\nvbyone registers:\n");
-	reg = PERIPHS_PIN_MUX_7;
-	pr_info("VX1_PINMUX          [0x%04x] = 0x%08x\n",
-		reg, lcd_periphs_read(reg));
+	switch (lcd_drv->chip_type) {
+	case LCD_CHIP_GXTVBB:
+		reg = PERIPHS_PIN_MUX_7;
+		pr_info("VX1_PINMUX          [0x%04x] = 0x%08x\n",
+			reg, lcd_periphs_read(reg));
+		break;
+	case LCD_CHIP_TXL:
+	case LCD_CHIP_TXLX:
+		reg = PERIPHS_PIN_MUX_0;
+		pr_info("VX1_PINMUX          [0x%04x] = 0x%08x\n",
+			reg, lcd_periphs_read(reg));
+		break;
+	default:
+		break;
+	}
 	reg = VBO_STATUS_L;
 	pr_info("VX1_STATUS          [0x%04x] = 0x%08x\n",
 		reg, lcd_vcbus_read(reg));
+	switch (lcd_drv->chip_type) {
+	case LCD_CHIP_TXL:
+	case LCD_CHIP_TXLX:
+		reg = VBO_INSGN_CTRL;
+		pr_info("VBO_INSGN_CTRL      [0x%04x] = 0x%08x\n",
+			reg, lcd_vcbus_read(reg));
+		break;
+	default:
+		break;
+	}
 	reg = VBO_FSM_HOLDER_L;
 	pr_info("VX1_FSM_HOLDER_L    [0x%04x] = 0x%08x\n",
 		reg, lcd_vcbus_read(reg));
@@ -576,20 +599,19 @@ static void lcd_debug_test(unsigned int num)
 
 	h_active = lcd_drv->lcd_config->lcd_basic.h_active;
 	video_on_pixel = lcd_drv->lcd_config->lcd_timing.video_on_pixel;
-	if (num >= 0) {
-		lcd_vcbus_write(ENCL_VIDEO_RGBIN_CTRL, lcd_enc_tst[num][6]);
-		lcd_vcbus_write(ENCL_TST_MDSEL, lcd_enc_tst[num][0]);
-		lcd_vcbus_write(ENCL_TST_Y, lcd_enc_tst[num][1]);
-		lcd_vcbus_write(ENCL_TST_CB, lcd_enc_tst[num][2]);
-		lcd_vcbus_write(ENCL_TST_CR, lcd_enc_tst[num][3]);
-		lcd_vcbus_write(ENCL_TST_CLRBAR_STRT, video_on_pixel);
-		lcd_vcbus_write(ENCL_TST_CLRBAR_WIDTH, (h_active / 9));
-		lcd_vcbus_write(ENCL_TST_EN, lcd_enc_tst[num][4]);
-		lcd_vcbus_setb(ENCL_VIDEO_MODE_ADV, lcd_enc_tst[num][5], 3, 1);
+	lcd_vcbus_write(ENCL_VIDEO_RGBIN_CTRL, lcd_enc_tst[num][6]);
+	lcd_vcbus_write(ENCL_TST_MDSEL, lcd_enc_tst[num][0]);
+	lcd_vcbus_write(ENCL_TST_Y, lcd_enc_tst[num][1]);
+	lcd_vcbus_write(ENCL_TST_CB, lcd_enc_tst[num][2]);
+	lcd_vcbus_write(ENCL_TST_CR, lcd_enc_tst[num][3]);
+	lcd_vcbus_write(ENCL_TST_CLRBAR_STRT, video_on_pixel);
+	lcd_vcbus_write(ENCL_TST_CLRBAR_WIDTH, (h_active / 9));
+	lcd_vcbus_write(ENCL_TST_EN, lcd_enc_tst[num][4]);
+	lcd_vcbus_setb(ENCL_VIDEO_MODE_ADV, lcd_enc_tst[num][5], 3, 1);
+	if (num > 0)
 		LCDPR("show test pattern: %s\n", lcd_enc_tst_str[num]);
-	} else {
+	else
 		LCDPR("disable test pattern\n");
-	}
 }
 
 static void lcd_mute_setting(unsigned char flag)
@@ -1374,7 +1396,6 @@ static void lcd_debug_reg_write(unsigned int reg, unsigned int data,
 		lcd_cbus_write(reg, data);
 		pr_info("write cbus [0x%04x] = 0x%08x, readback 0x%08x\n",
 			reg, data, lcd_cbus_read(reg));
-		break;
 		break;
 	case 3: /* periphs */
 		lcd_periphs_write(reg, data);

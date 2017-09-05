@@ -320,8 +320,8 @@ static void lcd_vbyone_clk_util_set(struct lcd_config_s *pconf)
 	unsigned int div_sel, phy_div;
 
 	phy_div = pconf->lcd_control.vbyone_config->phy_div;
+	lcd_bits = pconf->lcd_basic.lcd_bits;
 
-	lcd_bits = 10;
 	switch (lcd_bits) {
 	case 6:
 		div_sel = 0;

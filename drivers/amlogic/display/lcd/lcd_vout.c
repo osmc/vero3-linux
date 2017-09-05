@@ -108,6 +108,7 @@ static struct vbyone_config_s lcd_vbyone_config = {
 
 static unsigned char dsi_init_on_table[DSI_INIT_ON_MAX] = {0xff, 0xff};
 static unsigned char dsi_init_off_table[DSI_INIT_OFF_MAX] = {0xff, 0xff};
+
 static struct dsi_config_s lcd_mipi_config = {
 	.lane_num = 4,
 	.bit_rate_max = 550, /* MHz */
@@ -897,7 +898,7 @@ static int lcd_config_probe(void)
 				&lcd_driver->lcd_probe_delayed_work,
 				msecs_to_jiffies(2000));
 		} else {
-			LCDPR("Warning: no lcd workqueue\n");
+			LCDPR("Warning: no lcd_probe_delayed workqueue\n");
 			ret = lcd_mode_probe(lcd_driver->dev);
 			if (ret) {
 				kfree(lcd_driver);

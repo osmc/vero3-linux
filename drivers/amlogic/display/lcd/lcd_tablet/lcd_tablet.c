@@ -551,10 +551,13 @@ static int lcd_config_load_from_dts(struct lcd_config_s *pconf,
 	ret = of_property_read_string(child, "model_name", &str);
 	if (ret) {
 		LCDERR("failed to get model_name\n");
-		strcpy(pconf->lcd_basic.model_name, pconf->lcd_propname);
+		strncpy(pconf->lcd_basic.model_name, pconf->lcd_propname,
+			MOD_LEN_MAX);
 	} else {
-		strcpy(pconf->lcd_basic.model_name, str);
+		strncpy(pconf->lcd_basic.model_name, str, MOD_LEN_MAX);
 	}
+	/* ensure string ending */
+	pconf->lcd_basic.model_name[MOD_LEN_MAX-1] = '\0';
 
 	ret = of_property_read_string(child, "interface", &str);
 	if (ret) {
@@ -732,7 +735,7 @@ static int lcd_config_load_from_dts(struct lcd_config_s *pconf,
 			pconf->lcd_control.vbyone_config->phy_vswing = para[0];
 			pconf->lcd_control.vbyone_config->phy_preem = para[1];
 			if (lcd_debug_print_flag) {
-				LCDPR("phy vswing=%d, preemphasis=%d\n",
+				LCDPR("phy vswing=0x%x, preemphasis=0x%x\n",
 				pconf->lcd_control.vbyone_config->phy_vswing,
 				pconf->lcd_control.vbyone_config->phy_preem);
 			}
@@ -810,9 +813,10 @@ static int lcd_config_load_from_unifykey(struct lcd_config_s *pconf)
 
 	/* basic: 36byte */
 	p = para + LCD_UKEY_HEAD_SIZE;
-	*(p + LCD_UKEY_MODEL_NAME - 1) = '\0'; /* ensure string ending */
 	str = (const char *)p;
-	strcpy(pconf->lcd_basic.model_name, str);
+	strncpy(pconf->lcd_basic.model_name, str, MOD_LEN_MAX);
+	/* ensure string ending */
+	pconf->lcd_basic.model_name[MOD_LEN_MAX-1] = '\0';
 	p += LCD_UKEY_MODEL_NAME;
 	pconf->lcd_basic.lcd_type = *p;
 	p += LCD_UKEY_INTERFACE;
