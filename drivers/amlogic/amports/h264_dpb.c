@@ -2126,12 +2126,14 @@ int output_frames(struct h264_dpb_stru *p_H264_Dpb, unsigned char flush_flag)
 	if (prepare_display_buf(p_H264_Dpb->vdec, p_Dpb->fs[pos]) >= 0)
 		p_Dpb->fs[pos]->pre_output = 1;
 	else {
-		dpb_print(p_H264_Dpb->decoder_index, 0,
-			"%s[%d] poc %d last_output_poc %d poc_even_odd_flag %d\n",
+		if (h264_debug_flag & PRINT_FLAG_DPB_DETAIL) {
+			dpb_print(p_H264_Dpb->decoder_index, 0,
+			"%s[%d] poc:%d last_output_poc:%d poc_even_odd_flag:%d\n",
 			__func__, pos, poc,
 			p_Dpb->last_output_poc,
 			p_H264_Dpb->poc_even_odd_flag);
-		dump_dpb(p_Dpb, 1);
+			dump_dpb(p_Dpb, 1);
+		}
 		return 0;
 	}
 	dpb_print(p_H264_Dpb->decoder_index, PRINT_FLAG_DPB_DETAIL,
