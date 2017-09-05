@@ -1346,18 +1346,27 @@ static int internal_config_init(struct phy_device *phydev)
 	return genphy_config_init(phydev);
 }
 
+#define PHY_PDOWN_CTRL_REG 0x18
 static int internal_phy_resume(struct phy_device *phydev)
 {
-	int rc;
-	rc = genphy_resume(phydev);
+	int value;
+
+	mutex_lock(&phydev->lock);
+
+	value = phy_read(phydev, PHY_PDOWN_CTRL_REG);
+	phy_write(phydev, PHY_PDOWN_CTRL_REG, value & ~0x1);
+
+	mutex_unlock(&phydev->lock);
+
 	phy_init_hw(phydev);
-	return rc;
+	return 0;
 }
 
 
 int internal_phy_suspend(struct phy_device *phydev)
 {
 	int value;
+
 	/*disable link interrupt*/
 	value = phy_read(phydev, 0x1E);
 	phy_write(phydev, 0x1E, value & ~0x50);
@@ -1367,8 +1376,8 @@ int internal_phy_suspend(struct phy_device *phydev)
 
 	mutex_lock(&phydev->lock);
 
-	value = phy_read(phydev, MII_BMCR);
-	phy_write(phydev, MII_BMCR, value | BMCR_PDOWN);
+	value = phy_read(phydev, PHY_PDOWN_CTRL_REG);
+	phy_write(phydev, PHY_PDOWN_CTRL_REG, value | 0x1);
 
 	mutex_unlock(&phydev->lock);
 
