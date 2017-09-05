@@ -318,14 +318,14 @@ static void nr4_config(struct NR4_PARM_s *nr4_parm_p,
 
 static void nr2_config(unsigned short width, unsigned short height)
 {
-	if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXLX))
+	if (is_meson_txlx_cpu())
 		DI_Wr_reg_bits(NR4_TOP_CTRL, nr2_en, 2, 1);
 	else {
 		/*set max height to disable nfram cnt in cue*/
-	if (is_meson_gxlx_cpu())
-		DI_Wr(NR2_FRM_SIZE, (0xfff<<16)|width);
-	else
-		DI_Wr(NR2_FRM_SIZE, (height<<16)|width);
+		if (is_meson_gxlx_cpu())
+			DI_Wr(NR2_FRM_SIZE, (0xfff<<16)|width);
+		else
+			DI_Wr(NR2_FRM_SIZE, (height<<16)|width);
 		DI_Wr_reg_bits(NR2_SW_EN, nr2_en, 4, 1);
 	}
 }

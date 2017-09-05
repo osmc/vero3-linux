@@ -9735,7 +9735,7 @@ static void set_di_flag(void)
 		/* txlx atsc 1080i ei only will cause flicker
 		when full to small win in home screen */
 		di_vscale_skip_enable = is_meson_txlx_cpu()?12:4;
-		use_2_interlace_buff = 1;
+		use_2_interlace_buff = is_meson_gxlx_cpu()?0:1;
 		pre_hold_line = 12;
 		if (nr10bit_surpport)
 			di_force_bit_mode = 10;

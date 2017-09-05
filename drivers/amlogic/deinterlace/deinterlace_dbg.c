@@ -117,6 +117,9 @@ void dump_di_reg(void)
 			base_addr + ((0x1a60 + i) << 2),
 			0x1a50 + i, RDMA_RD(0x1a50 + i));
 	pr_info("----dump gate reg----\n");
+	pr_info("[0x%x][0x1718]=0x%x\n",
+			base_addr + ((0x1718) << 2),
+			RDMA_RD(0x1718));
 	for (i = 0; i < 5; i++)
 		pr_info("[0x%x][0x%x]=0x%x\n",
 			base_addr + ((0x2006 + i) << 2),
