@@ -903,15 +903,21 @@ void hdcp22_clk_init(void)
 	hdmirx_wr_top(TOP_CLK_CNTL, data32);    /* DEFAULT: {32'h0} */
 }
 
+void hdcp22_clk_en(uint8_t en)
+{
+	hdmirx_wr_bits_top(TOP_CLK_CNTL, MSK(3, 3), en);
+}
+
 void hdcp22_suspend(void)
 {
 	wr_reg_hhi(HHI_HDCP22_CLK_CNTL, 0);
 	hdmirx_wr_top(TOP_CLK_CNTL,
 		hdmirx_rd_top(TOP_CLK_CNTL)&(~(7<<3)));
-	rx_set_hpd(0);
+	/* note: can't pull down hpd before enter suspend */
+	/* it will stop cec wake up func if EE domain still working */
+	/* rx_set_hpd(0); */
 	hpd_to_esm = 0;
 	do_esm_rst_flag = 1;
-
 	hdmirx_wr_dwc(DWC_HDCP22_CONTROL,
 				0x0);
 	if (hdcp22_kill_esm == 0) {
@@ -936,7 +942,7 @@ void hdcp22_resume(void)
 	/* dont need to delay 900ms to wait sysctl start hdcp_rx22,
 	sysctl is userspace it wakes up later than driver */
 	/* mdelay(900); */
-	rx_set_hpd(1);
+	/* rx_set_hpd(1); */
 	rx_pr("hdcp22 on\n");
 }
 

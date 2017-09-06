@@ -67,7 +67,9 @@ MODULE_PARM_DESC(clk_debug, "\n clk_debug\n");
 module_param(clk_debug, bool, 0664);
 
 static int hpd_wait_cnt;
-static int hpd_wait_max = 15;
+/* increase time of hpd low, to avoid some source like */
+/* MTK box i2c communicate error */
+static int hpd_wait_max = 20;
 MODULE_PARM_DESC(hpd_wait_max, "\n hpd_wait_max\n");
 module_param(hpd_wait_max, int, 0664);
 
@@ -2098,11 +2100,11 @@ void hdmirx_hw_monitor(void)
 		if ((0 == get_cur_hpd_sts()) &&
 			(hpd_wait_cnt <= hpd_wait_max))
 			break;
-		if (edid_update_flag) {
+		if ((edid_update_flag) || (rx.boot_flag)) {
 			if (hpd_wait_cnt <= hpd_wait_max*10)
 				break;
 			/* edid_update_flag = 0; */
-			/*rx.boot_flag = FALSE;*/
+			rx.boot_flag = FALSE;
 		}
 		hpd_wait_cnt = 0;
 		pre_port = rx.port;
@@ -3786,8 +3788,6 @@ int hdmirx_debug(const char *buf, int size)
 		/* nothing */
 	} else if (strncmp(tmpbuf, "prbs", 4) == 0) {
 		/* nothing */
-	} else if (strncmp(tmpbuf, "suspend_pddq", 12) == 0) {
-		suspend_pddq = (tmpbuf[12] == '0' ? 0 : 1);
 	} else if (strncmp(input[0], "pktinfo", 7) == 0) {
 		rx_debug_pktinfo(input);
 	} else if (tmpbuf[0] == 'w') {

@@ -26,14 +26,14 @@
 #include <linux/irqreturn.h>
 
 #include "../tvin_global.h"
-#include "../tvin_format_table.h"
+/* #include "../tvin_format_table.h" */
 #include "../tvin_frontend.h"
 #include "hdmirx_repeater.h"
 #include "hdmi_rx_pktinfo.h"
 
 
 
-#define RX_VER0 "Ref.2017/08/16"
+#define RX_VER0 "Ref.2017/09/05"
 /*------------------------------*/
 
 #define RX_VER1 "Ref.2017/09/01"
@@ -647,8 +647,14 @@ struct rx_s {
 	uint32_t avmute_skip;
 	/** HDMI RX input port 0 (A) or 1 (B) (or 2(C) or 3 (D)) */
 	uint8_t port;
-	/*first boot flag*/
-	/*bool boot_flag;*/
+	/* first boot flag */
+	/* workaround for xiaomi-MTK box: */
+	/* if box is under suspend and it worked at hdcp2.2 mode before, */
+	/* must do hpd reset and keep hpd low at least 2S to ensure hdcp2.2 */
+	/* work normally, otherwise mibox's hdcp22 module will pull down SDA */
+	/* and stop EDID communication.*/
+	/* compare with LG & LETV, the result is the same. */
+	bool boot_flag;
 	bool open_fg;
 	/** HDMI RX controller context */
 	struct hdmi_rx_ctrl ctrl;
@@ -875,6 +881,7 @@ int hdmirx_wr_phy(uint8_t reg_address, uint16_t data);
 uint16_t hdmirx_rd_phy(uint8_t reg_address);
 uint32_t hdmirx_rd_bits_dwc(uint16_t addr, uint32_t mask);
 void hdmirx_wr_bits_dwc(uint16_t addr, uint32_t mask, uint32_t value);
+void hdmirx_wr_bits_top(uint16_t addr, uint32_t mask, uint32_t value);
 
 #ifdef HDCP22_ENABLE
 void rx_hdcp22_wr_reg(uint32_t addr, uint32_t data);
@@ -884,7 +891,7 @@ void rx_hdcp22_wr_reg_bits(uint16_t addr, uint32_t mask, uint32_t value);
 void hdcp22_wr_top(uint32_t addr, uint32_t data);
 uint32_t hdcp22_rd_top(uint32_t addr);
 uint32_t rx_hdcp22_rd(uint32_t addr);
-
+void hdcp22_clk_en(uint8_t en);
 void rx_sec_reg_write(unsigned *addr, unsigned value);
 unsigned rx_sec_reg_read(unsigned *addr);
 unsigned sec_top_read(unsigned *addr);

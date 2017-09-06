@@ -61,8 +61,8 @@ static int aml_hdcp22_pm_notify(struct notifier_block *nb,
 #define HDMI_DE_REPEAT_DONE_FLAG	0xF0
 #define FORCE_YUV			1
 #define FORCE_RGB			2
-#define DEF_LOG_BUF_SIZE		(1024*128)
-#define PRINT_TEMP_BUF_SIZE		128
+#define DEF_LOG_BUF_SIZE		0 /* (1024*128) */
+#define PRINT_TEMP_BUF_SIZE		64 /* 128 */
 
 /* 50ms timer for hdmirx main loop (HDMI_STATE_CHECK_FREQ is 20) */
 #define TIMER_STATE_CHECK		(1*HZ/HDMI_STATE_CHECK_FREQ)
@@ -73,7 +73,6 @@ static unsigned char init_flag;
 static dev_t	hdmirx_devno;
 static struct class	*hdmirx_clsp;
 /* static int open_flage; */
-struct hdmirx_dev_s *devp_hdmirx_suspend;
 struct device *hdmirx_dev;
 struct delayed_work     eq_dwork;
 struct workqueue_struct *eq_wq;
@@ -81,7 +80,6 @@ struct delayed_work	esm_dwork;
 struct workqueue_struct	*esm_wq;
 struct delayed_work	repeater_dwork;
 struct workqueue_struct	*repeater_wq;
-int suspend_pddq = 1;
 unsigned int hdmirx_addr_port;
 unsigned int hdmirx_data_port;
 unsigned int hdmirx_ctrl_port;
@@ -96,10 +94,6 @@ struct tasklet_struct rx_tasklet;
 uint32_t *pd_fifo_buf;
 static DEFINE_SPINLOCK(rx_pr_lock);
 DECLARE_WAIT_QUEUE_HEAD(query_wait);
-
-int resume_flag = 0;
-MODULE_PARM_DESC(resume_flag, "\n resume_flag\n");
-module_param(resume_flag, int, 0664);
 
 static int hdmi_yuv444_enable;
 module_param(hdmi_yuv444_enable, int, 0664);
@@ -397,7 +391,6 @@ int hdmirx_dec_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	struct hdmirx_dev_s *devp;
 
 	devp = container_of(fe, struct hdmirx_dev_s, frontend);
-	devp_hdmirx_suspend = container_of(fe, struct hdmirx_dev_s, frontend);
 	devp->param.port = port;
 
 	/* should enable the adc ref signal for audio pll */
@@ -423,7 +416,6 @@ void hdmirx_dec_start(struct tvin_frontend_s *fe, enum tvin_sig_fmt_e fmt)
 	struct tvin_parm_s *parm;
 
 	devp = container_of(fe, struct hdmirx_dev_s, frontend);
-	devp_hdmirx_suspend = container_of(fe, struct hdmirx_dev_s, frontend);
 	parm = &devp->param;
 	parm->info.fmt = fmt;
 	parm->info.status = TVIN_SIG_STATUS_STABLE;
@@ -1169,26 +1161,6 @@ static const struct file_operations hdmirx_fops = {
 #endif
 };
 
-void hdmirx_powerdown(const char *buf, int size)
-{
-	char tmpbuf[128];
-	int i = 0;
-
-	while ((buf[i]) && (buf[i] != ',') && (buf[i] != ' ')) {
-		tmpbuf[i] = buf[i];
-		i++;
-	}
-	tmpbuf[i] = 0;
-	if (strncmp(tmpbuf, "powerdown", 9) == 0) {
-		if (rx.open_fg == 1) {
-			del_timer_sync(&devp_hdmirx_suspend->timer);
-			/* wr_reg(IO_APB_BUS_BASE,
-				HHI_HDMIRX_CLK_CNTL, 0x0); */
-		}
-		rx_pr("[hdmirx]: hdmirx power down\n");
-	}
-}
-
 int rx_pr_buf(char *buf, int len)
 {
 	unsigned long flags;
@@ -1343,7 +1315,6 @@ static ssize_t hdmirx_debug_store(struct device *dev,
 	size_t count)
 {
 	hdmirx_debug(buf, count);
-	hdmirx_powerdown(buf, count);
 	return count;
 }
 
@@ -1701,6 +1672,7 @@ static int hdmirx_probe(struct platform_device *pdev)
 		rx_pr("hdmirx: driver probe error!!!\n");
 
 	dev_set_drvdata(hdevp->dev, hdevp);
+	platform_set_drvdata(pdev, hdevp);
 
 	xtal_clk = clk_get(&pdev->dev, "xtal");
 	if (IS_ERR(xtal_clk))
@@ -1822,8 +1794,7 @@ static int hdmirx_probe(struct platform_device *pdev)
 	hdevp->timer.function = hdmirx_timer_handler;
 	hdevp->timer.expires = jiffies + TIMER_STATE_CHECK;
 	add_timer(&hdevp->timer);
-	/*rx.boot_flag = TRUE;*/
-
+	rx.boot_flag = TRUE;
 	rx_pr("hdmirx: driver probe ok\n");
 
 	return 0;
@@ -1913,44 +1884,45 @@ static int aml_hdcp22_pm_notify(struct notifier_block *nb, unsigned long event,
 #ifdef CONFIG_PM
 static int hdmirx_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	int i = 0;
-
+	struct hdmirx_dev_s *hdevp;
+	hdevp = platform_get_drvdata(pdev);
 	rx_pr("[hdmirx]: hdmirx_suspend\n");
-	if (rx.open_fg == 1) {
-		if (resume_flag == 0)
-			del_timer_sync(&devp_hdmirx_suspend->timer);
-		for (i = 0; i < 5000; i++)
-			;
-	}
-	if (suspend_pddq)
-		hdmirx_phy_pddq(1);
+	del_timer_sync(&hdevp->timer);
+	/* phy powerdown */
+	hdmirx_phy_pddq(1);
 	if (hdcp22_on)
 		hdcp22_suspend();
-	/*clk_off();*/
-	/*rx.boot_flag = 1;*/
 	rx_pr("[hdmirx]: suspend success\n");
 	return 0;
 }
 
 static int hdmirx_resume(struct platform_device *pdev)
 {
-	int i;
-	/*hdmirx_hw_probe();*/
-	/* if (suspend_pddq) */
-		/* hdmirx_phy_pddq(0); */
+	struct hdmirx_dev_s *hdevp;
+	hdevp = platform_get_drvdata(pdev);
 	hdmirx_phy_init();
-	for (i = 0; i < 5000; i++)
-		;
-	if ((resume_flag == 0) && (rx.open_fg == 1))
-		add_timer(&devp_hdmirx_suspend->timer);
+	add_timer(&hdevp->timer);
 	if (hdcp22_on)
 		hdcp22_resume();
-	rx_pr("hdmirx: resume module---end,rx.open_fg:%d\n", rx.open_fg);
+	rx_pr("hdmirx: resume\n");
 	pre_port = 0xff;
+	rx.boot_flag = TRUE;
 	return 0;
-
 }
 #endif
+
+static void hdmirx_shutdown(struct platform_device *pdev)
+{
+	struct hdmirx_dev_s *hdevp;
+	hdevp = platform_get_drvdata(pdev);
+	rx_pr("[hdmirx]: hdmirx_shutdown\n");
+	del_timer_sync(&hdevp->timer);
+	/* phy powerdown */
+	hdmirx_phy_pddq(1);
+	if (hdcp22_on)
+		hdcp22_clk_en(0);
+	rx_pr("[hdmirx]: shutdown success\n");
+}
 
 #ifdef CONFIG_HIBERNATION
 static int hdmirx_restore(struct device *dev)
@@ -1985,6 +1957,7 @@ static struct platform_driver hdmirx_driver = {
 	.suspend    = hdmirx_suspend,
 	.resume     = hdmirx_resume,
 #endif
+	.shutdown	= hdmirx_shutdown,
 	.driver     = {
 	.name   = TVHDMI_DRIVER_NAME,
 	.owner	= THIS_MODULE,
