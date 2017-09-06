@@ -46,6 +46,7 @@
 #include "ldim_func.h"
 #include "ldim_reg.h"
 #include <linux/amlogic/vout/aml_bl.h>
+#include <linux/amlogic/vout/aml_ldim.h>
 
 #ifndef MIN
 #define MIN(a, b)   ((a < b) ? a:b)
@@ -316,9 +317,9 @@ int ldim_round(int ix, int ib)
 	if (ix == 0)
 		ld_rst = 0;
 	else if (ix > 0)
-		ld_rst = (ix+ib/2)/ib;
+		ld_rst = (ix + ib / 2) / ib;
 	else
-		ld_rst = (ix-ib/2)/ib;
+		ld_rst = (ix - ib / 2) / ib;
 
 	return ld_rst;
 }
@@ -633,6 +634,8 @@ void ldim_read_region(unsigned int nrow, unsigned int ncol)
 {
 	unsigned int i, j, k;
 	unsigned int data32;
+	struct aml_ldim_driver_s *ldim_drv = aml_ldim_get_driver();
+
 	if (invalid_val_cnt > 0xfffffff)
 		invalid_val_cnt = 0;
 
@@ -646,10 +649,12 @@ void ldim_read_region(unsigned int nrow, unsigned int ncol)
 			for (k = 0; k < 17; k++) {
 				if (k == 16) {
 					data32 = Rd(LDIM_STTS_HIST_READ_REGION);
-					max_rgb[i*ncol+j] = data32;
+					ldim_drv->max_rgb[i * ncol + j]
+						= data32;
 				} else {
 					data32 = Rd(LDIM_STTS_HIST_READ_REGION);
-					hist_matrix[i*ncol*16+j*16+k] = data32;
+					ldim_drv->hist_matrix[i * ncol * 16 +
+						j * 16 + k] = data32;
 				}
 				if (!(data32 & 0x40000000))
 					invalid_val_cnt++;
@@ -714,9 +719,9 @@ int Round(int iX, int iB)
 	if (iX == 0)
 		Rst = 0;
 	else if (iX > 0)
-		Rst = (iX + iB/2)/iB;
+		Rst = (iX + iB / 2) / iB;
 	else
-		Rst = (iX - iB/2)/iB;
+		Rst = (iX - iB / 2) / iB;
 	return Rst;
 }
 
@@ -737,17 +742,19 @@ int LD_GetBLMtxAvg(int pMtx[], int size, int mode)
 		da = 0;
 		for (i = 0; i < size; i++)
 			da += pMtx[i];
-			da = da/size;
+		da = da / size;
 	} else if (mode == 2) {
 		da = pMtx[0];
-		for (i = 1; i < size; i++)
+		for (i = 1; i < size; i++) {
 			if (da > pMtx[i])
 				da = pMtx[i];
+		}
 	} else {
 		da = pMtx[0];
-		for (i = 1; i < size; i++)
+		for (i = 1; i < size; i++) {
 			if (da < pMtx[i])
 				da = pMtx[i];
+		}
 	}
 	return da;
 }
@@ -761,66 +768,12 @@ void LD_MtxInv(int *oDat, int *iDat, int nRow, int nCol)
 
 	for (nY = 0; nY < nRow; nY++) {
 		for (nX = 0; nX < nCol; nX++) {
-			nT1 = nY*nCol + nX;
-			nT2 = nX*nRow + nY;
+			nT1 = nY * nCol + nX;
+			nT2 = nX * nRow + nY;
 			oDat[nT2] = iDat[nT1];
 		}
 	}
 }
-
-#if 0
-void LD_LUTInit(struct LDReg *Reg)
-{
-	int i, j, v1, v2, bin1, bin2, gain_1, gain_2, gain_3,
-			offset_1, offset_2, offset_3;
-
-	for (i = 0; i < 16; i++) {
-		Reg->X_idx[0][i] = 4095 - 256*i;
-		Reg->X_nrm[0][i] = 8;
-
-		v1 = (unsigned int)Reg->val_1[i];
-		v2 = (unsigned int)Reg->val_2[i];
-		bin1 = (unsigned int)Reg->bin_1[i];
-		bin2 = (unsigned int)Reg->bin_2[i];
-
-		gain_1 = v1 / bin1;
-		gain_2 = (v2 - v1) / (bin2 - bin1);
-		gain_3 = (4096 - v2) / (32 - bin2);
-
-		offset_1 = 0;
-		offset_2 = v1 - bin1 * gain_2;
-		offset_3 = v2 - bin2 * gain_3;
-
-		for (j = 0; j < 32; j++) {
-			if (j <= bin1) {
-				Reg->X_lut[0][i][j] = MIN((gain_1 * (j + 1)
-						+ offset_1), 4095);
-				Reg->X_lut[1][i][j] = MIN((gain_1 * (j + 1)
-						+ offset_1), 4095);
-				Reg->X_lut[2][i][j] = MIN((gain_1 * (j + 1)
-						+ offset_1), 4095);
-			} else if (j <= bin2) {
-				Reg->X_lut[0][i][j] = MIN((gain_2 * (j + 1)
-						+ offset_2), 4095);
-				Reg->X_lut[1][i][j] = MIN((gain_2 * (j + 1)
-						+ offset_2), 4095);
-				Reg->X_lut[2][i][j] = MIN((gain_2 * (j + 1)
-						+ offset_2), 4095);
-			} else {
-				Reg->X_lut[0][i][j] = MIN((gain_3 * (j + 1)
-						+ offset_3), 4095);
-				Reg->X_lut[1][i][j] = MIN((gain_3 * (j + 1)
-						+ offset_3), 4095);
-				Reg->X_lut[2][i][j] = MIN((gain_3 * (j + 1)
-						+ offset_3), 4095);
-			}
-		}
-	}
-}
-#endif
-
-
-#if 1
 
 static int Remap_lut[][32] = {
 { 128,  256,  384,  512,  640,  768,  896, 1024,
@@ -888,74 +841,8 @@ static int Remap_lut[][32] = {
 2295, 2415, 2535, 2655, 2775, 2895, 3015, 3135,
 3255, 3375, 3495, 3615, 3735, 3855, 3975, 4095, },
 };
-	/*
-	{ 128,  256,  384,  512,  640,  768,  896, 1024,
-	  1152, 1280, 1408, 1536, 1664, 1792, 1920, 2048,
-	  2176, 2304, 2432, 2560, 2688, 2816, 2944, 3072,
-	  3200, 3328, 3456, 3584, 3712, 3840, 3968, 4095, },
-	{ 137,  273,  410,  546,  683,  819,  956, 1092,
-	  1229, 1365, 1502, 1638, 1775, 1911, 2048, 2185,
-	  2321, 2458, 2594, 2731, 2867, 3004, 3140, 3277,
-	  3413, 3550, 3686, 3775, 3855, 3935, 4015, 4095, },
-	{ 146,  293,  439,  585,  731,  878, 1024, 1170,
-	  1317, 1463, 1609, 1755, 1902, 2048, 2194, 2341,
-	  2487, 2633, 2779, 2926, 3072, 3218, 3365, 3455,
-	  3535, 3615, 3695, 3775, 3855, 3935, 4015, 4095, },
-	{ 158,  315,  473,  630,  788,  945, 1103, 1260,
-	  1418, 1575, 1733, 1890, 2048, 2206, 2363, 2521,
-	  2678, 2836, 2993, 3135, 3215, 3295, 3375, 3455,
-	  3535, 3615, 3695, 3775, 3855, 3935, 4015, 4095, },
-	{ 158,  315,  473,  630,  788,  945, 1103, 1260,
-	  1418, 1575, 1733, 1890, 2048, 2206, 2363, 2521,
-	  2678, 2836, 2993, 3135, 3215, 3295, 3375, 3455,
-	  3535, 3615, 3695, 3775, 3855, 3935, 4015, 4095, },
-	{ 158,  315,  473,  630,  788,  945, 1103, 1260,
-	  1418, 1575, 1733, 1890, 2048, 2206, 2363, 2521,
-	  2678, 2836, 2993, 3135, 3215, 3295, 3375, 3455,
-	  3535, 3615, 3695, 3775, 3855, 3935, 4015, 4095, },
-	{ 158,  315,  473,  630,  788,  945, 1103, 1260,
-	  1418, 1575, 1733, 1890, 2048, 2206, 2363, 2521,
-	  2678, 2836, 2993, 3135, 3215, 3295, 3375, 3455,
-	  3535, 3615, 3695, 3775, 3855, 3935, 4015, 4095, },
-	{ 158,  315,  473,  630,  788,  945, 1103, 1260,
-	  1418, 1575, 1733, 1890, 2048, 2206, 2363, 2521,
-	  2678, 2836, 2993, 3135, 3215, 3295, 3375, 3455,
-	  3535, 3615, 3695, 3775, 3855, 3935, 4015, 4095, },
-	{ 158,  315,  473,  630,  788,  945, 1103, 1260,
-	  1418, 1575, 1733, 1890, 2048, 2206, 2363, 2521,
-	  2678, 2836, 2993, 3135, 3215, 3295, 3375, 3455,
-	  3535, 3615, 3695, 3775, 3855, 3935, 4015, 4095, },
-	{ 158,  315,  473,  630,  788,  945, 1103, 1260,
-	  1418, 1575, 1733, 1890, 2048, 2206, 2363, 2521,
-	  2678, 2836, 2993, 3135, 3215, 3295, 3375, 3455,
-	  3535, 3615, 3695, 3775, 3855, 3935, 4015, 4095, },
-	{ 158,  315,  473,  630,  788,  945, 1103, 1260,
-	  1418, 1575, 1733, 1890, 2048, 2206, 2363, 2521,
-	  2678, 2836, 2993, 3135, 3215, 3295, 3375, 3455,
-	  3535, 3615, 3695, 3775, 3855, 3935, 4015, 4095, },
-	{ 158,  315,  473,  630,  788,  945, 1103, 1260,
-	  1418, 1575, 1733, 1890, 2048, 2206, 2363, 2521,
-	  2678, 2836, 2993, 3135, 3215, 3295, 3375, 3455,
-	  3535, 3615, 3695, 3775, 3855, 3935, 4015, 4095, },
-	{ 158,  315,  473,  630,  788,  945, 1103, 1260,
-	  1418, 1575, 1733, 1890, 2048, 2206, 2363, 2521,
-	  2678, 2836, 2993, 3135, 3215, 3295, 3375, 3455,
-	  3535, 3615, 3695, 3775, 3855, 3935, 4015, 4095, },
-	{ 158,  315,  473,  630,  788,  945, 1103, 1260,
-	  1418, 1575, 1733, 1890, 2048, 2206, 2363, 2521,
-	  2678, 2836, 2993, 3135, 3215, 3295, 3375, 3455,
-	  3535, 3615, 3695, 3775, 3855, 3935, 4015, 4095, },
-	{ 158,  315,  473,  630,  788,  945, 1103, 1260,
-	  1418, 1575, 1733, 1890, 2048, 2206, 2363, 2521,
-	  2678, 2836, 2993, 3135, 3215, 3295, 3375, 3455,
-	  3535, 3615, 3695, 3775, 3855, 3935, 4015, 4095, },
-	{ 158,  315,  473,  630,  788,  945, 1103, 1260,
-	  1418, 1575, 1733, 1890, 2048, 2206, 2363, 2521,
-	  2678, 2836, 2993, 3135, 3215, 3295, 3375, 3455,
-	  3535, 3615, 3695, 3775, 3855, 3935, 4015, 4095, },
-};*/
-static int Remap_lut2[16][16] = {};
 
+static int Remap_lut2[16][16] = {};
 void LD_LUTInit(struct LDReg *Reg)
 {
 	int i, j, k, t;
@@ -965,14 +852,14 @@ void LD_LUTInit(struct LDReg *Reg)
 	case BL_CHIP_TXLX:
 		for (i = 0; i < 16; i++) {
 			for (j = 0; j < 16; j++)
-				Remap_lut2[i][j] = Remap_lut[i][j*2] |
-					(Remap_lut[i][j*2+1] << 16);
+				Remap_lut2[i][j] = Remap_lut[i][j * 2] |
+					(Remap_lut[i][j * 2 + 1] << 16);
 		}
 		/* Emulate the FW to set the LUTs */
 		for (k = 0; k < 16; k++) {
 			/*set the LUT to be inverse of the Lit_value,*/
 			/* lit_idx distribute equal space, set by FW */
-			Reg->X_idx[0][k] = 4095 - 256*k;
+			Reg->X_idx[0][k] = 4095 - 256 * k;
 			Reg->X_nrm[0][k] = 8;
 			for (t = 0; t < 16; t++) {
 				Reg->X_lut2[0][k][t] = Remap_lut2[k][t];
@@ -986,7 +873,7 @@ void LD_LUTInit(struct LDReg *Reg)
 		for (k = 0; k < 16; k++) {
 			/*set the LUT to be inverse of the Lit_value,*/
 			/* lit_idx distribute equal space, set by FW */
-			Reg->X_idx[0][k] = 4095 - 256*k;
+			Reg->X_idx[0][k] = 4095 - 256 * k;
 			Reg->X_nrm[0][k] = 8;
 			for (t = 0; t < 32; t++) {
 				Reg->X_lut[0][k][t] = Remap_lut[k][t];
@@ -999,9 +886,6 @@ void LD_LUTInit(struct LDReg *Reg)
 		break;
 	}
 }
-#endif
-
-
 
 static void ConLDReg_GXTVBB(struct LDReg *Reg)
 {
@@ -1178,7 +1062,7 @@ static void ConLDReg_GXTVBB(struct LDReg *Reg)
 	for (T = 0; T < 32; T++) {
 		Reg->reg_LD_LUT_VHk_pos[T] = 128;/* vdist>=0 */
 		Reg->reg_LD_LUT_VHk_neg[T] = 128;/* vdist<0 */
-		Reg->reg_LD_LUT_HHk[T] = (T == 4) ? 128 : 128;/* hdist gain */
+		Reg->reg_LD_LUT_HHk[T] = 128;/* hdist gain */
 		Reg->reg_LD_LUT_VHo_pos[T] = 0;/* vdist>=0 */
 		Reg->reg_LD_LUT_VHo_neg[T] = 0;/*  vdist<0 */
 	}
@@ -1428,13 +1312,13 @@ static void ConLDReg_TXLX(struct LDReg *Reg)
 	}
 
 	/* set the demo window */
-	Reg->reg_LD_xlut_demo_roi_xstart = (Reg->reg_LD_pic_ColMax/4);
+	Reg->reg_LD_xlut_demo_roi_xstart = (Reg->reg_LD_pic_ColMax / 4);
 	     /* u14 start col index of the region of interest */
-	Reg->reg_LD_xlut_demo_roi_xend = (Reg->reg_LD_pic_ColMax*3/4);
+	Reg->reg_LD_xlut_demo_roi_xend = (Reg->reg_LD_pic_ColMax * 3 / 4);
 	  /* u14 end col index of the region of interest */
-	Reg->reg_LD_xlut_demo_roi_ystart = (Reg->reg_LD_pic_RowMax/4);
+	Reg->reg_LD_xlut_demo_roi_ystart = (Reg->reg_LD_pic_RowMax / 4);
 	     /* u14 start row index of the region of interest */
-	Reg->reg_LD_xlut_demo_roi_yend = (Reg->reg_LD_pic_RowMax*3/4);
+	Reg->reg_LD_xlut_demo_roi_yend = (Reg->reg_LD_pic_RowMax * 3 / 4);
 	   /*  u14 end row index of the region of interest */
 	Reg->reg_LD_xlut_iroi_enable = 1;
 	     /*  u1: enable rgb LUT remapping inside regon of interest:
@@ -1476,13 +1360,13 @@ void LD_ConLDReg(struct LDReg *Reg)
 	}
 }
 
+#define LD_ONESIDE    1  /* 0: left/top side,
+			1: right/bot side, others: non-one-side */
 void ld_fw_cfg_once(struct LDReg *nPRM)
 {
 	int k, dlt;
 	int hofst = 4;
 	int vofst = 4;
-	int oneside = 1;/* 0: left/top side,
-		1: right/bot side, others: non-one-side */
 	int Hnrm = 256;/* Hgain norm (256: for Hlen==2048) */
 	int Vnrm = 256;/* Vgain norm (256: for Vlen==2048),related to VHk */
 
@@ -1494,7 +1378,7 @@ void ld_fw_cfg_once(struct LDReg *nPRM)
 	nPRM->reg_LD_RGBmapping_demo = 0;
 
 	/*  set Reg->reg_LD_BkLit_Celnum */
-	nPRM->reg_LD_BkLit_Celnum = (nPRM->reg_LD_pic_ColMax + 63)/32;
+	nPRM->reg_LD_BkLit_Celnum = (nPRM->reg_LD_pic_ColMax + 63) / 32;
 
 	/* set same region division for statistics */
 	/*nPRM->reg_LD_STA_Vnum  = nPRM->reg_LD_BLK_Vnum;*/
@@ -1504,7 +1388,8 @@ void ld_fw_cfg_once(struct LDReg *nPRM)
 	nPRM->reg_LD_STA1max_Hidx[0] = 0;
 	for (k = 1; k < LD_STA_LEN_H; k++) {
 		nPRM->reg_LD_STA1max_Hidx[k] = ((nPRM->reg_LD_pic_ColMax +
-			(nPRM->reg_LD_STA_Hnum) - 1)/(nPRM->reg_LD_STA_Hnum))*k;
+			(nPRM->reg_LD_STA_Hnum) - 1) /
+			(nPRM->reg_LD_STA_Hnum)) * k;
 		if (nPRM->reg_LD_STA1max_Hidx[k] > 4095)
 			nPRM->reg_LD_STA1max_Hidx[k] = 4095;/* clip U12 */
 	}
@@ -1512,7 +1397,8 @@ void ld_fw_cfg_once(struct LDReg *nPRM)
 	nPRM->reg_LD_STA1max_Vidx[0] = 0;
 	for (k = 1; k < LD_STA_LEN_V; k++) {
 		nPRM->reg_LD_STA1max_Vidx[k] = ((nPRM->reg_LD_pic_RowMax +
-			(nPRM->reg_LD_STA_Vnum) - 1)/(nPRM->reg_LD_STA_Vnum))*k;
+			(nPRM->reg_LD_STA_Vnum) - 1) /
+			(nPRM->reg_LD_STA_Vnum)) * k;
 		if (nPRM->reg_LD_STA1max_Vidx[k] > 4095)
 			nPRM->reg_LD_STA1max_Vidx[k] = 4095;/* clip to U12 */
 	}
@@ -1535,12 +1421,14 @@ void ld_fw_cfg_once(struct LDReg *nPRM)
 			direction; 0~4 */
 		/* config reg_LD_BLK_Hidx */
 		for (k = 0; k < LD_BLK_LEN_H; k++) {
-			dlt = nPRM->reg_LD_pic_ColMax/(nPRM->reg_LD_BLK_Hnum)*2;
-			if (oneside == 1) /* bot/right one side */
-				nPRM->reg_LD_BLK_Hidx[k] = 0 + (k-hofst)*dlt;
-			else
-				nPRM->reg_LD_BLK_Hidx[k] = (-1)*(dlt/2)  +
-					(k-hofst)*dlt;
+			dlt = nPRM->reg_LD_pic_ColMax /
+				(nPRM->reg_LD_BLK_Hnum) * 2;
+#if (LD_ONESIDE == 1) /* bot/right one side */
+			nPRM->reg_LD_BLK_Hidx[k] = 0 + (k-hofst) * dlt;
+#else
+			nPRM->reg_LD_BLK_Hidx[k] = (-1) * (dlt / 2) +
+				(k - hofst) * dlt;
+#endif
 			nPRM->reg_LD_BLK_Hidx[k] = (nPRM->reg_LD_BLK_Hidx[k] >
 				8191) ? 8191 : ((nPRM->reg_LD_BLK_Hidx[k] <
 				(-8192)) ? (-8192) :
@@ -1548,16 +1436,17 @@ void ld_fw_cfg_once(struct LDReg *nPRM)
 		}
 		/*  config reg_LD_BLK_Vidx */
 		for (k = 0; k < LD_BLK_LEN_V; k++) {
-			dlt = (nPRM->reg_LD_pic_RowMax)/(nPRM->reg_LD_BLK_Vnum);
-			nPRM->reg_LD_BLK_Vidx[k] = 0 + (k-vofst)*dlt;
+			dlt = (nPRM->reg_LD_pic_RowMax) /
+				(nPRM->reg_LD_BLK_Vnum);
+			nPRM->reg_LD_BLK_Vidx[k] = 0 + (k - vofst) * dlt;
 			nPRM->reg_LD_BLK_Vidx[k] = (nPRM->reg_LD_BLK_Vidx[k] >
 				8191) ? 8191 : ((nPRM->reg_LD_BLK_Vidx[k] <
 				(-8192)) ? (-8192) :
 				(nPRM->reg_LD_BLK_Vidx[k]));/*Clip to S14*/
 		}
 		/*  configure  Hgain/Vgain */
-		nPRM->reg_LD_Hgain = (Hnrm*2048/(nPRM->reg_LD_pic_ColMax));
-		nPRM->reg_LD_Vgain = (Vnrm*2048/(nPRM->reg_LD_pic_RowMax));
+		nPRM->reg_LD_Hgain = (Hnrm*2048 / (nPRM->reg_LD_pic_ColMax));
+		nPRM->reg_LD_Vgain = (Vnrm*2048 / (nPRM->reg_LD_pic_RowMax));
 		nPRM->reg_LD_Hgain = (nPRM->reg_LD_Hgain >
 			4095)  ? 4095 : (nPRM->reg_LD_Hgain);
 		nPRM->reg_LD_Vgain = (nPRM->reg_LD_Vgain >
@@ -1572,12 +1461,12 @@ void ld_fw_cfg_once(struct LDReg *nPRM)
 				nPRM->reg_LD_LUT_VHo_neg[k] = LD_LUT_VHo_neg[k];
 				nPRM->reg_LD_LUT_VHo_pos[k] = LD_LUT_VHo_pos[k];
 			}
-			nPRM->reg_LD_LUT_Hdg_LEXT = 2*(nPRM->reg_LD_LUT_Hdg[0])
-			- (nPRM->reg_LD_LUT_Hdg[1]);
-			nPRM->reg_LD_LUT_Vdg_LEXT = 2*(nPRM->reg_LD_LUT_Vdg[0])
-			- (nPRM->reg_LD_LUT_Vdg[1]);
-			nPRM->reg_LD_LUT_VHk_LEXT = 2*(nPRM->reg_LD_LUT_VHk[0])
-			- (nPRM->reg_LD_LUT_VHk[1]);
+			nPRM->reg_LD_LUT_Hdg_LEXT = 2 * nPRM->reg_LD_LUT_Hdg[0]
+				- nPRM->reg_LD_LUT_Hdg[1];
+			nPRM->reg_LD_LUT_Vdg_LEXT = 2 * nPRM->reg_LD_LUT_Vdg[0]
+				- nPRM->reg_LD_LUT_Vdg[1];
+			nPRM->reg_LD_LUT_VHk_LEXT = 2 * nPRM->reg_LD_LUT_VHk[0]
+				- nPRM->reg_LD_LUT_VHk[1];
 			nPRM->reg_LD_Litgain = 230;
 			/* u12 will be adjust according to pannel */
 		}
@@ -1591,8 +1480,8 @@ void ld_fw_cfg_once(struct LDReg *nPRM)
 			direction; 0~4 */
 		/* config reg_LD_BLK_Hidx */
 		for (k = 0; k < LD_BLK_LEN_H; k++) {
-			dlt = (nPRM->reg_LD_pic_ColMax)/(nPRM->reg_LD_BLK_Hnum);
-			nPRM->reg_LD_BLK_Hidx[k] = 0 + (k - hofst)*dlt;
+			dlt = nPRM->reg_LD_pic_ColMax / nPRM->reg_LD_BLK_Hnum;
+			nPRM->reg_LD_BLK_Hidx[k] = 0 + (k - hofst) * dlt;
 			nPRM->reg_LD_BLK_Hidx[k] = (nPRM->reg_LD_BLK_Hidx[k] >
 				8191) ? 8191 : ((nPRM->reg_LD_BLK_Hidx[k] <
 				(-8192)) ? (-8192) :
@@ -1600,20 +1489,22 @@ void ld_fw_cfg_once(struct LDReg *nPRM)
 		}
 		/* config reg_LD_BLK_Vidx */
 		for (k = 0; k < LD_BLK_LEN_V; k++) {
-			dlt = nPRM->reg_LD_pic_RowMax/(nPRM->reg_LD_BLK_Vnum)*2;
-			if (oneside == 1) /*  bot/right one side */
-				nPRM->reg_LD_BLK_Vidx[k] = 0 + (k-vofst)*dlt;
-			else
-				nPRM->reg_LD_BLK_Vidx[k] = (-1)*(dlt/2) +
-					(k-vofst)*dlt;
+			dlt = nPRM->reg_LD_pic_RowMax /
+				(nPRM->reg_LD_BLK_Vnum) * 2;
+#if (LD_ONESIDE == 1) /*  bot/right one side */
+			nPRM->reg_LD_BLK_Vidx[k] = 0 + (k-vofst) * dlt;
+#else
+			nPRM->reg_LD_BLK_Vidx[k] = (-1) * (dlt / 2) +
+				(k - vofst) * dlt;
+#endif
 			nPRM->reg_LD_BLK_Vidx[k] = (nPRM->reg_LD_BLK_Vidx[k] >
 				8191) ? 8191 : ((nPRM->reg_LD_BLK_Vidx[k] <
 				(-8192)) ? (-8192) :
 				(nPRM->reg_LD_BLK_Vidx[k])); /* Clip to S14*/
 		}
 		/*  configure  Hgain/Vgain */
-		nPRM->reg_LD_Hgain = (Hnrm*2048/(nPRM->reg_LD_pic_RowMax));
-		nPRM->reg_LD_Vgain = (Vnrm*2048/(nPRM->reg_LD_pic_ColMax));
+		nPRM->reg_LD_Hgain = (Hnrm*2048 / (nPRM->reg_LD_pic_RowMax));
+		nPRM->reg_LD_Vgain = (Vnrm*2048 / (nPRM->reg_LD_pic_ColMax));
 		nPRM->reg_LD_Hgain = (nPRM->reg_LD_Hgain >
 			4095) ? 4095 : (nPRM->reg_LD_Hgain);
 		nPRM->reg_LD_Vgain = (nPRM->reg_LD_Vgain >
@@ -1628,12 +1519,12 @@ void ld_fw_cfg_once(struct LDReg *nPRM)
 				nPRM->reg_LD_LUT_VHo_neg[k] = LD_LUT_VHo_neg[k];
 				nPRM->reg_LD_LUT_VHo_pos[k] = LD_LUT_VHo_pos[k];
 			}
-			nPRM->reg_LD_LUT_Hdg_LEXT = 2*(nPRM->reg_LD_LUT_Hdg[0])
-				- (nPRM->reg_LD_LUT_Hdg[1]);
-			nPRM->reg_LD_LUT_Vdg_LEXT = 2*(nPRM->reg_LD_LUT_Vdg[0])
-				- (nPRM->reg_LD_LUT_Vdg[1]);
-			nPRM->reg_LD_LUT_VHk_LEXT = 2*(nPRM->reg_LD_LUT_VHk[0])
-				- (nPRM->reg_LD_LUT_VHk[1]);
+			nPRM->reg_LD_LUT_Hdg_LEXT = 2 * nPRM->reg_LD_LUT_Hdg[0]
+				- nPRM->reg_LD_LUT_Hdg[1];
+			nPRM->reg_LD_LUT_Vdg_LEXT = 2 * nPRM->reg_LD_LUT_Vdg[0]
+				- nPRM->reg_LD_LUT_Vdg[1];
+			nPRM->reg_LD_LUT_VHk_LEXT = 2 * nPRM->reg_LD_LUT_VHk[0]
+				- nPRM->reg_LD_LUT_VHk[1];
 			nPRM->reg_LD_Litgain = 256;
 		}
 	} else {/* DirectLit */
@@ -1646,8 +1537,8 @@ void ld_fw_cfg_once(struct LDReg *nPRM)
 			direction; 0~4 */
 		/* config reg_LD_BLK_Hidx */
 		for (k = 0; k < LD_BLK_LEN_H; k++) {
-			dlt = (nPRM->reg_LD_pic_ColMax)/(nPRM->reg_LD_BLK_Hnum);
-			nPRM->reg_LD_BLK_Hidx[k] = 0 + (k-hofst)*dlt;
+			dlt = nPRM->reg_LD_pic_ColMax / nPRM->reg_LD_BLK_Hnum;
+			nPRM->reg_LD_BLK_Hidx[k] = 0 + (k - hofst) * dlt;
 			nPRM->reg_LD_BLK_Hidx[k] = (nPRM->reg_LD_BLK_Hidx[k] >
 				8191) ? 8191 : ((nPRM->reg_LD_BLK_Hidx[k] <
 				(-8192)) ? (-8192) :
@@ -1655,17 +1546,17 @@ void ld_fw_cfg_once(struct LDReg *nPRM)
 		}
 		/* config reg_LD_BLK_Vidx */
 		for (k = 0; k < LD_BLK_LEN_V; k++) {
-			dlt = (nPRM->reg_LD_pic_RowMax)/(nPRM->reg_LD_BLK_Vnum);
-			nPRM->reg_LD_BLK_Vidx[k] = 0 + (k-vofst)*dlt;
+			dlt = nPRM->reg_LD_pic_RowMax / nPRM->reg_LD_BLK_Vnum;
+			nPRM->reg_LD_BLK_Vidx[k] = 0 + (k - vofst) * dlt;
 			nPRM->reg_LD_BLK_Vidx[k] = (nPRM->reg_LD_BLK_Vidx[k] >
 				8191) ? 8191 : ((nPRM->reg_LD_BLK_Vidx[k] <
 				(-8192)) ? (-8192) :
 				(nPRM->reg_LD_BLK_Vidx[k]));/*Clip to S14*/
 		}
 		/* configure  Hgain/Vgain */
-		nPRM->reg_LD_Hgain = ((nPRM->reg_LD_BLK_Hnum)*73*2048/
+		nPRM->reg_LD_Hgain = ((nPRM->reg_LD_BLK_Hnum) * 73 * 2048 /
 			(nPRM->reg_LD_pic_ColMax));
-		nPRM->reg_LD_Vgain = ((nPRM->reg_LD_BLK_Vnum)*73*2048/
+		nPRM->reg_LD_Vgain = ((nPRM->reg_LD_BLK_Vnum) * 73 * 2048 /
 			(nPRM->reg_LD_pic_RowMax));
 		nPRM->reg_LD_Hgain = (nPRM->reg_LD_Hgain >
 			4095) ? 4095 : (nPRM->reg_LD_Hgain);
@@ -1678,11 +1569,11 @@ void ld_fw_cfg_once(struct LDReg *nPRM)
 			nPRM->reg_LD_LUT_Vdg[k] = drt_LD_LUT_dg[k];
 			nPRM->reg_LD_LUT_VHk[k] = 128;
 		}
-		nPRM->reg_LD_LUT_Hdg_LEXT = 2*(nPRM->reg_LD_LUT_Hdg[0])
+		nPRM->reg_LD_LUT_Hdg_LEXT = 2 * (nPRM->reg_LD_LUT_Hdg[0])
 			- (nPRM->reg_LD_LUT_Hdg[1]);
-		nPRM->reg_LD_LUT_Vdg_LEXT = 2*(nPRM->reg_LD_LUT_Vdg[0])
+		nPRM->reg_LD_LUT_Vdg_LEXT = 2 * (nPRM->reg_LD_LUT_Vdg[0])
 			- (nPRM->reg_LD_LUT_Vdg[1]);
-		nPRM->reg_LD_LUT_VHk_LEXT = 2*(nPRM->reg_LD_LUT_VHk[0])
+		nPRM->reg_LD_LUT_VHk_LEXT = 2 * (nPRM->reg_LD_LUT_VHk[0])
 			- (nPRM->reg_LD_LUT_VHk[1]);
 		nPRM->reg_LD_Litgain = 256;
 		nPRM->reg_LD_BkLit_curmod = 0;
@@ -1698,13 +1589,13 @@ void ld_fw_cfg_once(struct LDReg *nPRM)
 	nPRM->reg_LD_X_LUT_interp_mode[1] = 0;
 	nPRM->reg_LD_X_LUT_interp_mode[2] = 0;
 	/* set the demo window*/
-	nPRM->reg_LD_xlut_demo_roi_xstart = (nPRM->reg_LD_pic_ColMax/4);
+	nPRM->reg_LD_xlut_demo_roi_xstart = (nPRM->reg_LD_pic_ColMax / 4);
 	/* u14 start col index of the region of interest */
-	nPRM->reg_LD_xlut_demo_roi_xend   = (nPRM->reg_LD_pic_ColMax*3/4);
+	nPRM->reg_LD_xlut_demo_roi_xend   = (nPRM->reg_LD_pic_ColMax * 3 / 4);
 	/* u14 end col index of the region of interest */
-	nPRM->reg_LD_xlut_demo_roi_ystart = (nPRM->reg_LD_pic_RowMax/4);
+	nPRM->reg_LD_xlut_demo_roi_ystart = (nPRM->reg_LD_pic_RowMax / 4);
 	/* u14 start row index of the region of interest */
-	nPRM->reg_LD_xlut_demo_roi_yend  = (nPRM->reg_LD_pic_RowMax*3/4);
+	nPRM->reg_LD_xlut_demo_roi_yend  = (nPRM->reg_LD_pic_RowMax * 3 / 4);
 	/* u14 end row index of the region of interest */
 	nPRM->reg_LD_xlut_iroi_enable = 1;
 	/* u1: enable rgb LUT remapping inside regon of interest:

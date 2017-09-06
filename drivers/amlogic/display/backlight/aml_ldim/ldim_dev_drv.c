@@ -270,8 +270,6 @@ void ldim_set_duty_pwm(struct bl_pwm_config_s *ld_pwm)
 		bl_cbus_write(pwm_reg[port], (pwm_hi << 16) | pwm_lo);
 		break;
 	case BL_PWM_VS:
-		memset(vs, 0xffff, sizeof(unsigned int) * 4);
-		memset(ve, 0xffff, sizeof(unsigned int) * 4);
 		n = ld_pwm->pwm_freq;
 		sw = (ld_pwm->pwm_cnt * 10 / n + 5) / 10;
 		pwm_hi = (pwm_hi * 10 / n + 5) / 10;
@@ -286,7 +284,12 @@ void ldim_set_duty_pwm(struct bl_pwm_config_s *ld_pwm)
 					i, vs[i], i, ve[i]);
 			}
 		}
-		bl_vcbus_write(VPU_VPU_PWM_V0, (ve[0] << 16) | (vs[0]));
+		for (i = n; i < 4; i++) {
+			vs[i] = 0xffff;
+			ve[i] = 0xffff;
+		}
+		bl_vcbus_write(VPU_VPU_PWM_V0, (2 << 14) | /* vsync latch */
+				(ve[0] << 16) | (vs[0]));
 		bl_vcbus_write(VPU_VPU_PWM_V1, (ve[1] << 16) | (vs[1]));
 		bl_vcbus_write(VPU_VPU_PWM_V2, (ve[2] << 16) | (vs[2]));
 		bl_vcbus_write(VPU_VPU_PWM_V3, (ve[3] << 16) | (vs[3]));

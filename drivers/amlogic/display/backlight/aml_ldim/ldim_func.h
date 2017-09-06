@@ -18,8 +18,6 @@
 #include <linux/cdev.h>
 #include <linux/amlogic/iomap.h>
 
-extern unsigned int hist_matrix[LD_BLKREGNUM*16];
-extern unsigned int max_rgb[LD_BLKREGNUM];
 extern unsigned int invalid_val_cnt;
 
 #define Wr_reg_bits(adr, val, start, len)  \

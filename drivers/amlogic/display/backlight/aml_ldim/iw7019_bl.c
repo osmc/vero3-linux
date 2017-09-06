@@ -34,7 +34,6 @@
 #include <linux/amlogic/aml_gpio_consumer.h>
 #include <linux/amlogic/vout/aml_ldim.h>
 #include <linux/amlogic/vout/aml_bl.h>
-#include "iw7019_lpf.h"
 #include "iw7019_bl.h"
 #include "ldim_drv.h"
 #include "ldim_dev_drv.h"

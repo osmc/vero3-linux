@@ -190,17 +190,22 @@ int lcd_unifykey_get(char *key_name, unsigned char *buf, int *len)
 
 void lcd_unifykey_print(void)
 {
-	unsigned char buf[600];
+	unsigned char *buf;
 	char *key_name;
 	unsigned int key_len;
 	int i, j;
 	int ret;
 
+	buf = kmalloc(600*sizeof(unsigned char), GFP_KERNEL);
+	if (buf == NULL) {
+		LCDUKEY("lcd_unifykey buf malloc error\n");
+		return;
+	}
 	key_name = "lcd";
 	key_len = LCD_UKEY_LCD_SIZE;
 	ret = lcd_unifykey_get(key_name, buf, &key_len);
 	if (ret < 0)
-		return;
+		goto exit_print_backlight;
 	LCDUKEY("%s: %s: %d\n", __func__, key_name, key_len);
 	i = 0;
 	while (1) {
@@ -222,7 +227,7 @@ exit_print_lcd:
 	key_len = LCD_UKEY_LCD_EXT_SIZE;
 	ret = lcd_unifykey_get(key_name, buf, &key_len);
 	if (ret < 0)
-		return;
+		goto exit_print_backlight;
 	LCDUKEY("%s: %s: %d\n", __func__, key_name, key_len);
 	i = 0;
 	while (1) {
@@ -244,7 +249,7 @@ exit_print_lcd_ext:
 	key_len = LCD_UKEY_BL_SIZE;
 	ret = lcd_unifykey_get(key_name, buf, &key_len);
 	if (ret < 0)
-		return;
+		goto exit_print_backlight;
 	LCDUKEY("%s: %s: %d\n", __func__, key_name, key_len);
 	i = 0;
 	while (1) {
@@ -262,7 +267,8 @@ exit_print_lcd_ext:
 	}
 
 exit_print_backlight:
-	return;
+	kfree(buf);
+
 }
 
 #else

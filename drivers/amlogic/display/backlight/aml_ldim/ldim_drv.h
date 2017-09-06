@@ -39,8 +39,6 @@
 
 extern unsigned int ldim_debug_print;
 
-extern void set_bri_for_channels(unsigned short bri[16]);
-
 /*** GXTVBB & TXLX common use register*/
 /* each base has 16 address space */
 #define REG_LD_CFG_BASE           0x00
