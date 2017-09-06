@@ -8077,7 +8077,7 @@ static void di_unreg_process_irq(void)
 			DI_Wr(DI_CLKG_CTRL, 0x80000000);
 		}
 		if (!is_meson_gxl_cpu() && !is_meson_gxm_cpu() &&
-			!is_meson_gxbb_cpu())
+			!is_meson_gxbb_cpu() && !is_meson_txlx_cpu())
 			switch_vpu_clk_gate_vmod(VPU_VPU_CLKB,
 				VPU_CLK_GATE_OFF);
 			pr_info("%s disable di mirror image.\n", __func__);
@@ -9888,8 +9888,9 @@ static void di_shutdown(struct platform_device *pdev)
 	else
 		DI_Wr(DI_CLKG_CTRL, 0x2);
 
-	switch_vpu_clk_gate_vmod(VPU_VPU_CLKB,
-		VPU_CLK_GATE_OFF);
+	if (!is_meson_txlx_cpu())
+		switch_vpu_clk_gate_vmod(VPU_VPU_CLKB,
+			VPU_CLK_GATE_OFF);
 	kfree(di_devp);
 	pr_info("[DI] shutdown done.\n");
 
@@ -9925,10 +9926,9 @@ static int di_suspend(struct device *dev)
 
 	di_set_power_control(0, 0);
 	di_set_power_control(1, 0);
-	switch_vpu_clk_gate_vmod(VPU_VPU_CLKB,
-		VPU_CLK_GATE_OFF);
-	if (get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX)
-		clk_disable_unprepare(di_devp->vpu_clkb);
+	if (!is_meson_txlx_cpu())
+		switch_vpu_clk_gate_vmod(VPU_VPU_CLKB,
+			VPU_CLK_GATE_OFF);
 	pr_info("di: di_suspend\n");
 	return 0;
 }
