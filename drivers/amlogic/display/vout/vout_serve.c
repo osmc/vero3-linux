@@ -53,15 +53,18 @@ static int early_resume_flag;
 
 #define VOUT_CDEV_NAME  "display"
 #define VOUT_CLASS_NAME "display"
-#define	MAX_NUMBER_PARA 10
+#define MAX_NUMBER_PARA 10
 
+#define VMODE_NAME_LEN_MAX    64
 static struct class *vout_class;
 static DEFINE_MUTEX(vout_mutex);
-static char vout_mode_uboot[64] __nosavedata;
-static char vout_mode[64] __nosavedata;
-static char vout_axis[64] __nosavedata;
+static char vout_mode_uboot[VMODE_NAME_LEN_MAX] __nosavedata;
+static char vout_mode[VMODE_NAME_LEN_MAX] __nosavedata;
+static char local_name[VMODE_NAME_LEN_MAX] = {0};
 static u32 vout_init_vmode = VMODE_INIT_NULL;
 static int uboot_display;
+
+static char vout_axis[64] __nosavedata;
 
 struct vout_cdev_s {
 	dev_t           devno;
@@ -105,7 +108,7 @@ static ssize_t mode_show(struct class *class, struct class_attribute *attr,
 {
 	int ret = 0;
 
-	ret = snprintf(buf, 64, "%s\n", vout_mode);
+	ret = snprintf(buf, VMODE_NAME_LEN_MAX, "%s\n", vout_mode);
 
 	return ret;
 }
@@ -113,12 +116,12 @@ static ssize_t mode_show(struct class *class, struct class_attribute *attr,
 static ssize_t mode_store(struct class *class, struct class_attribute *attr,
 			  const char *buf, size_t count)
 {
-	char mode[64];
+	char mode[VMODE_NAME_LEN_MAX];
 
 	mutex_lock(&vout_mutex);
-	snprintf(mode, 64, "%s", buf);
+	snprintf(mode, VMODE_NAME_LEN_MAX, "%s", buf);
 	if (set_vout_mode(mode) == 0)
-		strcpy(vout_mode, mode);
+		snprintf(vout_mode, VMODE_NAME_LEN_MAX, "%s", mode);
 	mutex_unlock(&vout_mutex);
 	return count;
 }
@@ -216,8 +219,6 @@ static int  meson_vout_suspend(struct platform_device *pdev,
 static int  meson_vout_resume(struct platform_device *pdev);
 #endif
 
-static char local_name[32] = {0};
-
 static int set_vout_mode(char *name)
 {
 	struct hdmitx_dev *hdmitx_device = get_hdmitx_device();
@@ -226,12 +227,7 @@ static int set_vout_mode(char *name)
 
 	vout_log_info("vmode set to %s\n", name);
 
-	if (strcmp(name, local_name)) {
-		memset(local_name, 0, sizeof(local_name));
-		strcpy(local_name, name);
-		mode = validate_vmode(name);
-		goto next;
-	} else {
+	if (strcmp(name, local_name) == 0) {
 		vout_log_info("don't set the same mode as current\n");
 		return -1;
 	}
@@ -241,7 +237,9 @@ static int set_vout_mode(char *name)
 		vout_log_info("no matched vout mode\n");
 		return -1;
 	}
-next:
+	memset(local_name, 0, sizeof(local_name));
+	snprintf(local_name, VMODE_NAME_LEN_MAX, "%s", name);
+
 	if (hdmitx_device->hdtx_dev) {
 		/*
 		 * On kernel booting, there happens call phy_pll_off() a time,
@@ -290,7 +288,7 @@ static int set_vout_init_mode(void)
 #endif
 
 	memset(local_name, 0, sizeof(local_name));
-	strcpy(local_name, vout_mode_uboot);
+	snprintf(local_name, VMODE_NAME_LEN_MAX, "%s", vout_mode_uboot);
 	ret = set_current_vmode(vmode);
 	vout_log_info("init mode %s\n", vout_mode_uboot);
 
@@ -306,13 +304,13 @@ EXPORT_SYMBOL(get_logo_vmode);
 int set_logo_vmode(enum vmode_e mode)
 {
 	const char *tmp;
-	char name[32] = {0};
+	char name[VMODE_NAME_LEN_MAX] = {0};
 	int ret = 0;
 
 	if (mode == VMODE_INIT_NULL)
 		return -1;
 	tmp = vmode_mode_to_name(mode);
-	strncpy(&name[0], tmp, 32);
+	snprintf(&name[0], VMODE_NAME_LEN_MAX, "%s\n", tmp);
 	vout_init_vmode = mode;
 	set_vout_mode(name);
 
@@ -323,7 +321,7 @@ EXPORT_SYMBOL(set_logo_vmode);
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
 void update_vmode_status(char *name)
 {
-	snprintf(vout_mode, 64, "%s\n", name);
+	snprintf(vout_mode, VMODE_NAME_LEN_MAX, "%s\n", name);
 }
 EXPORT_SYMBOL(update_vmode_status);
 #endif
@@ -344,17 +342,19 @@ static void set_vout_axis(char *para)
 {
 #define OSD_COUNT 2
 	static struct disp_rect_s disp_rect[OSD_COUNT];
-	char count = OSD_COUNT * 4;
+	/* char count = OSD_COUNT * 4; */
 	int *pt = &disp_rect[0].x;
 	int parsed[MAX_NUMBER_PARA] = {};
 
 	/* parse window para */
 	if (parse_para(para, 8, parsed) >= 4)
 		memcpy(pt, parsed, sizeof(struct disp_rect_s) * OSD_COUNT);
-	if ((count >= 4) && (count < 8))
-		disp_rect[1] = disp_rect[0];
+	/* if ((count >= 4) && (count < 8))
+	 *	disp_rect[1] = disp_rect[0];
+	 */
 
-	vout_log_info("osd0=> x:%d,y:%d,w:%d,h:%d\nosd1=> x:%d,y:%d,w:%d,h:%d\n",
+	vout_log_info("osd0=> x:%d,y:%d,w:%d,h:%d\n"
+			"osd1=> x:%d,y:%d,w:%d,h:%d\n",
 			*pt, *(pt + 1), *(pt + 2), *(pt + 3),
 			*(pt + 4), *(pt + 5), *(pt + 6), *(pt + 7));
 	vout_notifier_call_chain(VOUT_EVENT_OSD_DISP_AXIS, &disp_rect[0]);
@@ -367,10 +367,8 @@ static ssize_t vout_attr_vinfo_show(struct class *class,
 	ssize_t len = 0;
 
 	info = get_current_vinfo();
-	if (info == NULL) {
-		pr_info("current vinfo is null\n");
-		return sprintf(buf, "\n");
-	}
+	if (info == NULL)
+		return sprintf(buf, "current vinfo is null\n");
 
 	len = sprintf(buf, "current vinfo:\n"
 		"    name:                  %s\n"
@@ -461,13 +459,10 @@ static int create_vout_attr(void)
 	if (ret != 0)
 		vout_log_err("create class attr vinfo failed!\n");
 
-	/*
-	 * init /sys/class/display/mode
-	 */
+	/* init /sys/class/display/mode */
 	init_mode = (struct vinfo_s *)get_current_vinfo();
-
 	if (init_mode)
-		strcpy(vout_mode, init_mode->name);
+		snprintf(vout_mode, VMODE_NAME_LEN_MAX, "%s", init_mode->name);
 
 	return ret;
 }
@@ -778,8 +773,7 @@ const struct dev_pm_ops vout_pm = {
 };
 #endif
 
-static struct platform_driver
-	vout_driver = {
+static struct platform_driver vout_driver = {
 	.probe      = meson_vout_probe,
 	.remove     = meson_vout_remove,
 	.shutdown   = meson_vout_shutdown,
@@ -850,7 +844,7 @@ static void vout_init_mode_parse(char *str)
 
 	/* just save the vmode_name,
 	convert to vmode when vout sever registered */
-	strcpy(vout_mode_uboot, str);
+	snprintf(vout_mode_uboot, VMODE_NAME_LEN_MAX, "%s", str);
 	vout_log_info("%s\n", str);
 	/*vmode = vmode_name_to_mode(str);
 	if (vmode < VMODE_MAX) {
