@@ -418,7 +418,7 @@ static struct semaphore di_sema;
 #ifdef USE_HRTIMER
 static struct tasklet_struct di_pre_tasklet;
 #endif
-void trigger_pre_di_process(char idx)
+void trigger_pre_di_process(unsigned char idx)
 {
 	if (di_sema_init_flag == 0)
 		return;
