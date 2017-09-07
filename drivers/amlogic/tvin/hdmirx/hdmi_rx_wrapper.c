@@ -139,6 +139,9 @@ module_param(repeat_check, int, 0664);
 static int force_audio_sample_rate;
 MODULE_PARM_DESC(force_audio_sample_rate, "\n force_audio_sample_rate\n");
 module_param(force_audio_sample_rate, int, 0664);
+static int aud_sr_stb_max = 20;
+MODULE_PARM_DESC(aud_sr_stb_max, "\n aud_sr_stb_max\n");
+module_param(aud_sr_stb_max, int, 0664);
 
 /* used in other module */
 static int audio_sample_rate;
@@ -300,6 +303,10 @@ unsigned int esm_data_base_addr;
 bool hdcp22_esm_reset2;
 module_param(hdcp22_esm_reset2, bool, 0664);
 MODULE_PARM_DESC(hdcp22_esm_reset2, "hdcp22_esm_reset2");
+
+bool hdcp22_stop_auth;
+module_param(hdcp22_stop_auth, bool, 0664);
+MODULE_PARM_DESC(hdcp22_stop_auth, "hdcp22_stop_auth");
 #endif
 
 bool is_hdcp_source = true;
@@ -309,10 +316,6 @@ module_param(is_hdcp_source, bool, 0664);
 int stable_check_lvl = 0x7ff;
 module_param(stable_check_lvl, int, 0664);
 MODULE_PARM_DESC(stable_check_lvl, "stable_check_lvl");
-
-bool hdcp22_stop_auth;
-module_param(hdcp22_stop_auth, bool, 0664);
-MODULE_PARM_DESC(hdcp22_stop_auth, "hdcp22_stop_auth");
 
 /* If dvd source received the frequent pulses on HPD line,
 It will sent a lenth of dirty audio data sometimes.it's TX's issues.
@@ -792,6 +795,7 @@ void rx_getaudinfo(struct aud_info_s *audio_info)
  * @param[in,out] ctx context information
  * @return error code
  */
+/*
 static int clock_handler(struct hdmi_rx_ctrl *ctx)
 {
 	int error = 0;
@@ -807,6 +811,7 @@ static int clock_handler(struct hdmi_rx_ctrl *ctx)
 
 	return error;
 }
+*/
 
 /*static int md_handler(struct hdmi_rx_ctrl *ctx)
 {
@@ -879,7 +884,7 @@ static int hdmi_rx_ctrl_irq_handler(struct hdmi_rx_ctrl *ctx)
 	uint32_t intr_hdcp22 = 0;
 	uint32_t intr_aud_cec = 0;
 	uint32_t irq_flag = 0;
-	bool clk_handle_flag = false;
+	/* bool clk_handle_flag = false; */
 	bool video_handle_flag = false;
 	/* bool audio_handle_flag = false; */
 	bool vsi_handle_flag = false;
@@ -949,7 +954,6 @@ static int hdmi_rx_ctrl_irq_handler(struct hdmi_rx_ctrl *ctx)
 		if (get(intr_hdmi, AKSV_RCV) != 0) {
 			if (log_level & HDCP_LOG)
 				rx_pr("[**receive aksv**\n");
-			/*clk_handle_flag = true;*/
 			is_hdcp_source = true;
 			hdmirx_hdcp_version_set(HDCP_VERSION_14);
 			if (hdmirx_repeat_support()) {
@@ -1111,8 +1115,8 @@ static int hdmi_rx_ctrl_irq_handler(struct hdmi_rx_ctrl *ctx)
 		ctx->debug_irq_audio_fifo++;
 	}
 
-	if (clk_handle_flag)
-		clock_handler(ctx);
+	/* if (clk_handle_flag)
+		clock_handler(ctx); */
 
 	/*if (video_handle_flag)
 		md_handler(ctx);*/
@@ -2056,9 +2060,6 @@ void rx_esm_exception_monitor(void)
 void hdmirx_hw_monitor(void)
 {
 	int pre_sample_rate;
-	int tmp;
-	/* static int md_sts;
-	static int hdmi_sts; */
 	enum eq_states_e sts;
 
 	if (clk_debug)
@@ -2353,20 +2354,21 @@ void hdmirx_hw_monitor(void)
 			rx.aud_sr_stable_cnt = 0;
 			break;
 		}
-		if (rx.aud_sr_stable_cnt <
-			AUD_SR_STB_MAX) {
+		if (rx.aud_sr_stable_cnt <=
+			aud_sr_stb_max) {
 			rx.aud_sr_stable_cnt++;
 			if (rx.aud_sr_stable_cnt ==
-				AUD_SR_STB_MAX) {
+			aud_sr_stb_max) {
 				dump_state(0x2);
 				rx_aud_pll_ctl(1);
-				hdmirx_audio_fifo_rst();
-				if (hdmirx_get_audio_pll_clock() < 100000) {
-					rx_pr("update audio\n");
-					tmp = hdmirx_rd_top(TOP_ACR_CNTL_STAT);
-					hdmirx_wr_top(TOP_ACR_CNTL_STAT,
-							tmp | (1<<11));
+				if (is_afifo_error()) {
+					if (log_level & AUDIO_LOG)
+						rx_pr("afifo err\n");
 				}
+				hdmirx_audio_fifo_rst();
+				if (hdmirx_get_audio_clock() < 100000)
+					rx_pr("update audio\n");
+					hdmirx_audio_pll_sw_update();
 			}
 		}
 		packet_update();
@@ -3033,7 +3035,7 @@ static void dump_state(unsigned char enable)
 		rx_pr("Pixel clock = %d\n",
 			hdmirx_get_pixel_clock());
 		rx_pr("Audio PLL clock = %d",
-			hdmirx_get_audio_pll_clock());
+			hdmirx_get_audio_clock());
 		rx_pr("ESM clock = %d",
 			hdmirx_get_esm_clock());
 		rx_pr("avmute_skip:0x%x\n", rx.avmute_skip);
@@ -3119,9 +3121,9 @@ bool is_wr_only_reg(uint32_t addr)
 	/*sizeof(wr_only_register)/sizeof(uint32_t)*/
 	for (i = 0; i < sizeof(wr_only_register)/sizeof(uint32_t); i++) {
 		if (addr == wr_only_register[i])
-			return false;
+			return true;
 	}
-	return true;
+	return false;
 }
 
 void rx_set_global_varaible(const char *buf, int size)

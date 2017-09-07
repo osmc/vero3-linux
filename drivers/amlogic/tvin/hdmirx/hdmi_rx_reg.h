@@ -108,11 +108,12 @@
 #define PHY_EQCTRL6_CH1		(0x63UL)
 #define PHY_EQCTRL6_CH2		(0x83UL)
 
-#define OVL_PROT_CTRL                   (0x0DUL)
+#define OVL_PROT_CTRL				(0x0DUL)
 #define PHY_CDR_CTRL_CNT			(0x0EUL)
-#define PHY_VOLTAGE_LEVEL		(0x22UL)
-#define PHY_MPLL_CTRL			(0x24UL)
-#define MPLL_DIVIDER_CONTROL	(0x25UL)
+	#define CLK_RATE_BIT		_BIT(8)
+#define PHY_VOLTAGE_LEVEL			(0x22UL)
+#define PHY_MPLL_CTRL				(0x24UL)
+#define MPLL_DIVIDER_CONTROL		(0x25UL)
 #define MPLL_PARAMETERS2                (0x27UL)
 #define MPLL_PARAMETERS3                (0x28UL)
 #define MPLL_PARAMETERS4                (0x29UL)
@@ -479,6 +480,8 @@
 #define DWC_AUD_PAO_CTRL         (0x264UL)
 /** Register address: audio FIFO status */
 #define DWC_AUD_FIFO_STS         (0x27CUL)
+	#define OVERFL_STS		_BIT(4)
+	#define UNDERFL_STS		_BIT(3)
 
 #define DWC_AUDPLL_GEN_CTS       (0x280UL)
 #define DWC_AUDPLL_GEN_N         (0x284UL)
