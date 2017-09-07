@@ -67,7 +67,6 @@ TMDSCLK as 25~46.25M TMDSCLK,pll_rate&REQUESTCLK will become
 not correct.
 so revert the setting to the default value 0x6 according to the PHY spec */
 static uint8_t phy_lock_thres = 0x6;
-
 static uint32_t phy_cfg_clk = 24000;
 static uint32_t modet_clk = 24000;
 
@@ -507,10 +506,13 @@ void hdmirx_irq_enable(bool enable)
 		/*hdmirx_wr_dwc(DWC_MD_IEN_SET, rx_md_ists_en);*/
 		data32 = 0;
 		data32 |= AKSV_RCV;
-		data32 |= SCDC_TMDS_CFG_CHG;
+		/*data32 |= SCDC_TMDS_CFG_CHG;
 		data32 |= _BIT(6);
-		data32 |= _BIT(5);
+		data32 |= _BIT(5);*/
 		hdmirx_wr_dwc(DWC_HDMI_IEN_SET, data32);
+		/* hdcp2.2*/
+		if (hdcp22_on)
+			hdmirx_wr_dwc(DWC_HDMI2_IEN_SET, 0x3f);
 	} else {
 		/* clear enable */
 		hdmirx_wr_dwc(DWC_PDEC_IEN_CLR, ~0);
@@ -525,17 +527,29 @@ void hdmirx_irq_enable(bool enable)
 	}
 }
 
-void hdmirx_irq_hdcp22_enable(bool enable)
+void hdmirx_irq_hdcp_enable(bool enable)
 {
-	if (!hdcp22_on)
-		return;
+
 	if (enable) {
+		/* hdcp2.2 */
+		if (hdcp22_on)
 			hdmirx_wr_dwc(DWC_HDMI2_IEN_SET, 0x3f);
+
+		/* hdcp1.4 */
+		hdmirx_wr_dwc(DWC_HDMI_IEN_SET, AKSV_RCV);
 	} else {
+		/* hdcp2.2 */
+		if (hdcp22_on) {
 			/* clear enable */
 			hdmirx_wr_dwc(DWC_HDMI2_IEN_CLR, ~0);
 			/* clear status */
 			hdmirx_wr_dwc(DWC_HDMI2_ICLR, ~0);
+		}
+		/* hdcp1.4 */
+		/* clear enable */
+		hdmirx_wr_dwc(DWC_HDMI_IEN_CLR, ~0);
+		/* clear status */
+		hdmirx_wr_dwc(DWC_HDMI_ICLR, ~0);
 	}
 }
 
@@ -1151,6 +1165,7 @@ void hdmirx_hdcp22_init(void)
 		hdcp22_wr_top(TOP_SKP_CNTL_STAT, 7);
 		hdcp22_on = 1;
 		hdcp22_clk_init();
+		hpd_to_esm = 1;
 	} else
 		hdcp22_on = 0;
 }
@@ -1426,8 +1441,8 @@ void hdmirx_hw_config(void)
 	hdmirx_wr_top(TOP_INTR_MASKN, 0);
 	control_reset();
 	hdmirx_edid_reset();
-	hdmirx_irq_enable(FALSE);
-	hdmirx_irq_hdcp22_enable(FALSE);
+	/*hdmirx_irq_enable(FALSE);
+	hdmirx_irq_hdcp22_enable(FALSE);*/
 	hdmi_rx_ctrl_edid_update();
 	/* hdmirx_wr_dwc(DWC_HDCP22_CONTROL, 2); */
 	rx_hdcp_init();
@@ -1439,7 +1454,7 @@ void hdmirx_hw_config(void)
 	hdmirx_phy_init();
 	hdmirx_wr_top(TOP_PORT_SEL, 0x10 | ((1<<rx.port)));
 	DWC_init();
-	hdmirx_irq_hdcp22_enable(TRUE);
+	hdmirx_irq_hdcp_enable(TRUE);
 	rx_pr("%s  %d Done!\n", __func__, rx.port);
 }
 
@@ -1459,8 +1474,8 @@ void hdmirx_hw_probe(void)
 	control_reset();
 	DWC_init();
 	hdmirx_phy_init();
-	hdmirx_irq_enable(FALSE);
-	hdmirx_irq_hdcp22_enable(FALSE);
+	/*hdmirx_irq_enable(FALSE);
+	hdmirx_irq_hdcp22_enable(FALSE);*/
 	hdmirx_hdcp22_init();
 	hdmirx_audio_init();
 	packet_init();

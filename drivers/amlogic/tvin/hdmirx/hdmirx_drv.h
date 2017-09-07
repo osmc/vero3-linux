@@ -36,7 +36,7 @@
 #define RX_VER0 "Ref.2017/09/27"
 /*------------------------------*/
 
-#define RX_VER1 "Ref.2017/09/01"
+#define RX_VER1 "Ref.2017/09/25"
 /*------------------------------*/
 
 #define RX_VER2 "Ref.2017/09/07"
@@ -99,7 +99,8 @@
 			sprintf(index_c, "%d", (index));	\
 			if (str_cmp((buff), (#str)) ||		\
 				str_cmp((buff), (index_c))) {	\
-				(str) = (val);			\
+				if (ret == 0)		\
+					(str) = (val);		\
 				pr_var(str, (index));		\
 				return;				\
 				}				\
@@ -393,6 +394,11 @@ enum chip_id_e {
 	CHIP_ID_GXTVBB,
 	CHIP_ID_TXL,
 	CHIP_ID_TXLX,
+};
+
+enum esm_recovery_mode_e {
+	ESM_RECOVERY_MODE_RESET = 1,
+	ESM_RECOVERY_MODE_STOP_TMDS,
 };
 
 /** Configuration clock minimum [kHz] */
@@ -973,8 +979,8 @@ extern void fsm_restart(void);
 extern void cecrx_hw_init(void);
 extern void cecrx_irq_handle(void);
 extern int  meson_clk_measure(unsigned int clk_mux);
+extern void esm_set_reset(bool reset);
 extern void esm_set_stable(bool stable);
-extern void esm_recovery(void);
 extern void hdcp22_suspend(void);
 extern void hdcp22_resume(void);
 extern void rx_5v_det(void);

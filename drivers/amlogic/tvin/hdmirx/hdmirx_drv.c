@@ -957,7 +957,6 @@ static long hdmirx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		hdcp22_on = 1;
 		force_hdcp14_en = 0;
 		hdmirx_hw_config();
-		hpd_to_esm = 1;
 		fsm_restart();
 		rx_pr("hdcp22 auto\n");
 		break;
@@ -966,7 +965,10 @@ static long hdmirx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		force_hdcp14_en = 1;
 		hdcp22_on = 0;
 		hdmirx_wr_dwc(DWC_HDCP22_CONTROL, 0x2);
-		esm_set_stable(FALSE);
+		if (hdcp22_on) {
+			esm_set_stable(FALSE);
+			esm_set_reset(TRUE);
+		}
 		fsm_restart();
 		rx_pr("force hdcp1.4\n");
 		break;
