@@ -187,6 +187,5 @@ extern void vdin_dolby_addr_update(struct vdin_dev_s *devp, unsigned int index);
 extern void vdin_dolby_addr_alloc(struct vdin_dev_s *devp, unsigned int size);
 extern void vdin_dolby_addr_release(struct vdin_dev_s *devp, unsigned int size);
 extern int vdin_event_cb(int type, void *data, void *op_arg);
-extern void vdin_hdmiin_patch(struct vdin_dev_s *devp);
 #endif
 

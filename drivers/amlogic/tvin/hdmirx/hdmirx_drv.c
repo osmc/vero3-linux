@@ -597,6 +597,17 @@ void hdmirx_set_timing_info(struct tvin_sig_property_s *prop)
 			prop->he = 128;
 		}
 	}
+	/* under 4k2k50/60hz 10/12bit mode, */
+	/* hdmi out clk will overstep the max sample rate of vdin */
+	/* so need discard the last line data to avoid display err */
+	/* 420 : hdmiout clk = pixel clk * 2 */
+	/* 422 : hdmiout clk = pixel clk * colordepth / 8 */
+	/* 444 : hdmiout clk = pixel clk */
+	if ((rx.pre.colordepth > E_COLORDEPTH_8) &&
+		(prop->fps > 49) &&
+		((TVIN_SIG_FMT_HDMI_4096_2160_00HZ == sig_fmt) ||
+		(TVIN_SIG_FMT_HDMI_3840_2160_00HZ == sig_fmt)))
+		prop->ve = 1;
 }
 
 void hdmirx_get_color_fmt(struct tvin_sig_property_s *prop)
@@ -654,11 +665,13 @@ void hdmirx_get_color_fmt(struct tvin_sig_property_s *prop)
 void hdmirx_get_colordepth(struct tvin_sig_property_s *prop)
 {
 	int ret = rx.pre.colordepth;
+	/*
 	if (pc_mode_en == 1) {
 		if ((rx.pre.sw_vic == HDMI_2160p_60hz_420) ||
 			(rx.pre.sw_vic == HDMI_4096p_60hz_420))
 			ret = E_COLORDEPTH_8;
 	}
+	*/
 	prop->colordepth = ret;
 }
 
