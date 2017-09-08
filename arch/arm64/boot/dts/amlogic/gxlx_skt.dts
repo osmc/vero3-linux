@@ -23,6 +23,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/reset/aml_gxl.h>
 #include "mesongxlx.dtsi"
+#include "partition_mbox.dtsi"
 / {
 	model = "Amlogic";
 	compatible = "amlogic, gxl";
@@ -112,6 +113,12 @@
 			size = <0x0 0x0>;
 			alignment = <0x0 0x0>;
 			linux,contiguous-region;
+		};
+		demod_reserved:linux,demod {
+			compatible = "amlogic, demod-mem";
+			size = <0x0 0x600000>; //20m
+			multi-use;
+			//no-map;
 		};
 		/* codec shared reserved */
 		codec_mm_reserved:linux,codec_mm_reserved {
@@ -213,6 +220,23 @@
 			memory-region = <&codec_mm_cma &codec_mm_reserved>;
 			dev_name = "codec_mm";
 			status = "okay";
+	};
+	ethmac: ethernet@0xc9410000 {
+		compatible = "amlogic, gxbb-rmii-dwmac";
+		reg = <0x0 0xc9410000 0x0 0x10000
+		0x0 0xc8834540 0x0 0x8
+		0x0 0xc8834558 0x0 0xc>;
+		interrupts = <0 8 1>;
+		phy-mode= "rmii";
+		pinctrl-names = "internal_eth_pins";
+		pinctrl-0 = <&internal_eth_pins>;
+		mc_val = <0x1800>;
+		resets = <&clock GCLK_IDX_ETHERNET>;
+		reset-names = "ethpower";
+		interrupt-names = "macirq";
+		clocks = <&clock CLK_81>;
+		clock-names = "ethclk81";
+		internal_phy=<1>;
 	};
 	mesonstream {
 		compatible = "amlogic, codec, streambuf";
@@ -568,80 +592,7 @@
 						status = "okay";
 					};
 	};*/
-	partitions: partitions{
-        parts = <11>;
-		part-0 = <&logo>;
-		part-1 = <&recovery>;
-		part-2 = <&rsv>;
-		part-3 = <&tee>;
-		part-4 = <&crypt>;
-		part-5 = <&misc>;
-		part-6 = <&instaboot>;
-		part-7 = <&boot>;
-		part-8 = <&system>;
-		part-9 = <&cache>;
-		part-10 = <&data>;
 
-		logo:logo{
-			pname = "logo";
-			size = <0x0 0x2000000>;
-			mask = <1>;
-		};
-		recovery:recovery{
-			pname = "recovery";
-			size = <0x0 0x2000000>;
-			mask = <1>;
-		};
-		rsv:rsv{
-			pname = "rsv";
-			size = <0x0 0x800000>;
-			mask = <1>;
-		};
-		tee:tee{
-			pname = "tee";
-			size = <0x0 0x800000>;
-			mask = <1>;
-		};
-		crypt:crypt{
-			pname = "crypt";
-			size = <0x0 0x2000000>;
-			mask = <1>;
-		};
-		misc:misc{
-			pname = "misc";
-			size = <0x0 0x2000000>;
-			mask = <1>;
-		};
-		instaboot:instaboot{
-			pname = "instaboot";
-			size = <0x0 0x20000000>;
-			mask = <1>;
-		};
-		boot:boot
-		{
-			pname = "boot";
-			size = <0x0 0x2000000>;
-			mask = <1>;
-		};
-		system:system
-		{
-			pname = "system";
-			size = <0x0 0x40000000>;
-			mask = <1>;
-		};
-		cache:cache
-		{
-			pname = "cache";
-			size = <0x0 0x20000000>;
-			mask = <2>;
-		};
-		data:data
-		{
-			pname = "data";
-			size = <0xffffffff 0xffffffff>;
-			mask = <4>;
-		};
-	};
 	unifykey{
 		compatible = "amlogic, unifykey";
 		status = "disabled";
@@ -744,7 +695,7 @@
 	aocec: aocec{
 		compatible = "amlogic, amlogic-aocec";
 		device_name = "aocec";
-		status = "disabled";
+		status = "okay";
 		vendor_name = "Amlogic"; /* Max Chars: 8     */
 		vendor_id = <0x000000>; /* Refer to http://standards.ieee.org/develop/regauth/oui/oui.txt   */
 		product_desc = "GXBB Mbox"; /* Max Chars: 16    */
@@ -753,6 +704,8 @@
 		arc_port_mask = <0x0>;
 		interrupts = <0 199 1>;
 		interrupt-names = "hdmi_aocec";
+		pinctrl-names = "hdmitx_aocec";
+		pinctrl-0=<&hdmitx_aocec>;
 		reg = <0x0 0xc810023c 0x0 0x4
 		       0x0 0xc8100000 0x0 0x200>;
 	};
@@ -1106,6 +1059,43 @@
 			};
 		};
 	};
+	dvb {
+		compatible = "amlogic, dvb";
+		dev_name = "dvb";
+		status = "okay";
+		/*"parallel","serial","disable"*/
+		ts2 = "parallel";
+		ts2_control = <0>;
+		ts2_invert = <0>;
+		resets = <&clock GCLK_IDX_DEMUX
+				&clock GCLK_IDX_ASYNC_FIFO
+				&clock GCLK_IDX_AHB_ARB0
+				&clock GCLK_IDX_HIU_PARSER_TOP>;
+		reset-names = "demux", "asyncfifo", "ahbarb0", "uparsertop";
+	};
+	dvbfe {
+		compatible = "amlogic, dvbfe";
+		dev_name = "dvbfe";
+		status = "okay";
+		dtv_demod0 = "AMLDEMOD";
+		fe0_dtv_demod = <0>;
+		fe0_ts = <2>;
+		fe0_dev = <0>;
+		dtv_demod0_mem = <0>;
+		dtv_demod0_spectrum = <1>;
+		dtv_demod0_cma_flag = <0>;
+		dtv_demod0_cma_mem_size = <8>;
+		memory-region = <&demod_reserved>;//<&demod_reserved>;
+		tuner0 = "mxl661_tuner";
+		tuner0_i2c_adap_id = <4>;
+		tuner0_i2c_addr = <0x60>;
+		//tuner0_reset_value = <0>;
+		//tuner0_reset_gpio =  "GPIOY_10" ;  /*GPIOX_8   76*/
+		fe0_tuner = <0>;
+	};
+};
+&i2c_d {
+  status = "okay";
 };
 
 &pinmux {
