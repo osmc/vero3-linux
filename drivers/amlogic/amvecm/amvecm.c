@@ -4070,7 +4070,6 @@ fail_create_device:
 	cdev_del(&devp->cdev);
 fail_add_cdev:
 	pr_info("[amvecm.] : amvecm add device error.\n");
-	kfree(devp);
 fail_class_create_file:
 	pr_info("[amvecm.] : amvecm class create file error.\n");
 	for (i = 0; amvecm_class_attrs[i].attr.name; i++) {
@@ -4098,7 +4097,6 @@ static int __exit aml_vecm_remove(struct platform_device *pdev)
 	cdev_del(&devp->cdev);
 	class_destroy(devp->clsp);
 	unregister_chrdev_region(devp->devno, 1);
-	kfree(devp);
 #ifdef CONFIG_AML_LCD
 	aml_lcd_notifier_unregister(&aml_lcd_gamma_nb);
 #endif
