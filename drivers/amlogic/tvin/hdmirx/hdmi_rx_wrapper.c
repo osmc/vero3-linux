@@ -2098,13 +2098,14 @@ void hdmirx_hw_monitor(void)
 			break;
 		}
 		hpd_wait_cnt++;
-		if ((0 == get_cur_hpd_sts()) &&
-			(hpd_wait_cnt <= hpd_wait_max))
-			break;
-		if ((edid_update_flag) || (rx.boot_flag)) {
-			if (hpd_wait_cnt <= hpd_wait_max*10)
-				break;
-			/* edid_update_flag = 0; */
+		if (0 == get_cur_hpd_sts()) {
+			if ((edid_update_flag) || (rx.boot_flag)) {
+				if (hpd_wait_cnt <= hpd_wait_max*10)
+					break;
+			} else {
+				if (hpd_wait_cnt <= hpd_wait_max)
+					break;
+			}
 			rx.boot_flag = FALSE;
 		}
 		hpd_wait_cnt = 0;
@@ -2116,7 +2117,6 @@ void hdmirx_hw_monitor(void)
 		break;
 	case FSM_WAIT_CLK_STABLE:
 		if (hdmirx_phy_clk_rate_monitor()) {
-			rx.state = FSM_INIT;
 			rx_pr("clk rate changed\n");
 			break;
 		}
@@ -2139,7 +2139,7 @@ void hdmirx_hw_monitor(void)
 		break;
 	case FSM_PHY_INIT:
 		if (hdmirx_phy_clk_rate_monitor()) {
-			rx.state = FSM_INIT;
+			rx.state = FSM_WAIT_CLK_STABLE;
 			rx_pr("clk rate changed\n");
 			break;
 		}
@@ -2165,7 +2165,9 @@ void hdmirx_hw_monitor(void)
 		break;
 	case FSM_SIG_UNSTABLE:
 		if (hdmirx_phy_clk_rate_monitor()) {
-			rx.state = FSM_INIT;
+			rx.state = FSM_WAIT_CLK_STABLE;
+			pll_lock_cnt = 0;
+			pll_unlock_cnt = 0;
 			rx_pr("clk rate changed\n");
 			break;
 		}
@@ -2211,7 +2213,8 @@ void hdmirx_hw_monitor(void)
 		break;
 	case FSM_SIG_WAIT_STABLE:
 		if (hdmirx_phy_clk_rate_monitor()) {
-			rx.state = FSM_INIT;
+			rx.state = FSM_WAIT_CLK_STABLE;
+			dwc_rst_wait_cnt = 0;
 			rx_pr("clk rate changed\n");
 			break;
 		}
@@ -2228,7 +2231,9 @@ void hdmirx_hw_monitor(void)
 		break;
 	case FSM_SIG_STABLE:
 		if (hdmirx_phy_clk_rate_monitor()) {
-			rx.state = FSM_INIT;
+			rx.state = FSM_WAIT_CLK_STABLE;
+			sig_stable_cnt = 0;
+			sig_unstable_cnt = 0;
 			rx_pr("clk rate changed\n");
 			break;
 		}
@@ -2284,7 +2289,8 @@ void hdmirx_hw_monitor(void)
 		break;
 	case FSM_SIG_READY:
 		if (hdmirx_phy_clk_rate_monitor()) {
-			rx.state = FSM_INIT;
+			rx.state = FSM_WAIT_CLK_STABLE;
+			sig_unready_cnt = 0;
 			rx_pr("clk rate changed\n");
 			break;
 		}
