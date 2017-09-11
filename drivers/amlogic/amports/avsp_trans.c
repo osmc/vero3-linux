@@ -785,7 +785,8 @@ unsigned int des_start;
 
 unsigned char *es_buf;
 unsigned int es_buf_ptr;
-unsigned int es_write_addr;
+unsigned int es_buf_is_overflow;
+
 #else
 FILE *f_es;
 #endif
@@ -798,7 +799,8 @@ void init_es(void)
 {
 
 #ifdef AVSP_LONG_CABAC
-	es_write_addr = des_start;
+	es_buf_is_overflow = 0;
+
 	es_buf[0] = 0x00;
 	es_buf[1] = 0x00;
 	es_buf[2] = 0x01;
@@ -865,7 +867,11 @@ void push_es(int value, int num)
 				pr_info("es_buf[%d] = 0x%02x\r\n",
 					es_buf_ptr, wr_es_data);
 #endif
-			es_buf[es_buf_ptr++] = wr_es_data;
+			if (!es_buf_is_overflow) {
+				es_buf[es_buf_ptr++] = wr_es_data;
+				if (es_buf_ptr >= MAX_CODED_FRAME_SIZE)
+					es_buf_is_overflow = 1;
+			}
 #else
 			putc(wr_es_data, f_es);
 #endif
@@ -4730,6 +4736,9 @@ int read_one_macroblock(struct img_par *img)
 #endif
 			CHECKDELTAQP
 
+			if (transcoding_error_flag)
+				return -1;
+
 			img->qp = (img->qp - MIN_QP + curr_mb->delta_quant
 					+ (MAX_QP - MIN_QP + 1))
 					% (MAX_QP - MIN_QP + 1) + MIN_QP;
@@ -4966,7 +4975,11 @@ void main(void)
 
 	{
 		start_macroblock(img);
-		read_one_macroblock(img);
+		if (-1 == read_one_macroblock(img)) {
+			ret = -1;
+			pr_info("macroblock trans failed, exit\n");
+			goto End;
+		}
 		if (img->cod_counter <= 0/*==-1*/)
 			aec_mb_stuffing_bit = aec_startcode_follows(img, 1);
 		img->current_mb_nr++;
@@ -4977,6 +4990,11 @@ void main(void)
 
 #ifdef AVSP_LONG_CABAC
 	push_es(0xff, 64);
+	if (es_buf_is_overflow) {
+		io_printf("fatal error: es_buf_is_overflow\n");
+		ret = -1;
+		goto End;
+	}
 
 	if (transcoding_error_flag == 0) {
 #if 1

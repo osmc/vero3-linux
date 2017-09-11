@@ -102,6 +102,8 @@ firmware_sel
     1: not use avsp_trans long cabac ucode
 ********************************/
 static int firmware_sel;
+static int disable_longcabac_trans = 1;
+
 
 int avs_get_debug_flag(void)
 {
@@ -410,7 +412,7 @@ static void vavs_isr(void)
 	u32 repeat_count;
 	u32 picture_type;
 	u32 buffer_index;
-	u32 picture_struct;
+
 	unsigned int pts, pts_valid = 0, offset;
 	if (debug_flag & AVS_DEBUG_UCODE) {
 		if (READ_VREG(AV_SCRATCH_E) != 0) {
@@ -424,6 +426,8 @@ static void vavs_isr(void)
 #ifdef PERFORMANCE_DEBUG
 		pr_info("%s:schedule long_cabac_wd_work\r\n", __func__);
 #endif
+		pr_info("schedule long_cabac_wd_work and requested from %d\n",
+			(READ_VREG(LONG_CABAC_REQ) >> 8)&0xFF);
 		schedule_work(&long_cabac_wd_work);
 	}
 #endif
@@ -434,10 +438,8 @@ static void vavs_isr(void)
 	reg = READ_VREG(AVS_BUFFEROUT);
 
 	if (reg) {
-		picture_struct = READ_VREG(AV_SCRATCH_5);
 		if (debug_flag & AVS_DEBUG_PRINT)
-			pr_info("AVS_BUFFEROUT=%x, picture_struct is 0x%x\n",
-				reg, picture_struct);
+			pr_info("AVS_BUFFEROUT=%x\n", reg);
 		if (pts_by_offset) {
 			offset = READ_VREG(AVS_OFFSET_REG);
 			if (debug_flag & AVS_DEBUG_PRINT)
@@ -917,8 +919,7 @@ void vavs_recover(void)
 		WRITE_VREG_BITS(VLD_MEM_VIFIFO_CONTROL, 8,
 			MEM_LEVEL_CNT_BIT, 6);
 	}
-	if (firmware_sel == 0)
-		WRITE_VREG(AV_SCRATCH_5, 0);
+
 
 	if (firmware_sel == 0) {
 		/* fixed canvas index */
@@ -975,6 +976,7 @@ void vavs_recover(void)
 		WRITE_VREG(LONG_CABAC_SRC_ADDR, 0);
 	}
 #endif
+	WRITE_VREG(AV_SCRATCH_5, 0);
 
 }
 
@@ -1010,8 +1012,6 @@ static int vavs_prot_init(void)
 	/*************************************************************/
 
 	r = vavs_canvas_init();
-	if (firmware_sel == 0)
-		WRITE_VREG(AV_SCRATCH_5, 0);
 #ifdef NV21
 		if (firmware_sel == 0) {
 			/* fixed canvas index */
@@ -1125,6 +1125,10 @@ static void vavs_local_init(void)
 		vfbuf_use[i] = 0;
 
 	cur_vfpool = vfpool;
+
+	if (recover_flag == 1)
+		return;
+
 	if (mm_blk_handle) {
 		decoder_bmmu_box_free(mm_blk_handle);
 		mm_blk_handle = NULL;
@@ -1172,6 +1176,11 @@ static void vavs_local_reset(void)
 	vf_notify_receiver(PROVIDER_NAME, VFRAME_EVENT_PROVIDER_RESET, NULL);
 	vavs_local_init();
 	vavs_recover();
+
+#ifdef ENABLE_USER_DATA
+	reset_userdata_fifo(1);
+#endif
+
 	amvdec_start();
 	recover_flag = 0;
 #if 0
@@ -1184,9 +1193,7 @@ static void vavs_local_reset(void)
 		READ_VREG(VLD_MEM_VIFIFO_LEVEL));
 #endif
 
-#ifdef ENABLE_USER_DATA
-	reset_userdata_fifo(1);
-#endif
+
 
 	mutex_unlock(&vavs_mutex);
 }
@@ -1194,6 +1201,7 @@ static void vavs_local_reset(void)
 static struct work_struct fatal_error_wd_work;
 static struct work_struct notify_work;
 static atomic_t error_handler_run = ATOMIC_INIT(0);
+
 static void vavs_fatal_error_handler(struct work_struct *work)
 {
 	if (debug_flag & AVS_DEBUG_OLD_ERROR_HANDLE) {
@@ -1211,6 +1219,7 @@ static void vavs_fatal_error_handler(struct work_struct *work)
 		amvdec_start();
 		mutex_unlock(&vavs_mutex);
 	} else {
+		pr_info("avs fatal_error_handler\n");
 		vavs_local_reset();
 	}
 	atomic_set(&error_handler_run, 0);
@@ -1226,6 +1235,8 @@ static void vavs_notify_work(struct work_struct *work)
 	}
 	return;
 }
+
+
 
 static void vavs_put_timer_func(unsigned long arg)
 {
@@ -1258,11 +1269,20 @@ static void vavs_put_timer_func(unsigned long arg)
 #else
 			if (!atomic_read(&error_handler_run)) {
 				atomic_set(&error_handler_run, 1);
+				pr_info("AVS_SOS_COUNT = %d\n",
+					READ_VREG(AVS_SOS_COUNT));
+				pr_info("WP = 0x%x, RP = 0x%x, LEVEL = 0x%x, AVAIL = 0x%x, CUR_PTR = 0x%x\n",
+					READ_VREG(VLD_MEM_VIFIFO_WP),
+					READ_VREG(VLD_MEM_VIFIFO_RP),
+					READ_VREG(VLD_MEM_VIFIFO_LEVEL),
+					READ_VREG(VLD_MEM_VIFIFO_BYTES_AVAIL),
+					READ_VREG(VLD_MEM_VIFIFO_CURR_PTR));
 				schedule_work(&fatal_error_wd_work);
 			}
 #endif
 		}
 	}
+
 #if 0
 	if (long_cabac_busy == 0 &&
 		error_watchdog_threshold > 0 &&
@@ -1452,7 +1472,8 @@ static s32 vavs_init(void)
 
 	vavs_local_init();
 
-	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXM) {
+	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXM
+		|| disable_longcabac_trans) {
 		if (debug_flag & 2) {
 			if (amvdec_loadmc_ex(VFORMAT_AVS,
 				"gxm_vavs_mc_debug", NULL) < 0) {
@@ -1460,6 +1481,10 @@ static s32 vavs_init(void)
 				pr_info("failed\n");
 				return -EBUSY;
 			}
+			if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXM)
+				pr_info("debug gxm ucode loaded\n");
+			else
+				pr_info("load debug gxm ucode for the reason of disable_longcabac_trans\n");
 		} else {
 			if (amvdec_loadmc_ex(VFORMAT_AVS,
 				"gxm_vavs_mc", NULL) < 0) {
@@ -1467,6 +1492,10 @@ static s32 vavs_init(void)
 				pr_info("failed\n");
 				return -EBUSY;
 			}
+			if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXM)
+				pr_info("gxm ucode loaded\n");
+			else
+				pr_info("load gxm ucode for the reason of disable_longcabac_trans\n");
 		}
 	} else {
 #ifdef AVSP_LONG_CABAC
@@ -1480,7 +1509,7 @@ static s32 vavs_init(void)
 				pr_info("failed\n");
 				return -EBUSY;
 			}
-			pr_info("debug ucode loaded\r\n");
+			pr_info("debug ucode loaded\n");
 		} else if (firmware_sel == 1) {
 			/* old ucode */
 			if (amvdec_loadmc_ex(VFORMAT_AVS,
@@ -1489,7 +1518,7 @@ static s32 vavs_init(void)
 				pr_info("failed\n");
 				return -EBUSY;
 			}
-			pr_info("old ucode loaded\r\n");
+			pr_info("old ucode loaded\n");
 		} else {
 			if (amvdec_loadmc_ex(VFORMAT_AVS,
 				"vavs_mc", NULL) < 0) {
@@ -1497,7 +1526,7 @@ static s32 vavs_init(void)
 				pr_info("failed\n");
 				return -EBUSY;
 			}
-			pr_info("ucode loaded\r\n");
+			pr_info("ucode loaded\n");
 		}
 	}
 
@@ -1568,7 +1597,7 @@ static int amvdec_avs_probe(struct platform_device *pdev)
 		pr_info("amvdec_avs memory resource undefined.\n");
 		return -EFAULT;
 	}
-	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXM)
+	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXM || disable_longcabac_trans)
 		firmware_sel = 1;
 
 	if (firmware_sel == 1) {
@@ -1822,9 +1851,11 @@ MODULE_PARM_DESC(vf_buf_num_used, "\nvf_buf_num_used\n");
 module_param(canvas_base, uint, 0664);
 MODULE_PARM_DESC(canvas_base, "\ncanvas_base\n");
 
-
 module_param(firmware_sel, uint, 0664);
 MODULE_PARM_DESC(firmware_sel, "\firmware_sel\n");
+
+module_param(disable_longcabac_trans, uint, 0664);
+MODULE_PARM_DESC(disable_longcabac_trans, "\disable_longcabac_trans\n");
 
 
 module_init(amvdec_avs_driver_init_module);
