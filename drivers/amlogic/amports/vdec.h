@@ -318,6 +318,8 @@ extern int vdec_set_trickmode(struct vdec_s *vdec, unsigned long trickmode);
 
 extern int vdec_set_isreset(struct vdec_s *vdec, int isreset);
 
+extern void vdec_set_no_powerdown(int flag);
+
 extern void vdec_set_flag(struct vdec_s *vdec, u32 flag);
 
 extern void vdec_set_eos(struct vdec_s *vdec, bool eos);
