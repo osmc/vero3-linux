@@ -579,6 +579,30 @@ out:
 
 	return err;
 }
+#ifdef CONFIG_AM_WIFI
+/*
+*  get sdio vendor id
+*
+*/
+char wifi_chip_type_string[64];
+EXPORT_SYMBOL(wifi_chip_type_string);
+
+int get_sdio_wifi_chip_type(struct mmc_card *card)
+{
+	struct sdio_func *func;
+	int i;
+	for (i = 0; i < card->sdio_funcs; i++) {
+		func = card->sdio_func[i];
+		if (func && (func->vendor == (unsigned short) 0x3030)) {
+			strcpy(wifi_chip_type_string, "SSV");
+			pr_info(KERN_INFO "wifi_chip_type_string : %s",
+				wifi_chip_type_string);
+			return 1;
+		}
+	}
+	return 0;
+}
+#endif
 
 /*
  * Handle the detection and initialisation of a card.
@@ -1166,6 +1190,13 @@ int mmc_attach_sdio(struct mmc_host *host)
 		if (err)
 			goto remove_added;
 	}
+
+#ifdef CONFIG_AM_WIFI
+	/*
+	 *  Get wifi sdio vendor functions
+	 */
+	get_sdio_wifi_chip_type(host->card);
+#endif
 
 	mmc_claim_host(host);
 	return 0;

@@ -4706,4 +4706,6 @@ unsigned int ieee80211_get_num_supported_channels(struct wiphy *wiphy);
 #define wiphy_WARN(wiphy, format, args...)			\
 	WARN(1, "wiphy: %s\n" format, wiphy_name(wiphy), ##args);
 
+extern char wifi_chip_type_string[64];
+
 #endif /* __NET_CFG80211_H */

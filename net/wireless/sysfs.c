@@ -106,9 +106,14 @@ static int wiphy_suspend(struct device *dev, pm_message_t state)
 	if (rdev->wiphy.registered) {
 		if (!rdev->wiphy.wowlan_config){
 #ifdef CONFIG_AM_WIFI
-			printk_ratelimited(KERN_INFO
-				"force to skip cfg80211_leave_all "
-				"due to wifi suspend/resume issue\n");
+			if (strcmp(wifi_chip_type_string, "SSV") == 0) {
+				cfg80211_leave_all(rdev);
+			} else {
+				printk_ratelimited(KERN_INFO
+					"force to skip cfg80211_leave_all ");
+				printk_ratelimited(KERN_INFO
+					"due to wifi suspend/resume issue\n");
+			}
 #else
 			cfg80211_leave_all(rdev);
 #endif
