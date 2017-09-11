@@ -7805,7 +7805,14 @@ static ssize_t video_filename_store(struct class *cla,
 				    const char *buf, size_t count)
 {
 	size_t r;
-	r = sscanf(buf, "%s", file_name);
+
+	/* check input buf to mitigate buffer overflow issue */
+	if (strlen(buf) >= sizeof(file_name)) {
+		memcpy(file_name, buf, sizeof(file_name));
+		file_name[sizeof(file_name)-1] = '\0';
+		r = 1;
+	} else
+		r = sscanf(buf, "%s", file_name);
 	if (r != 1)
 		return -EINVAL;
 	return r;
