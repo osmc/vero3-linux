@@ -914,6 +914,27 @@ static void stop_amvdec_656_601_camera_in(struct am656in_dev_s *devp)
 	return;
 }
 
+static void am656_clktree_control(struct am656in_dev_s *devp, int flag)
+{
+	pr_info("bt656[%d]:%s: flag=%d\n", devp->index, __func__, flag);
+	if (flag) { /* clk enable */
+		if (IS_ERR(devp->bt656_clk)) {
+			pr_info("bt656[%d] %s: bt656_clk\n",
+				devp->index, __func__);
+		} else {
+			clk_prepare_enable(devp->bt656_clk);
+		}
+		udelay(100);
+	} else { /* clk disable */
+		if (IS_ERR(devp->bt656_clk)) {
+			pr_info("bt656[%d] %s: bt656_clk\n",
+				devp->index, __func__);
+		} else {
+			clk_disable_unprepare(devp->bt656_clk);
+		}
+	}
+}
+
 /*
    return true when need skip frame otherwise return false
  */
@@ -1070,11 +1091,8 @@ static int am656in_feopen(struct tvin_frontend_s *fe, enum tvin_port_e port)
 			 parm->hsync_phase, parm->vsync_phase);
 	pr_info("frame rate %u,hs_bp %u,vs_bp %u.\n",
 			parm->frame_rate, parm->hs_bp, parm->vs_bp);
-/* #ifdef CONFIG_ARCH_MESON6 */
-/* switch_mod_gate_by_name("bt656", 1); */
-/* #endif */
-	/* bt656 clock gate enable */
-	clk_prepare_enable(devp->bt656_clk);
+
+	am656_clktree_control(devp, 1);
 
 	return 0;
 }
@@ -1095,12 +1113,10 @@ static void am656in_feclose(struct tvin_frontend_s *fe)
 				devp->index, __func__, port);
 		return;
 	}
-/* #ifdef CONFIG_ARCH_MESON6 */
-/* switch_mod_gate_by_name("bt656", 0); */
-/* #endif */
+
 	memset(&devp->para, 0, sizeof(struct vdin_parm_s));
-	/* bt656 clock gate disable */
-	clk_disable_unprepare(devp->bt656_clk);
+
+	am656_clktree_control(devp, 0);
 }
 static struct tvin_state_machine_ops_s am656_machine_ops = {
 	.nosig               = NULL,
@@ -1298,6 +1314,7 @@ fail_kmalloc_dev:
 static int amvdec_656in_remove(struct platform_device *pdev)
 {
 	struct am656in_dev_s *devp;
+
 	devp = platform_get_drvdata(pdev);
 
 	device_remove_file(devp->dev, &dev_attr_reg);
@@ -1311,6 +1328,29 @@ static int amvdec_656in_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void amvdec_656in_shutdown(struct platform_device *pdev)
+{
+	struct am656in_dev_s *devp;
+
+	pr_info("%s\n", __func__);
+
+	devp = platform_get_drvdata(pdev);
+	if (devp->dec_status & TVIN_AM656_RUNING) {
+		reset_bt656in_module(devp);
+		devp->dec_status = TVIN_AM656_STOP;
+		am656_clktree_control(devp, 0);
+	}
+
+	device_remove_file(devp->dev, &dev_attr_reg);
+	tvin_unreg_frontend(&devp->frontend);
+	bt656_delete_device(pdev->id);
+	cdev_del(&devp->cdev);
+	kfree((const void *)devp);
+	/* free drvdata */
+	dev_set_drvdata(devp->dev, NULL);
+	platform_set_drvdata(pdev, NULL);
+}
+
 static const struct of_device_id bt656_dt_match[] = {
 	{
 			.compatible = "amlogic, amvdec_656in",
@@ -1321,6 +1361,7 @@ static const struct of_device_id bt656_dt_match[] = {
 static struct platform_driver amvdec_656in_driver = {
 	.probe		= amvdec_656in_probe,
 	.remove		= amvdec_656in_remove,
+	.shutdown	= amvdec_656in_shutdown,
 	.driver	= {
 		.name	        = BT656_DRV_NAME,
 		.owner          = THIS_MODULE,
