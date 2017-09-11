@@ -187,6 +187,32 @@ int __hw_init(void)
 
 	return 0;
 }
+/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
+/* hardware enable related */
+int __hw_enable(void)
+{
+	struct hdmiin_drv_s *hdrv = hdmiin_get_driver();
+	int ret = -1;
+
+	if ((hdrv) && (hdrv->hw_ops.enable))
+		ret = hdrv->hw_ops.enable();
+
+	if (ret == 0)
+		hdrv->state = 1;
+
+	return ret;
+}
+
+/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
+/* hardware disable related */
+void __hw_disable(void)
+{
+	struct hdmiin_drv_s *hdrv = hdmiin_get_driver();
+
+	hdrv->state = 0;
+	if ((hdrv) && (hdrv->hw_ops.disable))
+		hdrv->hw_ops.disable();
+}
 
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 /* hdmiin utility */

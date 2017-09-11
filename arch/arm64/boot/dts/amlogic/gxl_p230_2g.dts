@@ -384,6 +384,19 @@
 		clock-names = "fclk_div2", "cts_bt656_clk1";
 		bt656_id = <1>;
 	};
+	hdmiin {
+		compatible = "amlogic, hdmirx_ext";
+		dev_name = "hdmiin";
+		status = "disabled";
+
+		hdmiin_dev = "sii9135";
+		i2c_addr = <0x30>;
+		i2c_bus = "i2c_bus_c";
+		reset-gpios = <&gpio GPIODV_20 1>;
+		reset_gpio_name = "GPIODV_20";
+		pinctrl-names = "aml_hdmiin_dvp";
+		pinctrl-0 = <&dvp_pins>;
+	};
 	amlvecm {
 		compatible = "amlogic, vecm";
 		dev_name = "aml_vecm";
@@ -1197,6 +1210,11 @@
 /*&i2c_b {
   status = "okay";
 };*/
+/*&i2c_c {
+	status = "okay";
+	pinctrl-names="default";
+	pinctrl-0=<&c_i2c_master_pin1>;
+};*/
 
 &pinmux {
 	audio_pins:audio_pin{
@@ -1233,6 +1251,23 @@
 						 2 0x18000
 						 3 0x18>;
 		amlogic,pins = "GPIODV_24","GPIODV_25";
+	};
+
+	/* dvp pins for vdin */
+	dvp_pins:dvp_pins{
+		amlogic,setmask=<3 0x7800>;
+		amlogic,clrmask=<3 0xffcf8000 4 0xfff3f0>;
+		amlogic,pins="GPIOZ_0",/* DVP_VS */
+				"GPIOZ_1", /* DVP_HS */
+				"GPIOZ_3", /* DVP_CLK */
+				"GPIOZ_4", /* DVP_D2 */
+				"GPIOZ_5", /* DVP_D3 */
+				"GPIOZ_6", /* DVP_D4 */
+				"GPIOZ_7", /* DVP_D5 */
+				"GPIOZ_8", /* DVP_D6 */
+				"GPIOZ_9", /* DVP_D7 */
+				"GPIOZ_10", /* DVP_D8 */
+				"GPIOZ_11"; /* DVP_D9 */
 	};
 };
 &efuse {

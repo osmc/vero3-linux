@@ -134,6 +134,8 @@ struct hdmiin_drv_s {
 
 	/* hardware init related */
 	int (*init)(struct hdmiin_drv_s *hdrv);
+	int (*enable)(void);
+	void (*disable)(void);
 	} hw_ops;
 
 	struct hdmiin_vdin_s vdin;

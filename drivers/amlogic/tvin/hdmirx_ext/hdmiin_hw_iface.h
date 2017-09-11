@@ -65,6 +65,14 @@ extern char *__hw_get_chip_id(void);
 extern int __hw_init(void);
 
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
+/* hardware enable related */
+extern int __hw_enable(void);
+
+/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
+/* hardware disable related */
+extern void __hw_disable(void);
+
+/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 /* hdmiin utility */
 extern void __hw_dump_video_timming(void);
 

@@ -67,6 +67,11 @@ static int hdmiin_start(struct hdmiin_drv_s *pdev)
 		HDMIIN_PE("[%s] failed to init hw, err = %d!\n", __func__, ret);
 		return -2;
 	}
+	ret = __hw_enable();
+	if (ret < 0) {
+		HDMIIN_PE("%s: failed to enable hw\n", __func__);
+		return -2;
+	}
 
 /*
 	ret = __hw_setup_timer();
@@ -140,6 +145,8 @@ static void hdmiin_set_default_params(void)
 	hdmiin_drv->hw_ops.debug			= NULL;
 	hdmiin_drv->hw_ops.get_chip_version		= NULL;
 	hdmiin_drv->hw_ops.init				= NULL;
+	hdmiin_drv->hw_ops.enable			= NULL;
+	hdmiin_drv->hw_ops.disable			= NULL;
 
 	return;
 }
@@ -391,6 +398,29 @@ static int hdmiin_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void hdmiin_shutdown(struct platform_device *pdev)
+{
+	HDMIIN_PI("%s\n", __func__);
+
+	hdmiin_destroy_device_attrs(hdmiin_device);
+
+	if (hdmiin_class) {
+		device_destroy(hdmiin_class, hdmiin_device_id);
+		class_destroy(hdmiin_class);
+	}
+
+	if (hdmiin_drv) {
+		if (hdmiin_drv->state) {
+			hdmiin_stop_vdin(&hdmiin_drv->vdin);
+			__hw_disable();
+		}
+		cdev_del(&(hdmiin_drv->cdev));
+		kfree(hdmiin_drv);
+	}
+
+	unregister_chrdev_region(hdmiin_device_id, 1);
+}
+
 #ifdef CONFIG_OF
 static const struct of_device_id hdmiin_dt_match[] = {
 	{
@@ -406,6 +436,7 @@ static const struct of_device_id hdmiin_dt_match[] = {
 static struct platform_driver hdmiin_driver = {
 	.probe  = hdmiin_probe,
 	.remove = hdmiin_remove,
+	.shutdown	= hdmiin_shutdown,
 	.driver = {
 		.name		= HDMIIN_DRV_NAME,
 		.owner		= THIS_MODULE,

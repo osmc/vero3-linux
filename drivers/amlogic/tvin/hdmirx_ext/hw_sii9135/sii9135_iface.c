@@ -28,8 +28,8 @@
 /* #include "io.h" */
 /* #include "debug.h" */
 
-#define SII9135_PULLUP_I2C_ADDR		0x62
-#define SII9135_PULLDOWN_I2C_ADDR	0x60
+#define SII9135_PULLUP_I2C_ADDR		0x31
+#define SII9135_PULLDOWN_I2C_ADDR	0x30
 #define SII9135_CHIP_NAME		"SII9135"
 
 static struct hdmiin_drv_s *hdmiin_drv;
@@ -432,13 +432,19 @@ static char *__sii9135_get_chip_version(void)
 	return SII9135_CHIP_NAME;
 }
 
-static void __sii9135_hw_reset(void)
+static void __sii9135_hw_reset(int flag)
 {
-	HDMIIN_PD("%s\n", __func__);
-	__plat_gpio_output(&hdmiin_drv->hw.reset_gpio, 0);
-	__plat_msleep(200);
-	__plat_gpio_output(&hdmiin_drv->hw.reset_gpio, 1);
-	__plat_msleep(200);
+	HDMIIN_PD("%s: %d\n", __func__, flag);
+
+	if (flag)
+		__plat_gpio_output(&hdmiin_drv->hw.reset_gpio, 0);
+	else
+		__plat_gpio_output(&hdmiin_drv->hw.reset_gpio, 1);
+}
+
+static void __sii9135_hw_en(int flag)
+{
+	__plat_msleep(100);
 }
 
 static int __sii9135_task_handler(void *data)
@@ -450,24 +456,30 @@ static int __sii9135_task_handler(void *data)
 
 static int __sii9135_init(struct hdmiin_drv_s *hdrv)
 {
+	return 0;
+}
+
+static int __sii9135_enable(void)
+{
+	struct hdmiin_drv_s *hdrv = hdmiin_get_driver();
 	unsigned char i2c_addr = SII9135_PULLDOWN_I2C_ADDR;
 
 	if (!hdrv)
 		return -1;
 
-	HDMIIN_PD("%s\n", __func__);
+	HDMIIN_PI("%s\n", __func__);
 	hdmiin_drv = hdrv;
 
-	/* i2c_addr = (hdmiin_drv->hw.i2c_addr_pull == 0) ?
-		SII9135_PULLDOWN_I2C_ADDR : SII9135_PULLUP_I2C_ADDR;
-	hdmiin_drv->hw.i2c_addr = i2c_addr; */
-	i2c_addr = hdmiin_drv->hw.i2c_addr;
+	__sii9135_hw_en(1);
 
-	/*__plat_gpio_init(hdmiin_drv->hw.reset_gpio);*/
+	i2c_addr = hdmiin_drv->hw.i2c_addr;
 
 	__plat_i2c_init(&(hdmiin_drv->hw), i2c_addr);
 
-	__sii9135_hw_reset();
+	__sii9135_hw_reset(1);
+	__plat_msleep(200);
+	__sii9135_hw_reset(0);
+	__plat_msleep(200);
 
 	__plat_create_thread(__sii9135_task_handler,
 		hdmiin_drv, HDMIIN_DRV_NAME);
@@ -475,12 +487,25 @@ static int __sii9135_init(struct hdmiin_drv_s *hdrv)
 	return 0;
 }
 
+static void __sii9135_disable(void)
+{
+	struct hdmiin_drv_s *hdrv = hdmiin_get_driver();
+
+	if (!hdrv)
+		return;
+
+	HDMIIN_PI("%s\n", __func__);
+
+	__sii9135_hw_reset(1);
+	__sii9135_hw_en(0);
+}
+
 void hdmiin_register_hw_sii9135_ops(struct hdmiin_drv_s *hdrv)
 {
 	if (!hdrv)
 		return;
 
-	HDMIIN_PD("%s\n", __func__);
+	HDMIIN_PI("%s\n", __func__);
 	hdrv->hw_ops.get_cable_status      = __sii9135_get_cable_status;
 	hdrv->hw_ops.get_signal_status     = __sii9135_get_signal_status;
 	hdrv->hw_ops.get_input_port        = __sii9135_get_input_port;
@@ -491,5 +516,7 @@ void hdmiin_register_hw_sii9135_ops(struct hdmiin_drv_s *hdrv)
 	hdrv->hw_ops.debug                 = __sii9135_debug;
 	hdrv->hw_ops.get_chip_version      = __sii9135_get_chip_version;
 	hdrv->hw_ops.init                  = __sii9135_init;
+	hdrv->hw_ops.enable                = __sii9135_enable;
+	hdrv->hw_ops.disable               = __sii9135_disable;
 }
 
