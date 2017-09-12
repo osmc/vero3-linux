@@ -78,7 +78,8 @@ static int amlsd_get_host_caps(struct device_node *of_node,
 		caps |= MMC_CAP_4_BIT_DATA;
 
 	pdata->caps = caps;
-	pr_info("%s:pdata->caps = %x\n", pdata->pinname, pdata->caps);
+	if (DEBUG_SD_OF)
+		pr_info("%s:pdata->caps = %x\n", pdata->pinname, pdata->caps);
 	return 0;
 }
 
@@ -115,7 +116,8 @@ static int amlsd_get_host_caps2(struct device_node *of_node,
 		}
 	};
 	pdata->caps2 = caps;
-	pr_info("%s:pdata->caps2 = %x\n", pdata->pinname, pdata->caps2);
+	if (DEBUG_SD_OF)
+		pr_info("%s:pdata->caps2 = %x\n", pdata->pinname, pdata->caps2);
 	return 0;
 }
 
@@ -133,7 +135,9 @@ static int amlsd_get_host_pm_caps(struct device_node *of_node,
 	};
 
 	pdata->pm_caps = caps;
-	pr_info("%s:pdata->pm_caps = %x\n", pdata->pinname, pdata->pm_caps);
+	if (DEBUG_SD_OF)
+		pr_info("%s:pdata->pm_caps = %x\n",
+				pdata->pinname, pdata->pm_caps);
 	return 0;
 }
 

@@ -31,8 +31,8 @@ extern unsigned sdio_debug;
 extern unsigned sd_emmc_debug;
 extern const u8 tuning_blk_pattern_4bit[64];
 extern const u8 tuning_blk_pattern_8bit[128];
-#define DEBUG_SD_OF		1
-/* #define DEBUG_SD_OF			0 */
+/* #define DEBUG_SD_OF		1 */
+#define DEBUG_SD_OF		0
 
 #define MODULE_NAME		"amlsd"
 

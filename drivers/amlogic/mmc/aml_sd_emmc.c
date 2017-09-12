@@ -1150,8 +1150,6 @@ static void aml_sd_emmc_reg_init(struct amlsd_host *host)
 	struct sd_emmc_config *pconf = (struct sd_emmc_config *)&vconf;
 	struct sd_emmc_regs *sd_emmc_regs = host->sd_emmc_regs;
 
-	pr_info("%s %d\n", __func__, __LINE__);
-
 	/* clear controller's main register setting which set in uboot*/
 	sd_emmc_regs->gdelay = 0;
 	sd_emmc_regs->gadjust = 0;
@@ -2477,10 +2475,11 @@ static irqreturn_t aml_sd_emmc_irq(int irq, void *dev_id)
 #endif
 	/* just for error show */
 	if (err) {
-		if (host->is_tunning == 0)
+		if (host->is_tunning == 0) {
 			aml_host_bus_fsm_show(host, ista->bus_fsm);
-		if (aml_card_type_mmc(pdata))
-			mmc_cmd_LBA_show(mmc, mrq);
+			if (aml_card_type_mmc(pdata))
+				mmc_cmd_LBA_show(mmc, mrq);
+		}
 	}
 
 	if (host->xfer_step != XFER_IRQ_UNKNOWN_IRQ) {
@@ -3156,8 +3155,6 @@ const struct dev_pm_ops aml_sd_emmc_pm = {
 };
 #endif
 
-
-
 static const struct mmc_host_ops aml_sd_emmc_ops = {
 	.request = aml_sd_emmc_request,
 	.set_ios = aml_sd_emmc_set_ios,
@@ -3607,7 +3604,6 @@ static int aml_sd_emmc_probe(struct platform_device *pdev)
 
 	/* enable debug */
 	/*sd_emmc_debug = 0x2000;*/
-	pr_info("%s: line %d\n", __func__, __LINE__);
 	aml_mmc_ver_msg_show();
 
 	host = kzalloc(sizeof(struct amlsd_host), GFP_KERNEL);
