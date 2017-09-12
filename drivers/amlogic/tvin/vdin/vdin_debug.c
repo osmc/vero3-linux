@@ -267,7 +267,7 @@ static void vdin_dump_one_buf_mem(char *path, struct vdin_dev_s *devp,
 		return;
 	}
 	if ((devp->cma_config_flag == 1) &&
-		(devp->cma_mem_alloc[devp->index] == 0)) {
+		(devp->cma_mem_alloc == 0)) {
 		pr_info("%s:no cma alloc mem!!!\n", __func__);
 		return;
 	}
@@ -297,7 +297,7 @@ static void vdin_dump_mem(char *path, struct vdin_dev_s *devp)
 	struct file *filp = NULL;
 	loff_t pos = 0;
 	void *buf = NULL;
-	int i = 0;
+	loff_t i = 0;
 	mm_segment_t old_fs = get_fs();
 	set_fs(KERNEL_DS);
 	filp = filp_open(path, O_RDWR|O_CREAT, 0666);
@@ -307,7 +307,7 @@ static void vdin_dump_mem(char *path, struct vdin_dev_s *devp)
 		return;
 	}
 	if ((devp->cma_config_flag == 1) &&
-		(devp->cma_mem_alloc[devp->index] == 0)) {
+		(devp->cma_mem_alloc == 0)) {
 		pr_info("%s:no cma alloc mem!!!\n", __func__);
 		return;
 	}
@@ -321,7 +321,7 @@ static void vdin_dump_mem(char *path, struct vdin_dev_s *devp)
 			buf = phys_to_virt(devp->mem_start +
 				devp->canvas_max_size*i);
 		vfs_write(filp, buf, devp->canvas_max_size, &pos);
-		pr_info("write buffer %2d of %2u  to %s.\n",
+		pr_info("write buffer %lld of %2u  to %s.\n",
 				i, devp->canvas_max_num, path);
 	}
 	vfs_fsync(filp, 0);
@@ -455,8 +455,8 @@ static void vdin_dump_state(struct vdin_dev_s *devp)
 	pr_info("cma_flag:%d\n", devp->cma_config_flag);
 	pr_info("auto_cutwindow_en:%d\n", devp->auto_cutwindow_en);
 	pr_info("auto_ratio_en:%d\n", devp->auto_ratio_en);
-	pr_info("cma_mem_alloc:%d\n", devp->cma_mem_alloc[devp->index]);
-	pr_info("cma_mem_size:0x%x\n", devp->cma_mem_size[devp->index]);
+	pr_info("cma_mem_alloc:%d\n", devp->cma_mem_alloc);
+	pr_info("cma_mem_size:0x%x\n", devp->cma_mem_size);
 	vdin_dump_vf_state(devp->vfp);
 	if (vf) {
 		pr_info("current vframe index(%u):\n", vf->index);
@@ -1604,7 +1604,11 @@ static ssize_t vdin_cm2_store(struct device *dev,
 			continue;
 		parm[n++] = token;
 	}
-
+	if (n == 0) {
+		pr_info("parm not initialized.\n");
+		kfree(buf_orig);
+		return count;
+	}
 	if ((parm[0][0] == 'w') && parm[0][1] == 'm') {
 		if (n != 7) {
 			pr_info("read : invalid parameter\n");

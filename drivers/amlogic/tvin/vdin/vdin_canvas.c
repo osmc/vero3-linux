@@ -295,7 +295,7 @@ void vdin_canvas_auto_config(struct vdin_dev_s *devp)
 /* return val:1: fail;0: ok */
 unsigned int vdin_cma_alloc(struct vdin_dev_s *devp)
 {
-	char vdin_name[5];
+	char vdin_name[6];
 	unsigned int mem_size, h_size, v_size;
 	int flags = CODEC_MM_FLAGS_CMA_FIRST|CODEC_MM_FLAGS_CMA_CLEAR|
 		CODEC_MM_FLAGS_CPU;
@@ -311,10 +311,10 @@ unsigned int vdin_cma_alloc(struct vdin_dev_s *devp)
 		max_buffer_num = max_buf_num;
 
 	if ((devp->cma_config_en == 0) ||
-		(devp->cma_mem_alloc[devp->index] == 1)) {
+		(devp->cma_mem_alloc == 1)) {
 		pr_err(KERN_ERR "\nvdin%d %s fail for (%d,%d)!!!\n",
 			devp->index, __func__, devp->cma_config_en,
-			devp->cma_mem_alloc[devp->index]);
+			devp->cma_mem_alloc);
 		return 1;
 	}
 	h_size = devp->h_active;
@@ -371,8 +371,8 @@ unsigned int vdin_cma_alloc(struct vdin_dev_s *devp)
 	mem_size = PAGE_ALIGN(mem_size) * max_buffer_num +
 		dolby_size_byte * max_buffer_num;
 	mem_size = (mem_size/PAGE_SIZE + 1)*PAGE_SIZE;
-	if (mem_size > devp->cma_mem_size[devp->index])
-		mem_size = devp->cma_mem_size[devp->index];
+	if (mem_size > devp->cma_mem_size)
+		mem_size = devp->cma_mem_size;
 	if (devp->cma_config_flag == 1) {
 		if (devp->index == 0)
 			strcpy(vdin_name, "vdin0");
@@ -384,28 +384,28 @@ unsigned int vdin_cma_alloc(struct vdin_dev_s *devp)
 		if (devp->mem_start == 0) {
 			pr_err(KERN_ERR "\nvdin%d codec alloc fail!!!\n",
 				devp->index);
-			devp->cma_mem_alloc[devp->index] = 0;
+			devp->cma_mem_alloc = 0;
 			return 1;
 		} else {
-			devp->cma_mem_alloc[devp->index] = 1;
+			devp->cma_mem_alloc = 1;
 			pr_info("vdin%d mem_start = 0x%lx, mem_size = 0x%x\n",
 				devp->index, devp->mem_start, devp->mem_size);
 			pr_info("vdin%d codec cma alloc ok!\n", devp->index);
 		}
 	} else if (devp->cma_config_flag == 0) {
-		devp->venc_pages[devp->index] = dma_alloc_from_contiguous(
-			&(devp->this_pdev[devp->index]->dev),
-			devp->cma_mem_size[devp->index] >> PAGE_SHIFT, 0);
+		devp->venc_pages = dma_alloc_from_contiguous(
+			&(devp->this_pdev->dev),
+			devp->cma_mem_size >> PAGE_SHIFT, 0);
 		if (devp->venc_pages) {
 			devp->mem_start =
-				page_to_phys(devp->venc_pages[devp->index]);
+				page_to_phys(devp->venc_pages);
 			devp->mem_size  = mem_size;
-			devp->cma_mem_alloc[devp->index] = 1;
+			devp->cma_mem_alloc = 1;
 			pr_info("vdin%d mem_start = 0x%lx, mem_size = 0x%x\n",
 				devp->index, devp->mem_start, devp->mem_size);
 			pr_info("vdin%d cma alloc ok!\n", devp->index);
 		} else {
-			devp->cma_mem_alloc[devp->index] = 0;
+			devp->cma_mem_alloc = 0;
 			pr_err(KERN_ERR "\nvdin%d cma mem undefined2.\n",
 				devp->index);
 			return 1;
@@ -417,16 +417,16 @@ unsigned int vdin_cma_alloc(struct vdin_dev_s *devp)
 /*this function used for codec cma release
 	1.call codec_mm_free_for_dma() or
 	  dma_release_from_contiguous() to relase cma;
-	2.reset mem_start & mem_size & cma_mem_alloc[devp->index] to 0;
+	2.reset mem_start & mem_size & cma_mem_alloc to 0;
 */
 void vdin_cma_release(struct vdin_dev_s *devp)
 {
-	char vdin_name[5];
+	char vdin_name[6];
 	if ((devp->cma_config_en == 0) ||
-		(devp->cma_mem_alloc[devp->index] == 0)) {
+		(devp->cma_mem_alloc == 0)) {
 		pr_err(KERN_ERR "\nvdin%d %s fail for (%d,%d)!!!\n",
 			devp->index, __func__, devp->cma_config_en,
-			devp->cma_mem_alloc[devp->index]);
+			devp->cma_mem_alloc);
 		return;
 	}
 	if ((devp->cma_config_flag == 1) && devp->mem_start) {
@@ -436,22 +436,22 @@ void vdin_cma_release(struct vdin_dev_s *devp)
 			strcpy(vdin_name, "vdin1");
 		codec_mm_free_for_dma(vdin_name, devp->mem_start);
 		pr_info("vdin%d codec cma release ok!\n", devp->index);
-	} else if (devp->venc_pages[devp->index]
-		&& devp->cma_mem_size[devp->index]
+	} else if (devp->venc_pages
+		&& devp->cma_mem_size
 		&& (devp->cma_config_flag == 0)) {
 		dma_release_from_contiguous(
-			&(devp->this_pdev[devp->index]->dev),
-			devp->venc_pages[devp->index],
-			devp->cma_mem_size[devp->index] >> PAGE_SHIFT);
+			&(devp->this_pdev->dev),
+			devp->venc_pages,
+			devp->cma_mem_size >> PAGE_SHIFT);
 		pr_info("vdin%d cma release ok!\n", devp->index);
 	} else {
 		pr_err(KERN_ERR "\nvdin%d %s fail for (%d,%d,0x%lx)!!!\n",
-			devp->index, __func__, devp->cma_mem_size[devp->index],
+			devp->index, __func__, devp->cma_mem_size,
 			devp->cma_config_flag, devp->mem_start);
 	}
 	devp->mem_start = 0;
 	devp->mem_size = 0;
-	devp->cma_mem_alloc[devp->index] = 0;
+	devp->cma_mem_alloc = 0;
 }
 #endif
 

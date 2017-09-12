@@ -954,8 +954,8 @@ void vdin_start_dec(struct vdin_dev_s *devp)
 
 	vdin_hw_enable(devp->addr_offset);
 	vdin_set_all_regs(devp);
-
 	if (!(devp->parm.flag & TVIN_PARM_FLAG_CAP) &&
+		(devp->frontend) &&
 		devp->frontend->dec_ops &&
 		devp->frontend->dec_ops->start &&
 		((devp->parm.port != TVIN_PORT_CVBS3) ||
@@ -1030,7 +1030,7 @@ void vdin_stop_dec(struct vdin_dev_s *devp)
 	if (!devp || !devp->frontend)
 		return;
 #ifdef CONFIG_CMA
-	if (devp->cma_mem_alloc[devp->index] == 0) {
+	if (devp->cma_mem_alloc == 0) {
 		pr_info("%s:cma not alloc,don't need do others!\n", __func__);
 		return;
 	}
@@ -2546,6 +2546,7 @@ static long vdin_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	}
 	case TVIN_IOC_G_BUF_INFO: {
 		struct tvin_buf_info_s buf_info;
+		memset(&buf_info, 0, sizeof(buf_info));
 		buf_info.buf_count	= devp->canvas_max_num;
 		buf_info.buf_width	= devp->canvas_w;
 		buf_info.buf_height = devp->canvas_h;
@@ -2562,6 +2563,7 @@ static long vdin_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case TVIN_IOC_GET_BUF: {
 		struct tvin_video_buf_s tvbuf;
 		struct vf_entry *vfe;
+		memset(&tvbuf, 0, sizeof(tvbuf));
 		vfe = list_entry(devp->vfp->wr_next, struct vf_entry, list);
 		devp->vfp->wr_next = devp->vfp->wr_next->next;
 		if (devp->vfp->wr_next != &devp->vfp->wr_list)
@@ -2883,19 +2885,19 @@ static int vdin_drv_probe(struct platform_device *pdev)
 		if (vdevp->cma_config_flag == 1) {
 			ret = of_property_read_u32(pdev->dev.of_node,
 				"cma_size",
-				&(vdevp->cma_mem_size[vdevp->index]));
+				&(vdevp->cma_mem_size));
 			if (ret)
 				pr_err("don't find  match cma_size\n");
 			else
-				vdevp->cma_mem_size[vdevp->index] *= SZ_1M;
+				vdevp->cma_mem_size *= SZ_1M;
 		} else if (vdevp->cma_config_flag == 0)
-			vdevp->cma_mem_size[vdevp->index] =
+			vdevp->cma_mem_size =
 				dma_get_cma_size_int_byte(&pdev->dev);
-		vdevp->this_pdev[vdevp->index] = pdev;
-		vdevp->cma_mem_alloc[vdevp->index] = 0;
+		vdevp->this_pdev = pdev;
+		vdevp->cma_mem_alloc = 0;
 		vdevp->cma_config_en = 1;
 		pr_info("vdin%d cma_mem_size = %d MB\n", vdevp->index,
-				(u32)vdevp->cma_mem_size[vdevp->index]/SZ_1M);
+				(u32)vdevp->cma_mem_size/SZ_1M);
 	}
 #endif
 	use_reserved_mem = 0;
@@ -3116,12 +3118,11 @@ static int vdin_drv_remove(struct platform_device *pdev)
 	vdin_delete_device(vdevp->index);
 	cdev_del(&vdevp->cdev);
 	vdin_devp[vdevp->index] = NULL;
-	kfree(vdevp);
 
 	/* free drvdata */
 	dev_set_drvdata(vdevp->dev, NULL);
 	platform_set_drvdata(pdev, NULL);
-
+	kfree(vdevp);
 	pr_info("%s: driver removed ok\n", __func__);
 	return 0;
 }

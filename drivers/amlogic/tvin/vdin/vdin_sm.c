@@ -175,7 +175,9 @@ static void hdmirx_color_fmt_handler(struct vdin_dev_s *devp)
 	unsigned int vdin_hdr_flag, pre_vdin_hdr_flag;
 	unsigned int vdin_fmt_range, pre_vdin_fmt_range;
 
-	if (!devp || !devp->frontend) {
+	if (!devp) {
+		return;
+	} else if (!devp->frontend) {
 		sm_dev[devp->index].state = TVIN_SM_STATUS_NULL;
 		return;
 	}
@@ -224,7 +226,9 @@ void vdin_auto_de_handler(struct vdin_dev_s *devp)
 	struct tvin_sig_property_s *prop;
 	unsigned int cur_vs, cur_ve, pre_vs, pre_ve;
 	unsigned int cur_hs, cur_he, pre_hs, pre_he;
-	if (!devp || !devp->frontend) {
+	if (!devp) {
+		return;
+	} else if (!devp->frontend) {
 		sm_dev[devp->index].state = TVIN_SM_STATUS_NULL;
 		return;
 	}
@@ -288,8 +292,9 @@ void tvin_smr(struct vdin_dev_s *devp)
 	struct tvin_sm_s *sm_p;
 	struct tvin_frontend_s *fe;
 	struct tvin_sig_property_s *prop, *pre_prop;
-
-	if (!devp || !devp->frontend) {
+	if (!devp) {
+		return;
+	} else if (!devp->frontend) {
 		sm_dev[devp->index].state = TVIN_SM_STATUS_NULL;
 		return;
 	}
