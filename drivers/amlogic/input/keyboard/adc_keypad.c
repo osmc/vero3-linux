@@ -321,12 +321,10 @@ static int kp_input_dev_register(struct platform_device *pdev, struct kp *kp)
 	return 0;
 }
 
-static ssize_t content_show(struct kobject *kobj, struct kobj_attribute *attr,
+static ssize_t table_show(struct class *cls, struct class_attribute *attr,
 			char *buf)
 {
-	struct device *dev = kobj_to_dev(kobj->parent);
-	struct platform_device *pdev = to_platform_device(dev);
-	struct kp *kp = platform_get_drvdata(pdev);
+	struct kp *kp = container_of(cls, struct kp, kp_class);
 	struct adc_key *key;
 	unsigned char key_num = 1;
 	int len = 0;
@@ -348,12 +346,11 @@ static ssize_t content_show(struct kobject *kobj, struct kobj_attribute *attr,
 	return len;
 }
 
-static ssize_t content_store(struct kobject *kobj, struct kobj_attribute *attr,
+static ssize_t table_store(struct class *cls, struct class_attribute *attr,
 			 const char *buf, size_t count)
 {
-	struct device *dev = kobj_to_dev(kobj->parent);
-	struct platform_device *pdev = to_platform_device(dev);
-	struct kp *kp = platform_get_drvdata(pdev);
+	struct kp *kp = container_of(cls, struct kp, kp_class);
+	struct device *dev = kp->input->dev.parent;
 	struct adc_key *dkey;
 	struct adc_key *key;
 	struct adc_key *key_tmp;
@@ -396,7 +393,7 @@ static ssize_t content_store(struct kobject *kobj, struct kobj_attribute *attr,
 
 	dkey = kzalloc(sizeof(struct adc_key), GFP_KERNEL);
 	if (!dkey) {
-		dev_err(&pdev->dev, "alloc mem failed!\n");
+		dev_err(dev, "alloc mem failed!\n");
 		return -ENOMEM;
 	}
 
@@ -481,25 +478,19 @@ err:
 	return state;
 }
 
-static struct kobj_attribute content_attribute =
-	__ATTR(content, 0666, content_show, content_store);
-
 /*
  * Create a group of attributes so that we can create and destroy them all
  * at once.
  */
-static struct attribute *attrs[] = {
-	&content_attribute.attr,
-	NULL,	/* need to NULL terminate the list of attributes */
+static struct class_attribute kp_attrs[] = {
+	__ATTR_RW(table),
+	__ATTR_NULL
 };
 
-static struct attribute_group attr_group = {
-	.attrs = attrs,
-};
 static int kp_probe(struct platform_device *pdev)
 {
 	struct kp *kp;
-	int state = 0;
+	int ret = 0;
 
 	send_data_to_bl301();
 	kernel_keypad_enable_mode_enable();
@@ -519,12 +510,12 @@ static int kp_probe(struct platform_device *pdev)
 	INIT_WORK(&(kp->work_update), update_work_func);
 	setup_timer(&kp->timer, kp_timer_sr, (unsigned long)kp);
 	if (kp_input_dev_register(pdev, kp) < 0) {
-		state = -EINVAL;
+		ret = -EINVAL;
 		goto err;
 	}
 	if (kp_get_devtree_pdata(pdev, kp) < 0) {
 		kp_list_free(kp);
-		state = -EINVAL;
+		ret = -EINVAL;
 		goto err;
 	}
 	#ifdef CONFIG_HAS_EARLYSUSPEND
@@ -533,20 +524,17 @@ static int kp_probe(struct platform_device *pdev)
 	kp->early_suspend.resume = kp_late_resume;
 	register_early_suspend(&kp->early_suspend);
 	#endif
-	/*create directory /dev/devices/adc_keypad.34/table*/
-	kp->adckey_kobj = kobject_create_and_add("table", &pdev->dev.kobj);
-	if  (!kp->adckey_kobj) {
-		dev_err(&pdev->dev, "create kobject failed!\n");
-		state =  -ENOMEM;
+
+	/*init class*/
+	kp->kp_class.name = DRIVE_NAME;
+	kp->kp_class.owner = THIS_MODULE;
+	kp->kp_class.class_attrs = kp_attrs;
+	ret = class_register(&kp->kp_class);
+	if (ret) {
+		dev_err(&pdev->dev, "fail to create adc keypad class.\n");
 		goto err;
 	}
-	/* create the files associated with this kobject */
-	if (sysfs_create_group(kp->adckey_kobj, &attr_group) < 0) {
-		dev_err(&pdev->dev, "create sysfs failed!\n");
-		kobject_put(kp->adckey_kobj);
-		state = -EINVAL;
-		goto err;
-	}
+
 	/*enable timer*/
 	mod_timer(&kp->timer, jiffies+msecs_to_jiffies(100));
 	return 0;
@@ -554,13 +542,14 @@ err:
 	if (kp->input)
 		input_free_device(kp->input);
 	kfree(kp);
-	return state;
+	return ret;
 }
 
 static int kp_remove(struct platform_device *pdev)
 {
 	struct kp *kp = platform_get_drvdata(pdev);
 
+	class_unregister(&kp->kp_class);
 	#ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&kp->early_suspend);
 	#endif
@@ -568,7 +557,6 @@ static int kp_remove(struct platform_device *pdev)
 	cancel_work_sync(&kp->work_update);
 	input_unregister_device(kp->input);
 	input_free_device(kp->input);
-	kobject_put(kp->adckey_kobj);
 	kp_list_free(kp);
 	kfree(kp);
 	return 0;

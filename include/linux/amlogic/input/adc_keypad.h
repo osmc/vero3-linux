@@ -10,7 +10,7 @@
 #include <linux/earlysuspend.h>
 #endif
 
-#define DRIVE_NAME "adckey"
+#define DRIVE_NAME "adc_keypad"
 #define MAX_NAME_LEN 20
 
 enum TOLERANCE_RANGE {
@@ -41,7 +41,7 @@ struct kp {
 	unsigned int poll_period; /*key scan period*/
 	spinlock_t kp_lock;
 	struct list_head adckey_head;
-	struct kobject *adckey_kobj;
+	struct class kp_class;
 	struct input_dev *input;
 	struct timer_list timer;
 	struct work_struct work_update;
