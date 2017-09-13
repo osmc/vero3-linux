@@ -3773,6 +3773,8 @@ empty_proc:
 			remove_picture(p_H264_Dpb,
 				p_H264_Dpb->mVideo.dec_picture);
 			p_H264_Dpb->mVideo.dec_picture = NULL;
+			if (mmu_enable)
+				hevc_set_frame_done(hw);
 		}
 
 		if (input_frame_based(vdec) ||
