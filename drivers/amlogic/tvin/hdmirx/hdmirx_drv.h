@@ -33,7 +33,7 @@
 
 
 
-#define RX_VER0 "Ref.2017/09/07"
+#define RX_VER0 "Ref.2017/09/11"
 /*------------------------------*/
 
 #define RX_VER1 "Ref.2017/09/01"
@@ -357,9 +357,9 @@ enum e_eq_freq {
 };
 
 enum hdcp_version_e {
-	HDCP_VERSION_NONE,
-	HDCP_VERSION_14,
-	HDCP_VERSION_22,
+	HDCP_VER_NONE,
+	HDCP_VER_14,
+	HDCP_VER_22,
 };
 
 enum hdmirx_port_e {

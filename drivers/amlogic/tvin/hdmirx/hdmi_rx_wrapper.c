@@ -334,6 +334,7 @@ int pre_port = 0xff;
 /*for some device pll unlock too long,send a hpd reset*/
 int pll_unlock_check_times;
 int pll_unlock_check_times_max = 5;
+bool hdmi5v_lost_flag;
 
 /*------------------------external function------------------------------*/
 static void dump_state(unsigned char enable);
@@ -709,7 +710,7 @@ bool is_hdcp14_on(void)
 
 void hdmirx_hdcp_version_set(enum hdcp_version_e version)
 {
-	if (version <= HDCP_VERSION_22) {
+	if (version <= HDCP_VER_22) {
 		rx.hdcp.hdcp_version = version;
 		rx_pr("set hdcp version:%d\n", rx.hdcp.hdcp_version);
 	}
@@ -954,8 +955,8 @@ static int hdmi_rx_ctrl_irq_handler(struct hdmi_rx_ctrl *ctx)
 		if (get(intr_hdmi, AKSV_RCV) != 0) {
 			if (log_level & HDCP_LOG)
 				rx_pr("[**receive aksv**\n");
-			is_hdcp_source = true;
-			hdmirx_hdcp_version_set(HDCP_VERSION_14);
+			/* is_hdcp_source = true; */
+			rx.hdcp.hdcp_version = HDCP_VER_14;
 			if (hdmirx_repeat_support()) {
 				queue_delayed_work(repeater_wq, &repeater_dwork,
 						msecs_to_jiffies(5));
@@ -1005,7 +1006,8 @@ static int hdmi_rx_ctrl_irq_handler(struct hdmi_rx_ctrl *ctx)
 		if (get(intr_hdcp22, _BIT(3)) != 0) {
 			hdcp22_auth_sts = HDCP22_AUTH_STATE_SUCCESS;
 			if ((intr_hdcp22 & 0x01) == 0)
-				hdmirx_hdcp_version_set(HDCP_VERSION_22);
+				/* hdmirx_hdcp_version_set(HDCP_VERSION_22); */
+				rx.hdcp.hdcp_version = HDCP_VER_22;
 		}
 		/*if (get(intr_hdcp22, _BIT(4)) != 0) {
 			hdcp22_auth_sts = HDCP22_AUTH_STATE_FAILED;
@@ -1707,15 +1709,12 @@ static void Signal_status_init(void)
 	auds_rcv_sts = 0;
 	rx.aud_sr_stable_cnt = 0;
 	rx_aud_pll_ctl(0);
-	/* */
-	pre_port = E_5V_LOST;
 	rx_set_eq_run_state(E_EQ_START);
 	is_hdcp_source = true;
-	#ifdef HDCP22_ENABLE
 	/*if (hdcp22_on)
 		esm_set_stable(0);*/
-	#endif
-	hdmirx_hdcp_version_set(HDCP_VERSION_NONE);
+	rx.hdcp.hdcp_version = HDCP_VER_NONE;
+	/* hdmirx_hdcp_version_set(HDCP_VERSION_NONE); */
 	rx.skip = 0;
 }
 
@@ -1755,8 +1754,10 @@ void rx_5v_det(void)
 		pwr_sts = tmp_5v;
 		rx_pr("hotplg-%x\n", pwr_sts);
 		rx.cur_5v_sts = (pwr_sts >> rx.port) & 1;
-		if (0 == rx.cur_5v_sts)
+		if (0 == rx.cur_5v_sts) {
+			hdmi5v_lost_flag = TRUE;
 			fsm_restart();
+		}
 		hotplug_wait_query();
 	} else
 		rx.cur_5v_sts = (pwr_sts >> rx.port) & 1;
@@ -1816,7 +1817,15 @@ void rx_dwc_reset(void)
 	/* Signal_status_init(); */
 	hdmirx_audio_fifo_rst();
 	hdmirx_packet_fifo_rst();
-	hdmirx_sw_reset(2);
+	/*
+	* hdcp14 sts only be cleared by
+	* 1. hdmi swreset
+	* 2. new AKSV is received
+	*/
+	if (HDCP_VER_14 == rx.hdcp.hdcp_version)
+		hdmirx_sw_reset(1);
+	else
+		hdmirx_sw_reset(2);
 }
 
 void set_scdc_cfg(int hpdlow, int pwrprovided)
@@ -1938,7 +1947,7 @@ void esm_rst_monitor(void)
 		if (esm_rst_cnt++ > hdcp22_reset_max) {
 			if (log_level & HDCP_LOG)
 				rx_pr("esm=1\n");
-			esm_set_stable(1);
+			esm_set_stable(TRUE);
 			esm_rst_cnt = 0;
 		}
 	}
@@ -1977,24 +1986,14 @@ bool is_unnormal_format(uint8_t wait_cnt)
 		if (log_level & VIDEO_LOG)
 			rx_pr("*DVI*\n");
 		}
-	if ((is_hdcp_source) &&
-		(rx.pre.hdcp14_state != 3) &&
+	if ((rx.pre.hdcp14_state != 3) &&
 		(rx.pre.hdcp14_state != 0) &&
-		(rx.hdcp.hdcp_version != HDCP_VERSION_22)) {
+		(rx.hdcp.hdcp_version == HDCP_VER_14)) {
 		if (wait_cnt < unnormal_wait_max)
 			ret = true;
 		if (log_level & VIDEO_LOG)
 			rx_pr("hdcp14 unfinished\n");
 		}
-	/*
-	if ((rx.pre.hdcp_type == E_HDCP22) &&
-	(rx.pre.hdcp_enc_state != 1) &&
-	(hdcp22_capable_sts != 0)) {
-	if ((wait_cnt < unnormal_wait_max))
-	ret = true;
-	if (log_level & VIDEO_LOG)
-	rx_pr("hdcp22 sts unstable\n");
-	} */
 	return ret;
 }
 
@@ -2031,7 +2030,7 @@ void monitor_cable_clk_sts(void)
 void fsm_restart(void)
 {
 	#ifdef HDCP22_ENABLE
-	rx_esm_tmdsclk_en(0);
+	rx_esm_tmdsclk_en(FALSE);
 	#endif
 	set_scdc_cfg(1, 0);
 	rx.state = FSM_INIT;
@@ -2112,6 +2111,7 @@ void hdmirx_hw_monitor(void)
 		pre_port = rx.port;
 		rx_set_hpd(1);
 		set_scdc_cfg(0, 1);
+		rx.hdcp.hdcp_version = HDCP_VER_NONE;
 		rx.state = FSM_WAIT_CLK_STABLE;
 		rx_pr("HPD_HIGH->CLK_STABLE\n");
 		break;
@@ -2180,17 +2180,13 @@ void hdmirx_hw_monitor(void)
 				rx.state = FSM_SIG_WAIT_STABLE;
 				rx_dwc_reset();
 				hdmirx_irq_enable(TRUE);
-				#ifdef HDCP22_ENABLE
 				if (hdcp22_on) {
-					#ifdef HDCP22_ENABLE
-					rx_esm_tmdsclk_en(1);
-					#endif
-					esm_set_stable(1);
-					if (rx.hdcp.hdcp_version !=
-						HDCP_VERSION_NONE)
+					rx_esm_tmdsclk_en(TRUE);
+					esm_set_stable(TRUE);
+					if (rx.hdcp.hdcp_version ==
+						HDCP_VER_22)
 						hdmirx_hdcp22_reauth();
 				}
-				#endif
 				pll_lock_cnt = 0;
 				pll_unlock_check_times = 0;
 				rx_pr("UNSTABLE->WAIT_STABLE\n");
@@ -2305,8 +2301,9 @@ void hdmirx_hw_monitor(void)
 				audio_sample_rate = 0;
 				rx_aud_pll_ctl(0);
 				#ifdef HDCP22_ENABLE
-				rx_esm_tmdsclk_en(0);
+				rx_esm_tmdsclk_en(FALSE);
 				#endif
+				rx.hdcp.hdcp_version = HDCP_VER_NONE;
 				rx.state = FSM_WAIT_CLK_STABLE;
 				rx.pre_state = FSM_SIG_READY;
 				rx.skip = 0;
@@ -3240,7 +3237,6 @@ void rx_set_global_varaible(const char *buf, int size)
 	set_pr_var(tmpbuf, enable_esm_reboot, value, index);
 	set_pr_var(tmpbuf, esm_error_flag, value, index);
 	set_pr_var(tmpbuf, esm_data_base_addr, value, index);
-	set_pr_var(tmpbuf, is_hdcp_source, value, index);
 	set_pr_var(tmpbuf, stable_check_lvl, value, index);
 	set_pr_var(tmpbuf, hdcp22_reauth_enable, value, index);
 	set_pr_var(tmpbuf, hdcp22_stop_auth_enable, value, index);
@@ -3332,7 +3328,6 @@ void rx_get_global_varaible(const char *buf)
 	pr_var(enable_esm_reboot, i++);
 	pr_var(esm_error_flag, i++);
 	pr_var(esm_data_base_addr, i++);
-	pr_var(is_hdcp_source, i++);
 	pr_var(stable_check_lvl, i++);
 	pr_var(hdcp22_reauth_enable, i++);
 	pr_var(hdcp22_stop_auth_enable, i++);
@@ -3827,7 +3822,6 @@ void hdmirx_hw_init(enum tvin_port_e port)
 	rx.port = (port - TVIN_PORT_HDMI0) & 0xf;
 	rx.no_signal = false;
 	rx.wait_no_sig_cnt = 0;
-	is_hdcp_source = true;
 	if (hdmirx_repeat_support())
 		rx.hdcp.repeat = repeat_plug;
 	else
@@ -3839,27 +3833,32 @@ void hdmirx_hw_init(enum tvin_port_e port)
 			sizeof(init_hdcp_data.bksv));
 		memcpy(rx.hdcp.keys, init_hdcp_data.keys,
 			sizeof(init_hdcp_data.keys));
+		rx.hdcp.hdcp_version = HDCP_VER_NONE;
 		memset(&rx.vsi_info, 0,
 			sizeof(struct vsi_info_s));
-		hdmirx_hdcp_version_set(HDCP_VERSION_NONE);
 		#ifdef HDCP22_ENABLE
 		if (hdcp22_on) {
-			esm_set_stable(0);
+			esm_set_stable(FALSE);
 			hpd_to_esm = 1;
 			/* switch_set_state(&rx.hpd_sdev, 0x01); */
 			if (log_level & VIDEO_LOG)
 				rx_pr("switch_set_state:%d\n", pwr_sts);
 		}
 		#endif
-		if (pre_port != E_5V_LOST) {
-			rx.state = FSM_HPD_LOW;
-			rx_set_hpd(0);
-		}
+		rx.state = FSM_HPD_LOW;
+		rx_set_hpd(0);
 		/* need reset the whole module when switch port */
 		hdmirx_hw_config();
 		pre_port = rx.port;
 		rx_set_eq_run_state(E_EQ_START);
 	} else {
+		/*
+		* do hw reset after cable re-plug-in.
+		* to replace previous mothod of hpd reset.
+		* avoid producing the HPD pulse twice.
+		*/
+		if (hdmi5v_lost_flag)
+			hdmirx_hw_config();
 		if (0 == get_cur_hpd_sts())
 			rx.state = FSM_HPD_HIGH;
 		else if (rx.state >= FSM_SIG_STABLE)
@@ -3868,7 +3867,7 @@ void hdmirx_hw_init(enum tvin_port_e port)
 			rx.state = FSM_HPD_HIGH;
 	}
 	edid_update_flag = 0;
-
+	hdmi5v_lost_flag = FALSE;
 	/*initial packet moudle resource*/
 	rx_pkt_initial();
 

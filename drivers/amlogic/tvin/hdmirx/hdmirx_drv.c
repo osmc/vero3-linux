@@ -966,7 +966,7 @@ static long hdmirx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		force_hdcp14_en = 1;
 		hdcp22_on = 0;
 		hdmirx_wr_dwc(DWC_HDCP22_CONTROL, 0x2);
-		esm_set_stable(0);
+		esm_set_stable(FALSE);
 		fsm_restart();
 		rx_pr("force hdcp1.4\n");
 		break;
