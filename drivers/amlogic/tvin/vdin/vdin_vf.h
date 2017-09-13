@@ -46,6 +46,7 @@
 #define VDIN_VF_POOL_FREEZE              0x00000001
 #define ISR_LOG_EN
 
+#define VF_LOG_PRINT_MAX_LEN 100
 
 enum vf_operation_e {
 	VF_OPERATION_INIT = 0,
@@ -95,7 +96,7 @@ struct vf_log_s {
 #endif
 
 #ifdef ISR_LOG_EN
-#define ISR_LOG_LEN		 2000
+#define ISR_LOG_LEN 2000
 struct isr_log_s {
 	struct timeval isr_time[ISR_LOG_LEN];
 	unsigned int log_cur;
@@ -117,18 +118,18 @@ struct vf_pool {
 	struct vf_entry *master;
 	struct vf_entry *slave;
 	struct list_head wr_list; /* vf_entry */
-	spinlock_t       wr_lock;
-	unsigned int	 wr_list_size;
+	spinlock_t wr_lock;
+	unsigned int wr_list_size;
 	struct list_head *wr_next;
 	struct list_head rd_list; /* vf_entry */
-	spinlock_t       rd_lock;
-	unsigned int	 rd_list_size;
+	spinlock_t rd_lock;
+	unsigned int rd_list_size;
 	struct list_head wt_list; /* vframe_s */
-	spinlock_t       wt_lock;
-	unsigned int	 fz_list_size;
+	spinlock_t wt_lock;
+	unsigned int fz_list_size;
 	struct list_head fz_list;
-	spinlock_t       fz_lock;
-	unsigned int	 tmp_list_size;
+	spinlock_t fz_lock;
+	unsigned int tmp_list_size;
 	struct list_head tmp_list;
 	spinlock_t tmp_lock;
 	spinlock_t log_lock;
@@ -140,17 +141,17 @@ struct vf_pool {
 	struct isr_log_s isr_log;
 #endif
 	atomic_t buffer_cnt;
-	unsigned int	dv_buf_mem[VDIN_DV_MAX_NUM];
-	void	*dv_buf_vmem[VDIN_DV_MAX_NUM];
-	unsigned int	dv_buf_size[VDIN_DV_MAX_NUM];
-	char	*dv_buf[VDIN_DV_MAX_NUM];
-	char	*dv_buf_ori[VDIN_DV_MAX_NUM];
+	unsigned int dv_buf_mem[VDIN_DV_MAX_NUM];
+	void *dv_buf_vmem[VDIN_DV_MAX_NUM];
+	unsigned int dv_buf_size[VDIN_DV_MAX_NUM];
+	char *dv_buf[VDIN_DV_MAX_NUM];
+	char *dv_buf_ori[VDIN_DV_MAX_NUM];
+	enum vframe_disp_mode_e	disp_mode[VFRAME_DISP_MAX_NUM];
 	unsigned int disp_index_cur;
 	unsigned int disp_index_last2;
 	unsigned int disp_index_last;
 	unsigned int disp_index;
 	unsigned int skip_vf_num;/*skip hdmi pre vframe num*/
-	enum vframe_disp_mode_e	disp_mode[VFRAME_DISP_MAX_NUM];
 };
 extern unsigned int dolby_size_byte;
 extern unsigned int dv_dbg_mask;

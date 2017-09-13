@@ -32,38 +32,23 @@
 #include "vdin_ctl.h"
 #include "vdin_drv.h"
 
-
 /* Stay in TVIN_SIG_STATE_NOSIG for some
  * cycles => be sure TVIN_SIG_STATE_NOSIG */
-#define NOSIG_MAX_CNT               8
+#define NOSIG_MAX_CNT 8
 /* Stay in TVIN_SIG_STATE_UNSTABLE for some
  * cycles => be sure TVIN_SIG_STATE_UNSTABLE */
-#define UNSTABLE_MAX_CNT            2/* 4 */
+#define UNSTABLE_MAX_CNT 2/* 4 */
 /* Have signal for some cycles  => exit TVIN_SIG_STATE_NOSIG */
-#define EXIT_NOSIG_MAX_CNT          2/* 1 */
+#define EXIT_NOSIG_MAX_CNT 2/* 1 */
 /* No signal for some cycles  => back to TVAFE_STATE_NOSIG */
-#define BACK_NOSIG_MAX_CNT          24 /* 8 */
+#define BACK_NOSIG_MAX_CNT 24 /* 8 */
 /* Signal unstable for some cycles => exit TVAFE_STATE_STABLE */
-#define EXIT_STABLE_MAX_CNT         1
+#define EXIT_STABLE_MAX_CNT 1
 /* Signal stable for some cycles  => back to TVAFE_STATE_STABLE */
  /* must >=500ms,for new api function */
-#define BACK_STABLE_MAX_CNT         50
-
-#define EXIT_PRESTABLE_MAX_CNT      50
-
+#define BACK_STABLE_MAX_CNT 50
+#define EXIT_PRESTABLE_MAX_CNT 50
 static struct tvin_sm_s sm_dev[VDIN_MAX_DEVS];
-
-#if 0
-/* TVIN_SIG_STATUS_NOSIG; */
-static enum tvin_sm_status_e state = TVIN_SM_STATUS_NULL;
-
-static unsigned int state_cnt; /* STATE_NOSIG, STATE_UNSTABLE */
-static unsigned int exit_nosig_cnt; /* STATE_NOSIG */
-static unsigned int back_nosig_cnt; /* STATE_UNSTABLE */
-static unsigned int back_stable_cnt; /* STATE_UNSTABLE */
-static unsigned int exit_prestable_cnt; /* STATE_PRESTABLE */
-#endif
-static bool sm_debug_enable = true;
 
 static int sm_print_nosig;
 static int sm_print_notsup;
@@ -73,96 +58,83 @@ static int sm_print_fmt_chg;
 static int sm_atv_prestable_fmt;
 static int sm_print_prestable;
 
+static bool sm_debug_enable = true;
 module_param(sm_debug_enable, bool, 0664);
 MODULE_PARM_DESC(sm_debug_enable,
 		"enable/disable state machine debug message");
-#if 1
+
 static int back_nosig_max_cnt = BACK_NOSIG_MAX_CNT;
-module_param(back_nosig_max_cnt, int, 0664);
-MODULE_PARM_DESC(back_nosig_max_cnt,
-		"unstable enter nosignal state max count");
-
 static int atv_unstable_in_cnt = 45;
-module_param(atv_unstable_in_cnt, int, 0664);
-MODULE_PARM_DESC(atv_unstable_in_cnt, "atv_unstable_in_cnt");
-
 static int atv_unstable_out_cnt = 50;
-module_param(atv_unstable_out_cnt, int, 0664);
-MODULE_PARM_DESC(atv_unstable_out_cnt, "atv_unstable_out_cnt");
-
 static int hdmi_unstable_out_cnt = 1;
-module_param(hdmi_unstable_out_cnt, int, 0664);
-MODULE_PARM_DESC(hdmi_unstable_out_cnt, "hdmi_unstable_out_cnt");
-
 static int hdmi_stable_out_cnt = 1;/* 25; */
-module_param(hdmi_stable_out_cnt, int, 0664);
-MODULE_PARM_DESC(hdmi_stable_out_cnt, "hdmi_stable_out_cnt");
-
 /* new add in gxtvbb@20160523,reason:
  *gxtvbb add atv snow config,the config will affect signal detect.
  *if atv_stable_out_cnt < 100,the signal state will change
  *after swich source to atv or after atv search*/
 static int atv_stable_out_cnt = 100;
-module_param(atv_stable_out_cnt, int, 0664);
-MODULE_PARM_DESC(atv_stable_out_cnt, "atv_stable_out_cnt");
-
 /* new add in gxtvbb@20160613,reason:
  *gxtvbb add atv snow config,the config will affect signal detect.
  *ensure after fmt change,the new fmt can be detect in time!*/
 static int atv_stable_fmt_check_cnt = 10;
-module_param(atv_stable_fmt_check_cnt, int, 0664);
-MODULE_PARM_DESC(atv_stable_fmt_check_cnt, "atv_stable_fmt_check_cnt");
-
 /* new add in gxtvbb@20160613,reason:
  * ensure vdin fmt can update when fmt is changed in menu*/
 static int atv_stable_fmt_check_enable;
-
 /* new add in gxtvbb@20160523,reason:
  *gxtvbb add atv snow config,the config will affect signal detect.
  *ensure after prestable into stable,the state is really stable!*/
 static int atv_prestable_out_cnt = 100;
+static int other_stable_out_cnt = EXIT_STABLE_MAX_CNT;
+static int other_unstable_out_cnt = BACK_STABLE_MAX_CNT;
+static int other_unstable_in_cnt = UNSTABLE_MAX_CNT;
+static int nosig_in_cnt = NOSIG_MAX_CNT;
+static int nosig2_unstable_cnt = EXIT_NOSIG_MAX_CNT;
+
+#ifdef DEBUG_SUPPORT
+module_param(back_nosig_max_cnt, int, 0664);
+MODULE_PARM_DESC(back_nosig_max_cnt,
+		"unstable enter nosignal state max count");
+
+module_param(atv_unstable_in_cnt, int, 0664);
+MODULE_PARM_DESC(atv_unstable_in_cnt, "atv_unstable_in_cnt");
+
+module_param(atv_unstable_out_cnt, int, 0664);
+MODULE_PARM_DESC(atv_unstable_out_cnt, "atv_unstable_out_cnt");
+
+module_param(hdmi_unstable_out_cnt, int, 0664);
+MODULE_PARM_DESC(hdmi_unstable_out_cnt, "hdmi_unstable_out_cnt");
+
+module_param(hdmi_stable_out_cnt, int, 0664);
+MODULE_PARM_DESC(hdmi_stable_out_cnt, "hdmi_stable_out_cnt");
+
+module_param(atv_stable_out_cnt, int, 0664);
+MODULE_PARM_DESC(atv_stable_out_cnt, "atv_stable_out_cnt");
+
+module_param(atv_stable_fmt_check_cnt, int, 0664);
+MODULE_PARM_DESC(atv_stable_fmt_check_cnt, "atv_stable_fmt_check_cnt");
+
 module_param(atv_prestable_out_cnt, int, 0664);
 MODULE_PARM_DESC(atv_prestable_out_cnt, "atv_prestable_out_cnt");
 
-static int other_stable_out_cnt = EXIT_STABLE_MAX_CNT;
 module_param(other_stable_out_cnt, int, 0664);
 MODULE_PARM_DESC(other_stable_out_cnt, "other_stable_out_cnt");
 
-static int other_unstable_out_cnt = BACK_STABLE_MAX_CNT;
 module_param(other_unstable_out_cnt, int, 0664);
 MODULE_PARM_DESC(other_unstable_out_cnt, "other_unstable_out_cnt");
 
-static int other_unstable_in_cnt = UNSTABLE_MAX_CNT;
 module_param(other_unstable_in_cnt, int, 0664);
 MODULE_PARM_DESC(other_unstable_in_cnt, "other_unstable_in_cnt");
 
-static int comp_pre2_stable_cnt = EXIT_PRESTABLE_MAX_CNT;
-module_param(comp_pre2_stable_cnt, int, 0664);
-MODULE_PARM_DESC(comp_pre2_stable_cnt, "comp_pre2_stable_cnt");
-
-static int nosig_in_cnt = NOSIG_MAX_CNT;
 module_param(nosig_in_cnt, int, 0664);
 MODULE_PARM_DESC(nosig_in_cnt, "nosig_in_cnt");
 
-static int nosig2_unstable_cnt = EXIT_NOSIG_MAX_CNT;
 module_param(nosig2_unstable_cnt, int, 0664);
 MODULE_PARM_DESC(nosig2_unstable_cnt, "nosig2_unstable_cnt");
+#endif
 
 static int signal_status = TVIN_SIG_STATUS_NULL;
 module_param(signal_status, int, 0664);
 MODULE_PARM_DESC(signal_status, "signal_status");
-
-/*
-   void tvin_smr_init_counter(void)
-   {
-   state_cnt          = 0;
-   exit_nosig_cnt     = 0;
-   back_nosig_cnt     = 0;
-   back_stable_cnt    = 0;
-   exit_prestable_cnt = 0;
-   }
- */
-#endif
 /*
  * check hdmirx color format
  */
@@ -278,9 +250,9 @@ static void hdmirx_dv_check(struct vdin_dev_s *devp,
 	struct tvin_sig_property_s *prop)
 {
 	/*check hdmiin dolby input*/
-	if (prop->dolby_vision != devp->dv_flag) {
+	if (prop->dolby_vision != devp->dv.dv_flag) {
 		tvin_smr_init(devp->index);
-		devp->dv_flag = prop->dolby_vision;
+		devp->dv.dv_flag = prop->dolby_vision;
 	}
 }
 

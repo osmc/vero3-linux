@@ -146,8 +146,8 @@ void vf_log_print(struct vf_pool *p)
 {
 	unsigned int i = 0, j = 0, k = 0;
 	int len = 0;
-	char buf1[100];
-	char buf2[100];
+	char buf1[VF_LOG_PRINT_MAX_LEN];
+	char buf2[VF_LOG_PRINT_MAX_LEN];
 	struct vf_log_s *log = &p->log;
 
 	pr_info("%-10s %-10s %-10s %-10s %-10s %-10s %5s\n",

@@ -28,13 +28,6 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/amlogic/codec_mm/codec_mm.h>
-/* Amlogic Headers */
-/* #include <mach/am_regs.h> */
-/* #include <mach/mod_gate.h> */
-/* #include <mach/cpu.h> */
-/* #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8 */
-/* #include <mach/vpu.h> */
-/* #endif */
 /* Local Headers */
 #include "../tvin_format_table.h"
 #include "vdin_drv.h"
@@ -236,8 +229,6 @@ static ssize_t vdin_attr_show(struct device *dev,
 	len += sprintf(buf+len,
 		"echo clean_dv  >/sys/class/vdin/vdinx/attr\n");
 	len += sprintf(buf+len,
-		"echo dv_state  >/sys/class/vdin/vdinx/attr\n");
-	len += sprintf(buf+len,
 		"echo dv_debug  >/sys/class/vdin/vdinx/attr\n");
 	len += sprintf(buf+len,
 		"echo channel_order_config c0 c1 c2 >/sys/class/vdin/vdinx/attr\n");
@@ -246,9 +237,25 @@ static ssize_t vdin_attr_show(struct device *dev,
 	len += sprintf(buf+len,
 		"echo close_port >/sys/class/vdin/vdinx/attr\n");
 	len += sprintf(buf+len,
-		"echo vshrk_en 0(1) /sys/class/vdin/vdinx/attr.\n");
+		"echo vshrk_en 0(1) >/sys/class/vdin/vdinx/attr.\n");
 	len += sprintf(buf+len,
-		"echo prehsc_en 0(1) /sys/class/vdin/vdinx/attr.\n");
+		"echo prehsc_en 0(1) >/sys/class/vdin/vdinx/attr.\n");
+	len += sprintf(buf+len,
+		"echo cma_mem_mode 0(1) >/sys/class/vdin/vdinx/attr.\n");
+	len += sprintf(buf+len,
+		"echo dolby_input 0(1) >/sys/class/vdin/vdinx/attr.\n");
+	len += sprintf(buf+len,
+		"echo hist_bar_enable 0(1) >/sys/class/vdin/vdinx/attr.\n");
+	len += sprintf(buf+len,
+		"echo black_bar_enable 0(1) >/sys/class/vdin/vdinx/attr.\n");
+	len += sprintf(buf+len,
+		"echo use_frame_rate 0(1) >/sys/class/vdin/vdinx/attr.\n");
+	len += sprintf(buf+len,
+		"echo rdma_enable 0(1) >/sys/class/vdin/vdinx/attr.\n");
+	len += sprintf(buf+len,
+		"echo irq_cnt >/sys/class/vdin/vdinx/attr.\n");
+	len += sprintf(buf+len,
+		"echo rdma_irq_cnt >/sys/class/vdin/vdinx/attr.\n");
 	return len;
 }
 static void vdin_dump_one_buf_mem(char *path, struct vdin_dev_s *devp,
@@ -371,19 +378,7 @@ static void vdin_dv_debug(struct vdin_dev_s *devp)
 		VFRAME_EVENT_RECEIVER_GET_AUX_DATA,
 		(void *)&req);
 }
-static void vdin_dump_state_dv(struct vdin_dev_s *devp)
-{
-	unsigned int i;
-	pr_info("dolby_mem_start = %ld, dolby_mem_size = %d\n",
-		(devp->mem_start + devp->mem_size -
-		dolby_size_byte*devp->canvas_max_num), dolby_size_byte);
-	pr_info("dv_flag:%d;dv_config:%d\n", devp->dv_flag, devp->dv_config);
-	for (i = 0; i < devp->canvas_max_num; i++) {
-		pr_info("dv_mem(%d):0x%x\n",
-			devp->vfp->dv_buf_size[i],
-			devp->vfp->dv_buf_mem[i]);
-	}
-}
+
 /*config vidn output channel order*/
 static void vdin_channel_order_config(unsigned int offset,
 	unsigned int vdin_data_bus_0, unsigned int vdin_data_bus_1,
@@ -422,9 +417,6 @@ static void vdin_dump_state(struct vdin_dev_s *devp)
 		devp->canvas_w, devp->canvas_h, devp->canvas_alin_w);
 	pr_info("mem_start = %ld, mem_size = %d\n",
 		devp->mem_start, devp->mem_size);
-	pr_info("dolby_mem_start = %ld, dolby_mem_size = %d\n",
-		(devp->mem_start + devp->mem_size -
-		dolby_size_byte*devp->canvas_max_num), dolby_size_byte);
 	pr_info("signal format	= %s(0x%x)\n",
 		tvin_sig_fmt_str(devp->parm.info.fmt),
 		devp->parm.info.fmt);
@@ -492,13 +484,23 @@ static void vdin_dump_state(struct vdin_dev_s *devp)
 	pr_info("range(%d),csc_cfg:0x%x,urgent_en:%d\n",
 		devp->prop.color_fmt_range,
 		devp->csc_cfg, devp->urgent_en);
+	pr_info("black_bar_enable: %d, hist_bar_enable: %d, use_frame_rate: %d\n ",
+		devp->black_bar_enable,
+		devp->hist_bar_enable, devp->use_frame_rate);
+	pr_info("vdin_irq_flag: %d, vdin_rest_flag: %d\n",
+		devp->vdin_irq_flag, devp->vdin_reset_flag);
+	pr_info("rdma_enable :  %d\n", devp->rdma_enable);
+	pr_info("dolby_input :  %d\n", devp->dv.dolby_input);
+	pr_info("dolby_mem_start = %ld, dolby_mem_size = %d\n",
+		(devp->mem_start + devp->mem_size -
+		dolby_size_byte*devp->canvas_max_num), dolby_size_byte);
 	for (i = 0; i < devp->canvas_max_num; i++) {
 		pr_info("dv_mem(%d):0x%x\n",
 			devp->vfp->dv_buf_size[i],
 			devp->vfp->dv_buf_mem[i]);
 	}
 	pr_info("dv_flag:%d;dv_config:%d,dolby_vision:%d\n",
-		devp->dv_flag, devp->dv_config, devp->prop.dolby_vision);
+		devp->dv.dv_flag, devp->dv.dv_config, devp->prop.dolby_vision);
 	pr_info("Vdin driver version :  %s\n", VDIN_VER);
 }
 
@@ -1278,8 +1280,6 @@ start_chk:
 	} else if (!strcmp(parm[0], "clean_dv")) {
 		dump_dolby_buf_clean(devp);
 		pr_info("clean dolby vision mem done\n");
-	} else if (!strcmp(parm[0], "dv_state")) {
-		vdin_dump_state_dv(devp);
 	} else if (!strcmp(parm[0], "dv_debug")) {
 		vdin_dv_debug(devp);
 	} else if (!strcmp(parm[0], "channel_order_config")) {
@@ -1391,6 +1391,87 @@ start_chk:
 			pr_info("cma_mem_mode(%d):%d\n\n", devp->index,
 				devp->cma_mem_mode);
 		}
+	} else if (!strcmp(parm[0], "black_bar_enable")) {
+		if (!parm[1]) {
+			kfree(buf_orig);
+			pr_err("miss parameters .\n");
+			pr_err("usage: echo black_bar_enable 0(1) /sys/class/vdin/vdinx/attr.\n");
+			return -EINVAL;
+		} else {
+			if (kstrtoul(parm[1], 10, &val) < 0) {
+				kfree(buf_orig);
+				return -EINVAL;
+			}
+			devp->black_bar_enable = val;
+			pr_info("black_bar_enable(%d):%d\n\n", devp->index,
+				devp->black_bar_enable);
+		}
+	} else if (!strcmp(parm[0], "hist_bar_enable")) {
+		if (!parm[1]) {
+			kfree(buf_orig);
+			pr_err("miss parameters .\n");
+			pr_err("usage: echo hist_bar_enable 0(1) /sys/class/vdin/vdinx/attr.\n");
+			return -EINVAL;
+		} else {
+			if (kstrtoul(parm[1], 10, &val) < 0) {
+				kfree(buf_orig);
+				return -EINVAL;
+			}
+			devp->hist_bar_enable = val;
+			pr_info("hist_bar_enable(%d):%d\n\n", devp->index,
+						devp->hist_bar_enable);
+		}
+	} else if (!strcmp(parm[0], "use_frame_rate")) {
+		if (!parm[1]) {
+			kfree(buf_orig);
+			pr_err("miss parameters .\n");
+			pr_err("usage: echo use_frame_rate 0(1) /sys/class/vdin/vdinx/attr.\n");
+			return -EINVAL;
+		} else {
+			if (kstrtoul(parm[1], 10, &val) < 0) {
+				kfree(buf_orig);
+				return -EINVAL;
+			}
+			devp->use_frame_rate = val;
+			pr_info("use_frame_rate(%d):%d\n\n", devp->index,
+						devp->use_frame_rate);
+		}
+	} else if (!strcmp(parm[0], "dolby_input")) {
+		if (!parm[1]) {
+			kfree(buf_orig);
+			pr_err("miss parameters .\n");
+			pr_err("usage: echo dolby_input 0(1) /sys/class/vdin/vdinx/attr.\n");
+			return -EINVAL;
+		} else {
+			if (kstrtoul(parm[1], 10, &val) < 0) {
+				kfree(buf_orig);
+				return -EINVAL;
+			}
+			devp->dv.dolby_input = val;
+			pr_info("dolby_input(%d):%d\n\n", devp->index,
+						devp->dv.dolby_input);
+		}
+	} else if (!strcmp(parm[0], "rdma_enable")) {
+		if (!parm[1]) {
+			kfree(buf_orig);
+			pr_err("miss parameters .\n");
+			pr_err("usage: echo rdma_enable 0(1) /sys/class/vdin/vdinx/attr.\n");
+			return -EINVAL;
+		} else {
+			if (kstrtoul(parm[1], 10, &val) < 0) {
+				kfree(buf_orig);
+				return -EINVAL;
+			}
+			devp->rdma_enable = val;
+			pr_info("rdma_enable (%d):%d\n", devp->index,
+						devp->rdma_enable);
+		}
+	} else if (!strcmp(parm[0], "irq_cnt")) {
+		pr_info("vdin(%d) irq_cnt: %d\n", devp->index,
+						devp->irq_cnt);
+	} else if (!strcmp(parm[0], "rdma_irq_cnt")) {
+		pr_info("vdin(%d) rdma_irq_cnt: %d\n", devp->index,
+						devp->rdma_irq_cnt);
 	} else {
 		pr_info("unknow command\n");
 	}
@@ -1445,44 +1526,6 @@ static ssize_t vdin_vf_log_store(struct device *dev,
 */
 static DEVICE_ATTR(vf_log, 0664, vdin_vf_log_show, vdin_vf_log_store);
 #endif /* VF_LOG_EN */
-
-#if 0
-static ssize_t vdin_debug_for_isp_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	int len = 0;
-
-	return len;
-}
-
-static ssize_t vdin_debug_for_isp_store(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	char *buf_orig, *parm[6] = {NULL};
-	cam_parameter_t tmp_isp;
-	struct vdin_dev_s *devp;
-
-	if (!buf)
-		return count;
-	buf_orig = kstrdup(buf, GFP_KERNEL);
-	devp = dev_get_drvdata(dev);
-	vdin_parse_param(buf_orig, (char **)&parm);
-
-	if (!strcmp(parm[0], "bypass_isp")) {
-		vdin_bypass_isp(devp->addr_offset);
-		tmp_isp.cam_command = CMD_ISP_BYPASS;
-		if (devp->frontend->dec_ops->ioctl)
-			devp->frontend->dec_ops->ioctl(devp->frontend,
-					(void *)&tmp_isp);
-		pr_info("vdin bypass isp for raw data.\n");
-	}
-return count;
-}
-
-static DEVICE_ATTR(debug_for_isp, 0664,
-		vdin_debug_for_isp_show, vdin_debug_for_isp_store);
-#endif
-
 
 #ifdef ISR_LOG_EN
 static ssize_t vdin_isr_log_show(struct device *dev,
@@ -1749,8 +1792,9 @@ void vdin_remove_device_files(struct device *dev)
 	device_remove_file(dev, &dev_attr_crop);
 	device_remove_file(dev, &dev_attr_sig_det);
 }
-static int memp = MEMP_DCDR_WITHOUT_3D;
 
+#ifdef DEBUG_SUPPORT
+static int memp = MEMP_DCDR_WITHOUT_3D;
 static char *memp_str(int profile)
 {
 	switch (profile) {
@@ -1770,7 +1814,6 @@ static char *memp_str(int profile)
 		return "unkown";
 	}
 }
-
 /*
 * cat /sys/class/vdin/memp
 */
@@ -1781,7 +1824,6 @@ static ssize_t memp_show(struct class *class,
 	len += sprintf(buf+len, "%d %s\n", memp, memp_str(memp));
 	return len;
 }
-
 /*
 * echo 0|1|2|3|4|5 > /sys/class/vdin/memp
 */
@@ -1937,4 +1979,7 @@ void vdin_remove_class_files(struct class *vdin_clsp)
 {
 	class_remove_file(vdin_clsp, &class_attr_memp);
 }
+
+#endif
+
 

@@ -95,11 +95,6 @@ struct vdin_matrix_lup_s {
 	unsigned int post_offset2;
 };
 
-struct vdin_stat_s {
-	unsigned int   sum_luma;  /* VDIN_HIST_LUMA_SUM_REG */
-	unsigned int   sum_pixel; /* VDIN_HIST_PIX_CNT_REG */
-};
-
 #ifdef CONFIG_AML_LOCAL_DIMMING
 struct ldim_max_s {
     /* general parameters */
@@ -110,18 +105,6 @@ struct ldim_max_s {
 };
 #endif
 
-struct vdin_hist_cfg_s {
-	unsigned int                pow;
-	unsigned int                win_en;
-	unsigned int                rd_en;
-	unsigned int                hstart;
-	unsigned int                hend;
-	unsigned int                vstart;
-	unsigned int                vend;
-};
-
-/*global variable claim*/
-extern unsigned int vpu_reg_27af;
 
 /* ************************************************************************ */
 /* ******** GLOBAL FUNCTION CLAIM ******** */

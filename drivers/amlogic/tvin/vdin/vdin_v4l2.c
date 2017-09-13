@@ -18,7 +18,6 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/fs.h>
-/* #include <linux/interrupt.h> */
 #include <linux/mm.h>
 
 #include <linux/amlogic/tvin/tvin_v4l2.h>
