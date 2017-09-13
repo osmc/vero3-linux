@@ -765,6 +765,20 @@ static int tvafe_avin_detect_resume(struct platform_device *pdev)
 	return 0;
 }
 
+static void tvafe_avin_detect_shutdown(struct platform_device *pdev)
+{
+	struct tvafe_avin_det_s *avdev = platform_get_drvdata(pdev);
+
+	cdev_del(&avdev->avin_cdev);
+	del_timer_sync(&avin_detect_timer);
+	tvafe_avin_detect_disable(avdev);
+	device_remove_file(avdev->config_dev, &dev_attr_debug);
+	pr_info("tvafe_avin_detect_shutdown ok.\n");
+	kfree(avdev);
+
+	return;
+}
+
 int tvafe_avin_detect_remove(struct platform_device *pdev)
 {
 	struct tvafe_avin_det_s *avdev = platform_get_drvdata(pdev);
@@ -792,6 +806,7 @@ static struct platform_driver tvafe_avin_driver = {
 	.remove     = tvafe_avin_detect_remove,
 	.suspend    = tvafe_avin_detect_suspend,
 	.resume     = tvafe_avin_detect_resume,
+	.shutdown   = tvafe_avin_detect_shutdown,
 	.driver     = {
 		.name   = "tvafe_avin_detect",
 		.of_match_table = tvafe_avin_dt_match,

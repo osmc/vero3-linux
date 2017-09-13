@@ -611,6 +611,36 @@ static int avin_detect_resume(struct platform_device *pdev)
 	return 0;
 }
 
+static void avin_detect_shutdown(struct platform_device *pdev)
+{
+	int i;
+	struct avin_det_s *avdev = platform_get_drvdata(pdev);
+
+	input_unregister_device(avdev->input_dev);
+	input_free_device(avdev->input_dev);
+	cdev_del(&avdev->avin_cdev);
+	del_timer_sync(&avdev->timer);
+	cancel_work_sync(&avdev->work_struct_update);
+	cancel_work_sync(&avdev->work_struct_maskirq);
+	for (i = 0; i < avdev->dts_param.dts_device_num; i++) {
+		free_irq(avdev->hw_res.irq_num[i], (void *)avdev);
+		gpio_free(desc_to_gpio(avdev->hw_res.pin[i]));
+	}
+	kfree(avdev->code_variable.actual_into_irq_times);
+	kfree(avdev->code_variable.ch_current_status);
+	kfree(avdev->code_variable.report_data_s);
+	kfree(avdev->code_variable.detect_channel_times);
+	kfree(avdev->code_variable.irq_falling_times);
+	kfree(avdev->code_variable.pin_mask_irq_flag);
+	kfree(avdev->code_variable.loop_detect_times);
+	kfree(avdev->hw_res.pin);
+	kfree(avdev->hw_res.irq_num);
+	kfree(avdev);
+	pr_info("avin_detect_shutdown ok.\n");
+
+	return;
+}
+
 int avin_detect_remove(struct platform_device *pdev)
 {
 	int i;
@@ -654,6 +684,7 @@ static struct platform_driver avin_driver = {
 	.remove     = avin_detect_remove,
 	.suspend    = avin_detect_suspend,
 	.resume     = avin_detect_resume,
+	.shutdown	= avin_detect_shutdown,
 	.driver     = {
 		.name   = "avin_detect",
 		.of_match_table = avin_dt_match,

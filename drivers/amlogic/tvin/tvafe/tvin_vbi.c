@@ -848,6 +848,7 @@ static int vbi_open(struct inode *inode, struct file *file)
 	/* request irq */
 	ret = request_irq(vbi_dev->vs_irq, vbi_isr, IRQF_SHARED,
 		vbi_dev->irq_name, (void *)vbi_dev);
+	vbi_dev->irq_free_status = 1;
 	if (ret < 0)
 		pr_err("[vbi..] %s: request_irq fail\n", __func__);
 
@@ -868,7 +869,9 @@ static int vbi_release(struct inode *inode, struct file *file)
 	tasklet_disable_nosync(&vbi_dev->tsklt_slicer);
 	ret = vbi_slicer_free(vbi_dev, vbi_slicer);
 	/* free irq */
-	free_irq(vbi_dev->vs_irq, (void *)vbi_dev);
+	if (vbi_dev->irq_free_status == 1)
+		free_irq(vbi_dev->vs_irq, (void *)vbi_dev);
+	vbi_dev->irq_free_status = 0;
 	/* vbi reset release, vbi agent enable */
 	W_VBI_APB_REG(ACD_REG_22, 0x06080000);
 	W_VBI_APB_REG(CVD2_VBI_FRAME_CODE_CTL, 0x00000014);
@@ -1268,6 +1271,7 @@ static ssize_t vbi_store(struct device *dev,
 		/* request irq */
 		ret = request_irq(devp->vs_irq, vbi_isr, IRQF_SHARED,
 			devp->irq_name, (void *)devp);
+		devp->irq_free_status = 1;
 		if (ret < 0)
 			pr_err("[vbi..] request_irq fail\n");
 		pr_info("[vbi..] open ok.\n");
@@ -1276,7 +1280,9 @@ static ssize_t vbi_store(struct device *dev,
 		devp->tasklet_enable = false;
 		devp->vbi_start = false;  /*disable data capture function*/
 		/* free irq */
-		free_irq(devp->vs_irq, (void *)devp);
+		if (devp->irq_free_status == 1)
+			free_irq(devp->vs_irq, (void *)devp);
+		devp->irq_free_status = 0;
 		/* vbi reset release, vbi agent enable */
 		W_VBI_APB_REG(ACD_REG_22, 0x06080000);
 		W_VBI_APB_REG(CVD2_VBI_FRAME_CODE_CTL, 0x00000014);
@@ -1425,6 +1431,35 @@ static int vbi_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#ifdef CONFIG_PM
+static int vbi_drv_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	return 0;
+}
+
+static int vbi_drv_resume(struct platform_device *pdev)
+{
+	return 0;
+}
+#endif
+
+static void vbi_drv_shutdown(struct platform_device *pdev)
+{
+	struct vbi_dev_s *vbi_dev;
+	vbi_dev = platform_get_drvdata(pdev);
+
+	vbi_dev->tasklet_enable = false;
+	vbi_dev->vbi_start = false;
+	tasklet_kill(&vbi_dev->tsklt_slicer);
+	if (vbi_dev->irq_free_status == 1)
+		free_irq(vbi_dev->vs_irq, (void *)vbi_dev);
+	vbi_dev->irq_free_status = 0;
+	pr_info("%s ok.\n", __func__);
+
+	return;
+}
+
 static const struct of_device_id vbi_dt_match[] = {
 	{
 	.compatible     = "amlogic, vbi",
@@ -1435,6 +1470,11 @@ static const struct of_device_id vbi_dt_match[] = {
 static struct platform_driver vbi_driver = {
 	.probe      = vbi_probe,
 	.remove     = vbi_remove,
+#ifdef CONFIG_PM
+	.suspend	= vbi_drv_suspend,
+	.resume		= vbi_drv_resume,
+#endif
+	.shutdown   = vbi_drv_shutdown,
 	.driver     = {
 		.name   = VBI_DRIVER_NAME,
 		.of_match_table = vbi_dt_match,

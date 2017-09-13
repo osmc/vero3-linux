@@ -270,6 +270,7 @@ struct vbi_dev_s {
 
 	char                 irq_name[12];
 	unsigned int        vs_irq;
+	unsigned int        irq_free_status;
 	spinlock_t            vbi_isr_lock;
 
 
