@@ -45,7 +45,7 @@
 #include "../vdec_reg.h"
 #include "../amports_gate.h"
 
-#include "vpu.h"
+#include "hevcenc_vpu.h"
 #include "vmm.h"
 
 /* definitions to be changed as customer  configuration */
@@ -1930,6 +1930,52 @@ DONE_WAKEUP:
 #define vpu_resume NULL
 #endif /* !CONFIG_PM */
 
+static void vpu_shutdown(struct platform_device *pdev)
+{
+	enc_pr(LOG_DEBUG, "vpu_shutdown\n");
+
+	if (s_instance_pool.base) {
+		vfree((const void *)s_instance_pool.base);
+		s_instance_pool.base = 0;
+	}
+
+	if (s_common_memory.base) {
+		vpu_free_dma_buffer(&s_common_memory);
+		s_common_memory.base = 0;
+	}
+
+	if (s_video_memory.base) {
+		if (!use_reserve)
+			codec_mm_free_for_dma(
+			VPU_DEV_NAME,
+			(u32)s_video_memory.phys_addr);
+		vmem_exit(&s_vmem);
+		memset(&s_video_memory,
+			0, sizeof(struct vpudrv_buffer_t));
+		memset(&s_vmem,
+			0, sizeof(struct video_mm_t));
+	}
+
+	if (s_vpu_irq_requested == true) {
+		if (s_vpu_irq >= 0) {
+			free_irq(s_vpu_irq, &s_vpu_drv_context);
+			s_vpu_irq = -1;
+		}
+		s_vpu_irq_requested = false;
+	}
+
+	if (s_vpu_register.virt_addr) {
+		iounmap((void *)s_vpu_register.virt_addr);
+		memset(&s_vpu_register,
+			0, sizeof(struct vpudrv_buffer_t));
+	}
+	hevc_pdev = NULL;
+	uninit_HevcEnc_device();
+
+	HevcEnc_clock_disable();
+	return;
+}
+
 static const struct of_device_id cnm_hevcenc_dt_match[] = {
 	{
 		.compatible = "cnm, HevcEnc",
@@ -1946,6 +1992,7 @@ static struct platform_driver vpu_driver = {
 	.remove = vpu_remove,
 	.suspend = vpu_suspend,
 	.resume = vpu_resume,
+	.shutdown = vpu_shutdown,
 };
 
 static s32 __init vpu_init(void)

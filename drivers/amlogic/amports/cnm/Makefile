@@ -1,1 +1,1 @@
-obj-$(CONFIG_AM_HEVCENC) += vpu.o
+obj-$(CONFIG_AM_HEVCENC) += hevcenc_vpu.o
