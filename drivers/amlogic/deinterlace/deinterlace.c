@@ -122,9 +122,7 @@ static int rdma_en;
 module_param(rdma_en, int, 0664);
 MODULE_PARM_DESC(rdma_en, "rdma_en");
 
-static int di_reg_unreg_cnt = 10;
-module_param(di_reg_unreg_cnt, int, 0664);
-MODULE_PARM_DESC(di_reg_unreg_cnt, "di_reg_unreg_cnt");
+static int di_reg_unreg_cnt = 100;
 
 static bool overturn;
 module_param(overturn, bool, 0664);
@@ -8863,7 +8861,7 @@ static int di_receiver_event_fun(int type, void *data, void *arg)
 			if (di_pre_stru.unreg_req_flag_cnt++ >
 				di_reg_unreg_cnt) {
 				reg_unreg_timeout_cnt++;
-				pr_dbg("%s:unreg_reg_flag timeout!!!\n",
+				pr_err("%s:unreg_reg_flag timeout!!!\n",
 					__func__);
 				break;
 			}
@@ -10531,6 +10529,9 @@ module_param_named(tbbtff_dly, tbbtff_dly, uint, 0644);
 module_param_named(cma_print, cma_print, bool, 0644);
 module_param(pldn_dly1, uint, 0644);
 MODULE_PARM_DESC(pldn_dly1, "/n pulldonw field delay result./n");
+
+module_param(di_reg_unreg_cnt, int, 0664);
+MODULE_PARM_DESC(di_reg_unreg_cnt, "di_reg_unreg_cnt");
 
 module_param(flm22_sure_num, uint, 0644);
 MODULE_PARM_DESC(flm22_sure_num, "ture film-22/n");

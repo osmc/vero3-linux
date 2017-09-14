@@ -866,7 +866,6 @@ static ssize_t nr4_param_store(struct device *dev,
 					pr_err("DI: input value error.\n");
 				*(nr4_params[i].addr) = value;
 			}
-			pr_info(" %d\n",	*(nr4_params[i].addr));
 		}
 	}
 
