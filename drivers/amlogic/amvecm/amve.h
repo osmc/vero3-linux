@@ -78,6 +78,20 @@ extern struct tcon_gamma_table_s video_gamma_table_g_adj;
 extern struct tcon_gamma_table_s video_gamma_table_b_adj;
 extern struct tcon_rgb_ogo_s     video_rgb_ogo;
 
+extern int glb_scurve[65];
+extern int glb_clash_curve[65];
+extern int glb_pst_gamma[65];
+
+extern int gma_scurve0[65];
+extern int gma_scurve1[65];
+extern int gma_scurvet[65];
+extern int clash_curve[65];
+extern int clsh_scvbld[65];
+extern int blk_gma_crv[65];
+extern int blk_gma_bld[65];
+extern int blkwht_ebld[65];
+
+
 extern spinlock_t vpp_lcd_gamma_lock;
 
 void ve_on_vs(struct vframe_s *vf);

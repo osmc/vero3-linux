@@ -143,6 +143,42 @@ MODULE_PARM_DESC(ve_dnlp_ankle, "ve_dnlp_ankle");
 module_param(ve_dnlp_strength, int, 0664);
 MODULE_PARM_DESC(ve_dnlp_strength, "ve_dnlp_strength");
 
+/*static int debug_add_curve_en;*/
+int glb_scurve[65];
+int glb_clash_curve[65];
+/*static int glb_scurve_bld_rate;*/
+/*static int glb_clash_curve_bld_rate;*/
+int glb_pst_gamma[65];
+/*static int glb_pst_gamma_bld_rate;*/
+
+static int debug_add_curve_en;
+module_param(debug_add_curve_en, int, 0664);
+MODULE_PARM_DESC(debug_add_curve_en, "debug_add_curve_en");
+
+static int ve_usr_defined_test_s_mode;
+module_param(ve_usr_defined_test_s_mode, int, 0664);
+MODULE_PARM_DESC(ve_usr_defined_test_s_mode, "ve_usr_defined_test_s_mode");
+
+static int ve_usr_defined_test_c_mode;
+module_param(ve_usr_defined_test_c_mode, int, 0664);
+MODULE_PARM_DESC(ve_usr_defined_test_c_mode, "ve_usr_defined_test_c_mode");
+
+static int ve_usr_defined_test_g_mode;
+module_param(ve_usr_defined_test_g_mode, int, 0664);
+MODULE_PARM_DESC(ve_usr_defined_test_g_mode, "ve_usr_defined_test_g_mode");
+
+static int glb_scurve_bld_rate;
+module_param(glb_scurve_bld_rate, int, 0664);
+MODULE_PARM_DESC(glb_scurve_bld_rate, "glb_scurve_bld_rate");
+
+static int glb_clash_curve_bld_rate;
+module_param(glb_clash_curve_bld_rate, int, 0664);
+MODULE_PARM_DESC(glb_clash_curve_bld_rate, "glb_clash_curve_bld_rate");
+
+static int glb_pst_gamma_bld_rate;
+module_param(glb_pst_gamma_bld_rate, int, 0664);
+MODULE_PARM_DESC(glb_pst_gamma_bld_rate, "glb_pst_gamma_bld_rate");
+
 static int dnlp_respond;
 module_param(dnlp_respond, int, 0664);
 MODULE_PARM_DESC(dnlp_respond, "dnlp_respond");
@@ -1757,6 +1793,15 @@ void clash_fun(unsigned int *oMap, unsigned int *iHst,
 		oMap[i+1] = j + (hstBgn << 4);
 	}
 
+	if (debug_add_curve_en)	{
+		for (i = 0; i < 65; i++) {
+			oMap[i] = ((128 - glb_clash_curve_bld_rate)*oMap[i] +
+			glb_clash_curve_bld_rate*(glb_clash_curve[i]<<2) +
+			64)>>7;
+		}
+	}
+
+
 	if (prt_flg)
 		for (i = hstBgn; i < hstEnd; i++)
 			pr_info("#CL: [%02d: %5d]: %4d => %4d]\n",
@@ -2284,6 +2329,11 @@ static void dnlp_gmma_cuvs(unsigned int gmma_rate,
 			nTmp = (nTmp*(64 - hgh_alpha) +
 				(hgh_alpha*i<<4) + 8)>>4;
 
+	if (debug_add_curve_en)	{
+			nTmp = ((128 - glb_scurve_bld_rate)*nTmp +
+			glb_scurve_bld_rate*(glb_scurve[i]<<4) + 64)>>7;
+		}
+
 		if (nTmp < 0)
 			nTmp = 0;
 		else if (nTmp > 4095)
@@ -2366,6 +2416,12 @@ static void dnlp_blkgma_bld(unsigned int *blk_gma_rat)
 		nTmp0 = blk_gma_crv[i]*nT1 + nTmp0*(64 - nT1);
 		nTmp0 = (nTmp0+32)>>6; /* 0~1024 */
 		blk_gma_bld[i] = nTmp0;
+
+		if (debug_add_curve_en)	{
+			blk_gma_bld[i] =
+			((128 - glb_pst_gamma_bld_rate)*blk_gma_bld[i]
+			+ glb_pst_gamma_bld_rate*(glb_pst_gamma[i]<<2) + 64)>>7;
+		}
 
 		if ((dnlp_printk >> 2) & 0x1)
 			pr_info("sc%04d, gm%04d * rat%04d => %04d\n",
@@ -2778,6 +2834,60 @@ static void ve_dnlp_calculate_tgtx_new(struct vframe_s *vf)
 		169, 176, 182, 189,
 		196, 203, 210, 218,
 		225, 233, 240, 248, 255};
+
+	/* unsigned int usr_defined_test_up[65] =
+		{0,5,9,13,17,21,25,29,
+		34,38,42,46,51,55,59,63,
+		68,72,76,80,85,89,93,97,
+		102,106,110,114,119,123,127,131,
+		136,138,144,148,151,155,159,163,
+		166,170,174,178,181,185,189,193,
+		196,200,204,208,211,215,219,223,
+		226,230,234,238,241,245,249,253,255};
+
+	unsigned int usr_defined_test_down[65] =
+		{0,3,7,11,15,19,23,27,
+		30,34,38,42,45,49,53,57,
+		60,64,68,72,75,79,83,87,
+		90,94,98,102,105,109,113,117,
+		120,124,128,132,137,141,146,150,
+		154,159,163,167,171,176,180,184,
+		188,193,197,201,205,210,214,218,
+		222,226,230,235,239,243,247,251,255};
+
+
+	unsigned int usr_defined_test_s[65] =
+		{0,0,2,6,10,14,18,22,
+		23,27,31,35,47,40,44,48,
+		51,55,57,61,70,74,78,82,
+		89,93,97,101,109,113,119,124,
+		128,132,139,143,150,155,159,163,
+		170,174,178,182,187,191,197,201,
+		205,209,212,214,217,221,223,227,
+		230,234,236,240,244,246,250,253,255};
+
+	for (i = 0; i < 64; i++) {
+		glb_scurve[i] = (ve_usr_defined_test_s_mode==0)? (i*4):
+						(ve_usr_defined_test_s_mode==1)?
+						(usr_defined_test_up[i]) :
+						(ve_usr_defined_test_s_mode==2)?
+						(usr_defined_test_down[i]) :
+						(usr_defined_test_s[i]);
+		glb_clash_curve[i] = (ve_usr_defined_test_c_mode==0)? (i*4):
+		(ve_usr_defined_test_c_mode==1)?
+		(usr_defined_test_up[i]) :
+		(ve_usr_defined_test_c_mode==2)?
+		(usr_defined_test_down[i]) :
+		(usr_defined_test_s[i]);;
+
+		glb_pst_gamma[i] = (ve_usr_defined_test_g_mode==0)? (i*4):
+		(ve_usr_defined_test_g_mode==1)?
+		(usr_defined_test_up[i]) :
+		(ve_usr_defined_test_g_mode==2)?
+		(usr_defined_test_down[i]) :
+		(usr_defined_test_s[i]);
+	}
+	glb_scurve[64] = glb_clash_curve[64] = glb_pst_gamma[64] = 255;*/
 
 	if (ve_dnlp_mvreflsh < 1)
 		ve_dnlp_mvreflsh = 1;

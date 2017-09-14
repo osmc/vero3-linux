@@ -1206,6 +1206,107 @@ static long amvecm_compat_ioctl(struct file *file, unsigned int cmd,
 	return ret;
 }
 #endif
+
+static ssize_t amvecm_dnlp_curve_show(struct class *cla,
+	struct class_attribute *attr, char *buf)
+{
+	pr_info("echo gma_scurve0 > /sys/class/amvecm/dnlp_curve\n");
+	pr_info("echo gma_scurve1 > /sys/class/amvecm/dnlp_curve\n");
+	pr_info("echo gma_scurvet > /sys/class/amvecm/dnlp_curve\n");
+	pr_info("echo clash_curve > /sys/class/amvecm/dnlp_curve\n");
+	pr_info("echo clsh_scvbld > /sys/class/amvecm/dnlp_curve\n");
+	pr_info("echo blk_gma_crv > /sys/class/amvecm/dnlp_curve\n");
+	pr_info("echo blk_gma_bld > /sys/class/amvecm/dnlp_curve\n");
+	pr_info("echo blkwht_ebld > /sys/class/amvecm/dnlp_curve\n");
+
+	pr_info("echo wv glb_scurve idx value > /sys/class/amvecm/dnlp_curve\n");
+	pr_info("echo wv glb_clash_curve idx value > /sys/class/amvecm/dnlp_curve\n");
+	pr_info("echo wv glb_pst_gamma idx value > /sys/class/amvecm/dnlp_curve\n");
+
+	pr_info("echo glb_scurve > /sys/class/amvecm/dnlp_curve\n");
+	pr_info("echo glb_clash_curve > /sys/class/amvecm/dnlp_curve\n");
+	pr_info("echo glb_pst_gamma > /sys/class/amvecm/dnlp_curve\n");
+	return 0;
+}
+static ssize_t amvecm_dnlp_curve_store(struct class *cla,
+	struct class_attribute *attr, const char *buf, size_t count)
+{
+	int i;
+	long val = 0;
+	unsigned int idx, value;
+	char *buf_orig, *parm[8] = {NULL};
+	if (!buf)
+		return count;
+	buf_orig = kstrdup(buf, GFP_KERNEL);
+	parse_param_amvecm(buf_orig, (char **)&parm);
+	if (!strncmp(parm[0], "wv", 2)) {
+		if (!strncmp(parm[1], "glb_scurve", 10)) {
+			if (kstrtoul(parm[2], 10, &val) < 0)
+				return -EINVAL;
+			idx = val;
+			if (kstrtoul(parm[3], 10, &val) < 0)
+				return -EINVAL;
+			value = val;
+			if (idx > 0 && idx < 66) {
+				glb_scurve[idx-1] = value;
+				pr_amvecm_dbg("idx = %d, value = %d\n",
+				idx, value);
+			}
+		} else if (!strncmp(parm[1], "glb_clash_curve", 15)) {
+			if (kstrtoul(parm[2], 10, &val) < 0)
+				return -EINVAL;
+			idx = val;
+			if (kstrtoul(parm[3], 10, &val) < 0)
+				return -EINVAL;
+			value = val;
+			if (idx > 0 && idx < 66) {
+				glb_clash_curve[idx-1] = value;
+				pr_amvecm_dbg("idx = %d, value = %d\n",
+				idx, value);
+			}
+		} else if (!strncmp(parm[1], "glb_pst_gamma", 13)) {
+			if (kstrtoul(parm[2], 10, &val) < 0)
+				return -EINVAL;
+			idx = val;
+			if (kstrtoul(parm[3], 10, &val) < 0)
+				return -EINVAL;
+			value = val;
+			if (idx > 0 && idx < 66) {
+				glb_pst_gamma[idx-1] = value;
+				pr_amvecm_dbg("idx = %d, value = %d\n",
+				idx, value);
+			}
+		}
+	}
+	for (i = 0; i < 64; i++) {
+		if (!strncmp(parm[0], "gma_scurve0", 11))
+			pr_info("gma_scurve0[%d] = %d\n", i, gma_scurve0[i]);
+		else if (!strncmp(parm[0], "gma_scurve1", 11))
+			pr_info("gma_scurve1[%d] = %d\n", i, gma_scurve1[i]);
+		else if (!strncmp(parm[0], "gma_scurvet", 11))
+			pr_info("gma_scurvet[%d] = %d\n", i, gma_scurvet[i]);
+		else if (!strncmp(parm[0], "clash_curve", 11))
+			pr_info("clash_curve[%d] = %d\n", i, clash_curve[i]);
+		else if (!strncmp(parm[0], "clsh_scvbld", 11))
+			pr_info("clsh_scvbld[%d] = %d\n", i, clsh_scvbld[i]);
+		else if (!strncmp(parm[0], "blk_gma_crv", 11))
+			pr_info("blk_gma_crv[%d] = %d\n", i, blk_gma_crv[i]);
+		else if (!strncmp(parm[0], "blk_gma_bld", 11))
+			pr_info("blk_gma_bld[%d] = %d\n", i, blk_gma_bld[i]);
+		else if (!strncmp(parm[0], "blkwht_ebld", 11))
+			pr_info("blkwht_ebld[%d] = %d\n", i, blkwht_ebld[i]);
+		else if (!strncmp(parm[0], "glb_scurve", 10))
+			pr_info("glb_scurve[%d] = %d\n", i, glb_scurve[i]);
+		else if (!strncmp(parm[0], "glb_clash_curve", 15))
+			pr_info("glb_clash_curve[%d] = %d\n",
+			i, glb_clash_curve[i]);
+		else if (!strncmp(parm[0], "glb_pst_gamma", 13))
+			pr_info("glb_pst_gamma[%d] = %d\n",
+			i, glb_pst_gamma[i]);
+	}
+	kfree(buf_orig);
+	return count;
+}
 static ssize_t amvecm_dnlp_show(struct class *cla,
 		struct class_attribute *attr, char *buf)
 {
@@ -3810,6 +3911,9 @@ static struct class_attribute amvecm_class_attrs[] = {
 		amvecm_debug_show, amvecm_debug_store),
 	__ATTR(dnlp, S_IRUGO | S_IWUSR,
 		amvecm_dnlp_show, amvecm_dnlp_store),
+	__ATTR(dnlp_curve, S_IRUGO | S_IWUSR,
+		amvecm_dnlp_curve_show,
+		amvecm_dnlp_curve_store),
 	__ATTR(brightness, S_IRUGO | S_IWUSR,
 		amvecm_brightness_show, amvecm_brightness_store),
 	__ATTR(contrast, S_IRUGO | S_IWUSR,
