@@ -4271,6 +4271,27 @@ static int amvecm_drv_resume(struct platform_device *pdev)
 }
 #endif
 
+static void amvecm_shutdown(struct platform_device *pdev)
+{
+	struct amvecm_dev_s *devp = &amvecm_dev;
+
+	ve_disable_dnlp();
+	amcm_disable();
+	WRITE_VPP_REG(VPP_VADJ_CTRL, 0x0);
+	amvecm_wb_enable(0);
+	/*dnlp cm vadj1 wb gate*/
+	WRITE_VPP_REG(VPP_GCLK_CTRL0, 0x11000400);
+	WRITE_VPP_REG(VPP_GCLK_CTRL1, 0x14);
+	pr_info("amvecm: shutdown module\n");
+
+	device_destroy(devp->clsp, devp->devno);
+	cdev_del(&devp->cdev);
+	class_destroy(devp->clsp);
+	unregister_chrdev_region(devp->devno, 1);
+#ifdef CONFIG_AML_LCD
+	aml_lcd_notifier_unregister(&aml_lcd_gamma_nb);
+#endif
+}
 
 static const struct of_device_id aml_vecm_dt_match[] = {
 	{
@@ -4286,6 +4307,7 @@ static struct platform_driver aml_vecm_driver = {
 		.of_match_table = aml_vecm_dt_match,
 	},
 	.probe = aml_vecm_probe,
+	.shutdown = amvecm_shutdown,
 	.remove = __exit_p(aml_vecm_remove),
 #ifdef CONFIG_PM
 	.suspend    = amvecm_drv_suspend,
