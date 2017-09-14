@@ -1116,7 +1116,3 @@
 &defendkey {
 	status = "okay";
 };
-
-&chunk_reserved {
-	status = "disable";
-};
