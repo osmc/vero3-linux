@@ -1058,11 +1058,43 @@ static int spicc_remove(struct platform_device *pdev)
 
 	spicc = (struct spicc *)dev_get_drvdata(&pdev->dev);
 	spicc_log_exit(spicc);
-	spi_unregister_master(spicc->master);
+	clk_disable_unprepare(spicc->clk);
 	destroy_workqueue(spicc->wq);
 	if (spicc->pinctrl)
 		devm_pinctrl_put(spicc->pinctrl);
+	spi_unregister_master(spicc->master);
 	return 0;
+}
+
+static int spicc_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct spicc *spicc;
+
+	spicc = (struct spicc *)dev_get_drvdata(&pdev->dev);
+	clk_disable_unprepare(spicc->clk);
+	return 0;
+}
+
+static int spicc_resume(struct platform_device *pdev)
+{
+	struct spicc *spicc;
+
+	spicc = (struct spicc *)dev_get_drvdata(&pdev->dev);
+	clk_prepare_enable(spicc->clk);
+	return 0;
+}
+
+static void spicc_shutdown(struct platform_device *pdev)
+{
+	struct spicc *spicc;
+
+	spicc = (struct spicc *)dev_get_drvdata(&pdev->dev);
+	spicc_log_exit(spicc);
+	clk_disable_unprepare(spicc->clk);
+	destroy_workqueue(spicc->wq);
+	if (spicc->pinctrl)
+		devm_pinctrl_put(spicc->pinctrl);
+	spi_unregister_master(spicc->master);
 }
 
 #ifdef CONFIG_OF
@@ -1077,6 +1109,9 @@ static const struct of_device_id spicc_of_match[] = {
 static struct platform_driver spicc_driver = {
 	.probe = spicc_probe,
 	.remove = spicc_remove,
+	.suspend = spicc_suspend,
+	.resume = spicc_resume,
+	.shutdown = spicc_shutdown,
 	.driver = {
 			.name = "spicc",
 			.of_match_table = spicc_of_match,
