@@ -559,6 +559,7 @@ static struct tvregs_set_t tvregsTab[] = {
 	{TVMODE_1366x768p60hz, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_1400x1050p60hz, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_1440x900p60hz, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
+	{TVMODE_1440x2560p70hz, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_1600x900p60hz, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_1600x1200p60hz, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_1680x1050p60hz, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
@@ -854,6 +855,12 @@ static const struct tvinfo_s tvinfoTab[] = {
 		.xres = 1440,
 		.yres = 900,
 		.id = "1440x900p60hz"
+	},
+	{
+		.tvmode = TVMODE_1440x2560p70hz,
+		.xres = 1440,
+		.yres = 2560,
+		.id = "1440x2560p70hz"
 	},
 	{
 		.tvmode = TVMODE_1600x900p60hz,

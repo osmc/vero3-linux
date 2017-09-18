@@ -97,6 +97,7 @@ static struct vmode_match_s vmode_match_table[] = {
 	{"1366x768p60hz", VMODE_1366x768p60hz},
 	{"1400x1050p60hz", VMODE_1400x1050p60hz},
 	{"1440x900p60hz", VMODE_1440x900p60hz},
+	{"1440x2560p70hz", VMODE_1440x2560p70hz},
 	{"1600x900p60hz", VMODE_1600x900p60hz},
 	{"1600x1200p60hz", VMODE_1600x1200p60hz},
 	{"1680x1050p60hz", VMODE_1680x1050p60hz},

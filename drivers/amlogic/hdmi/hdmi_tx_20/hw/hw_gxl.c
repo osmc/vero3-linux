@@ -420,6 +420,18 @@ void set_gxl_hpll_clk_out(unsigned frac_rate, unsigned clk)
 		WAIT_FOR_PLL_LOCKED(P_HHI_HDMI_PLL_CNTL);
 		pr_info("HPLL: 0x%x\n", hd_read_reg(P_HHI_HDMI_PLL_CNTL));
 		break;
+	case 5600000:
+		hd_write_reg(P_HHI_HDMI_PLL_CNTL, 0x400002e9);
+		hd_write_reg(P_HHI_HDMI_PLL_CNTL1, 0x800cb155);
+		hd_write_reg(P_HHI_HDMI_PLL_CNTL2, 0x860f30c4);
+		hd_write_reg(P_HHI_HDMI_PLL_CNTL3, 0x0c8e0000);
+		hd_write_reg(P_HHI_HDMI_PLL_CNTL4, 0x001fa729);
+		hd_write_reg(P_HHI_HDMI_PLL_CNTL5, 0x01a31500);
+		hd_set_reg_bits(P_HHI_HDMI_PLL_CNTL, 0x1, 28, 1);
+		hd_set_reg_bits(P_HHI_HDMI_PLL_CNTL, 0x0, 28, 1);
+		WAIT_FOR_PLL_LOCKED(P_HHI_HDMI_PLL_CNTL);
+		pr_info("HPLL: 0x%x\n", hd_read_reg(P_HHI_HDMI_PLL_CNTL));
+		break;
 	case 5850000:
 		hd_write_reg(P_HHI_HDMI_PLL_CNTL, 0x400002f3);
 		hd_write_reg(P_HHI_HDMI_PLL_CNTL1, 0x800cb300);
