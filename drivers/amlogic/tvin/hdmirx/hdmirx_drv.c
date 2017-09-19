@@ -1646,7 +1646,7 @@ static int hdmirx_probe(struct platform_device *pdev)
 	if (!res) {
 		rx_pr("%s: can't get irq resource\n", __func__);
 		ret = -ENXIO;
-		/* goto fail_get_resource_irq; */
+		goto fail_get_resource_irq;
 	}
 	hdevp->irq = res->start;
 	snprintf(hdevp->irq_name, sizeof(hdevp->irq_name),
@@ -1839,6 +1839,8 @@ fail_add_cdev:
 fail_kmalloc_hdev:
 	return ret;
 fail_kmalloc_pd_fifo:
+	return ret;
+fail_get_resource_irq:
 	return ret;
 }
 

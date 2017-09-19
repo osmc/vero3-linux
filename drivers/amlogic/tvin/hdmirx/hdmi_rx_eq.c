@@ -480,9 +480,11 @@ uint8_t aquireEarlyCnt(uint16_t setting)
 			eq_ch1.acq += acq_ch1;
 			eq_ch2.acq += acq_ch2;
 		}
-		eq_ch0.acq = eq_ch0.acq/setting;
-		eq_ch1.acq = eq_ch1.acq/setting;
-		eq_ch2.acq = eq_ch2.acq/setting;
+		if (setting != 0) {
+			eq_ch0.acq = eq_ch0.acq/setting;
+			eq_ch1.acq = eq_ch1.acq/setting;
+			eq_ch2.acq = eq_ch2.acq/setting;
+		}
 	}
 	return 1;
 }
