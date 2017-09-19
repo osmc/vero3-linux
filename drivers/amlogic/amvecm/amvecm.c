@@ -890,7 +890,9 @@ void amvecm_video_latch(void)
 int amvecm_on_vs(
 	struct vframe_s *vf,
 	struct vframe_s *toggle_vf,
-	int flags)
+	int flags,
+	unsigned int sps_h_en,
+	unsigned int sps_v_en)
 {
 	int result = 0;
 	if ((probe_ok == 0) || for_dolby_vision_certification())
@@ -910,6 +912,10 @@ int amvecm_on_vs(
 
 	/* add some flag to trigger */
 	if (vf) {
+		/*gxlx sharpness adaptive setting*/
+		if (is_meson_gxlx_cpu())
+			amve_sharpness_adaptive_setting(vf,
+				sps_h_en, sps_v_en);
 		amvecm_bricon_process(
 			vd1_brightness,
 			vd1_contrast + vd1_contrast_offset, vf);
@@ -2513,10 +2519,10 @@ void pc_mode_process(void)
 		cm_en = 1;
 			/* sharpness on */
 		VSYNC_WR_MPEG_REG_BITS(
-			SRSHARP0_SHARP_PK_NR_ENABLE,
+			SRSHARP0_PK_NR_ENABLE,
 			1, 1, 1);
 		VSYNC_WR_MPEG_REG_BITS(
-			SRSHARP1_SHARP_PK_NR_ENABLE,
+			SRSHARP1_PK_NR_ENABLE,
 			1, 1, 1);
 		reg_val = VSYNC_RD_MPEG_REG(SRSHARP0_HCTI_FLT_CLP_DC);
 		VSYNC_WR_MPEG_REG(SRSHARP0_HCTI_FLT_CLP_DC,
@@ -2561,10 +2567,10 @@ void pc_mode_process(void)
 		cm_en = 0;
 
 		VSYNC_WR_MPEG_REG_BITS(
-			SRSHARP0_SHARP_PK_NR_ENABLE,
+			SRSHARP0_PK_NR_ENABLE,
 			0, 1, 1);
 		VSYNC_WR_MPEG_REG_BITS(
-			SRSHARP1_SHARP_PK_NR_ENABLE,
+			SRSHARP1_PK_NR_ENABLE,
 			0, 1, 1);
 		reg_val = VSYNC_RD_MPEG_REG(SRSHARP0_HCTI_FLT_CLP_DC);
 		VSYNC_WR_MPEG_REG(SRSHARP0_HCTI_FLT_CLP_DC,
@@ -2631,20 +2637,20 @@ void amvecm_black_ext_slope_adj(unsigned int value)
 void amvecm_sr0_pk_enable(unsigned int enable)
 {
 	if (enable)
-		WRITE_VPP_REG_BITS(SRSHARP0_SHARP_PK_NR_ENABLE,
+		WRITE_VPP_REG_BITS(SRSHARP0_PK_NR_ENABLE,
 			1, 1, 1);
 	else
-		WRITE_VPP_REG_BITS(SRSHARP0_SHARP_PK_NR_ENABLE,
+		WRITE_VPP_REG_BITS(SRSHARP0_PK_NR_ENABLE,
 			0, 1, 1);
 }
 
 void amvecm_sr1_pk_enable(unsigned int enable)
 {
 	if (enable)
-		WRITE_VPP_REG_BITS(SRSHARP1_SHARP_PK_NR_ENABLE,
+		WRITE_VPP_REG_BITS(SRSHARP1_PK_NR_ENABLE,
 			1, 1, 1);
 	else
-		WRITE_VPP_REG_BITS(SRSHARP1_SHARP_PK_NR_ENABLE,
+		WRITE_VPP_REG_BITS(SRSHARP1_PK_NR_ENABLE,
 			0, 1, 1);
 }
 
@@ -2993,18 +2999,18 @@ static void amvecm_wb_enable(int enable)
 }
 
 
-static void amvecm_sharpness_debug(int enable)
+void amvecm_sharpness_enable(int sel)
 {
 	/*0:peaking enable   1:peaking disable
 	  2:lti/cti enable   3:lti/cti disable*/
-	switch (enable) {
+	switch (sel) {
 	case 0:
-		WRITE_VPP_REG_BITS(SRSHARP0_SHARP_PK_NR_ENABLE, 1, 1, 1);
-		WRITE_VPP_REG_BITS(SRSHARP1_SHARP_PK_NR_ENABLE, 1, 1, 1);
+		WRITE_VPP_REG_BITS(SRSHARP0_PK_NR_ENABLE, 1, 1, 1);
+		WRITE_VPP_REG_BITS(SRSHARP1_PK_NR_ENABLE, 1, 1, 1);
 		break;
 	case 1:
-		WRITE_VPP_REG_BITS(SRSHARP0_SHARP_PK_NR_ENABLE, 0, 1, 1);
-		WRITE_VPP_REG_BITS(SRSHARP1_SHARP_PK_NR_ENABLE, 0, 1, 1);
+		WRITE_VPP_REG_BITS(SRSHARP0_PK_NR_ENABLE, 0, 1, 1);
+		WRITE_VPP_REG_BITS(SRSHARP1_PK_NR_ENABLE, 0, 1, 1);
 		break;
 	case 2:
 		WRITE_VPP_REG_BITS(SRSHARP0_HCTI_FLT_CLP_DC, 1, 28, 1);
@@ -3031,7 +3037,7 @@ static void amvecm_sharpness_debug(int enable)
 	/*sr4 drtlpf theta en*/
 	case 4:
 		WRITE_VPP_REG_BITS(SRSHARP0_SR3_DRTLPF_EN, 7, 4, 3);
-		WRITE_VPP_REG_BITS(SRSHARP1_SR3_DRTLPF_EN, 7, 3, 3);
+		WRITE_VPP_REG_BITS(SRSHARP1_SR3_DRTLPF_EN, 7, 4, 3);
 		break;
 	case 5:
 		WRITE_VPP_REG_BITS(SRSHARP0_SR3_DRTLPF_EN, 0, 4, 3);
@@ -3060,6 +3066,34 @@ static void amvecm_sharpness_debug(int enable)
 		WRITE_VPP_REG_BITS(SRSHARP1_DB_FLT_CTRL, 0, 22, 1);
 		WRITE_VPP_REG_BITS(SRSHARP1_DB_FLT_CTRL, 0, 23, 1);
 		break;
+	/*sr3 dejaggy en*/
+	case 8:
+		WRITE_VPP_REG_BITS(SRSHARP0_DEJ_CTRL, 1, 0, 1);
+		WRITE_VPP_REG_BITS(SRSHARP1_DEJ_CTRL, 1, 0, 1);
+		break;
+	case 9:
+		WRITE_VPP_REG_BITS(SRSHARP0_DEJ_CTRL, 0, 0, 1);
+		WRITE_VPP_REG_BITS(SRSHARP1_DEJ_CTRL, 0, 0, 1);
+		break;
+	/*sr3 dering en*/
+	case 10:
+		WRITE_VPP_REG_BITS(SRSHARP0_SR3_DERING_CTRL, 1, 28, 3);
+		WRITE_VPP_REG_BITS(SRSHARP1_SR3_DERING_CTRL, 1, 28, 3);
+		break;
+	case 11:
+		WRITE_VPP_REG_BITS(SRSHARP0_SR3_DERING_CTRL, 0, 28, 3);
+		WRITE_VPP_REG_BITS(SRSHARP1_SR3_DERING_CTRL, 0, 28, 3);
+		break;
+	/*sr3 derection lpf en*/
+	case 12:
+		WRITE_VPP_REG_BITS(SRSHARP0_SR3_DRTLPF_EN, 7, 0, 3);
+		WRITE_VPP_REG_BITS(SRSHARP1_SR3_DRTLPF_EN, 7, 0, 3);
+		break;
+	case 13:
+		WRITE_VPP_REG_BITS(SRSHARP0_SR3_DRTLPF_EN, 0, 0, 3);
+		WRITE_VPP_REG_BITS(SRSHARP1_SR3_DRTLPF_EN, 0, 0, 3);
+		break;
+
 	default:
 		break;
 	}
@@ -3072,8 +3106,8 @@ static void amvecm_pq_enable(int enable)
 
 		amcm_enable();
 
-		WRITE_VPP_REG_BITS(SRSHARP0_SHARP_PK_NR_ENABLE, 1, 1, 1);
-		WRITE_VPP_REG_BITS(SRSHARP1_SHARP_PK_NR_ENABLE, 1, 1, 1);
+		WRITE_VPP_REG_BITS(SRSHARP0_PK_NR_ENABLE, 1, 1, 1);
+		WRITE_VPP_REG_BITS(SRSHARP1_PK_NR_ENABLE, 1, 1, 1);
 
 		WRITE_VPP_REG_BITS(SRSHARP0_HCTI_FLT_CLP_DC, 1, 28, 1);
 		WRITE_VPP_REG_BITS(SRSHARP0_HLTI_FLT_CLP_DC, 1, 28, 1);
@@ -3118,8 +3152,8 @@ static void amvecm_pq_enable(int enable)
 
 		amcm_disable();
 
-		WRITE_VPP_REG_BITS(SRSHARP0_SHARP_PK_NR_ENABLE, 0, 1, 1);
-		WRITE_VPP_REG_BITS(SRSHARP1_SHARP_PK_NR_ENABLE, 0, 1, 1);
+		WRITE_VPP_REG_BITS(SRSHARP0_PK_NR_ENABLE, 0, 1, 1);
+		WRITE_VPP_REG_BITS(SRSHARP1_PK_NR_ENABLE, 0, 1, 1);
 
 		WRITE_VPP_REG_BITS(SRSHARP0_HCTI_FLT_CLP_DC, 0, 28, 1);
 		WRITE_VPP_REG_BITS(SRSHARP0_HLTI_FLT_CLP_DC, 0, 28, 1);
@@ -3386,53 +3420,65 @@ static ssize_t amvecm_debug_store(struct class *cla,
 		}
 	} else if (!strncmp(parm[0], "sr", 2)) {
 		if (!strncmp(parm[1], "peaking_en", 10)) {
-			amvecm_sharpness_debug(0);
+			amvecm_sharpness_enable(0);
 			pr_info("enable peaking\n");
 		} else if (!strncmp(parm[1], "peaking_dis", 11)) {
-			amvecm_sharpness_debug(1);
+			amvecm_sharpness_enable(1);
 			pr_info("disable peaking\n");
 		} else if (!strncmp(parm[1], "lcti_en", 7)) {
-			amvecm_sharpness_debug(2);
+			amvecm_sharpness_enable(2);
 			pr_info("enable lti cti\n");
 		} else if (!strncmp(parm[1], "lcti_dis", 8)) {
-			amvecm_sharpness_debug(3);
+			amvecm_sharpness_enable(3);
 			pr_info("disable lti cti\n");
 		} else if (!strncmp(parm[1], "theta_en", 8)) {
-			amvecm_sharpness_debug(4);
+			amvecm_sharpness_enable(4);
 			pr_info("SR4 enable drtlpf theta\n");
 		} else if (!strncmp(parm[1], "theta_dis", 9)) {
-			amvecm_sharpness_debug(5);
+			amvecm_sharpness_enable(5);
 			pr_info("SR4 disable drtlpf theta\n");
 		} else if (!strncmp(parm[1], "deband_en", 9)) {
-			amvecm_sharpness_debug(6);
+			amvecm_sharpness_enable(6);
 			pr_info("SR4 enable debanding\n");
 		} else if (!strncmp(parm[1], "deband_dis", 10)) {
-			amvecm_sharpness_debug(7);
+			amvecm_sharpness_enable(7);
 			pr_info("SR4 disable debanding\n");
 		} else if (!strncmp(parm[1], "dejaggy_en", 10)) {
-			amvecm_sr0_dejaggy_enable(true);
-			amvecm_sr1_dejaggy_enable(true);
+			amvecm_sharpness_enable(8);
 			pr_info("SR3 enable dejaggy\n");
 		} else if (!strncmp(parm[1], "dejaggy_dis", 11)) {
-			amvecm_sr0_dejaggy_enable(false);
-			amvecm_sr1_dejaggy_enable(false);
+			amvecm_sharpness_enable(9);
 			pr_info("SR3 disable dejaggy\n");
 		} else if (!strncmp(parm[1], "dering_en", 9)) {
-			amvecm_sr0_dering_enable(true);
-			amvecm_sr1_dering_enable(true);
+			amvecm_sharpness_enable(10);
 			pr_info("SR3 enable dering\n");
 		} else if (!strncmp(parm[1], "dering_dis", 10)) {
-			amvecm_sr0_dering_enable(false);
-			amvecm_sr1_dering_enable(false);
+			amvecm_sharpness_enable(11);
 			pr_info("SR3 disable dering\n");
-		} else if (!strncmp(parm[1], "derec_en", 8)) {
-			amvecm_sr0_derection_enable(true);
-			amvecm_sr1_derection_enable(true);
-			pr_info("SR3 enable derection\n");
-		} else if (!strncmp(parm[1], "derec_dis", 9)) {
-			amvecm_sr0_derection_enable(false);
-			amvecm_sr1_derection_enable(false);
-			pr_info("SR3 disable derection\n");
+		} else if (!strncmp(parm[1], "drlpf_en", 8)) {
+			amvecm_sharpness_enable(12);
+			pr_info("SR3 enable drlpf\n");
+		} else if (!strncmp(parm[1], "drlpf_dis", 9)) {
+			amvecm_sharpness_enable(13);
+			pr_info("SR3 disable drlpf\n");
+		} else if (!strncmp(parm[1], "enable", 6)) {
+			amvecm_sharpness_enable(0);
+			amvecm_sharpness_enable(2);
+			amvecm_sharpness_enable(4);
+			amvecm_sharpness_enable(6);
+			amvecm_sharpness_enable(8);
+			amvecm_sharpness_enable(10);
+			amvecm_sharpness_enable(12);
+			pr_info("SR enable\n");
+		} else if (!strncmp(parm[1], "disable", 7)) {
+			amvecm_sharpness_enable(1);
+			amvecm_sharpness_enable(3);
+			amvecm_sharpness_enable(5);
+			amvecm_sharpness_enable(7);
+			amvecm_sharpness_enable(9);
+			amvecm_sharpness_enable(11);
+			amvecm_sharpness_enable(13);
+			pr_info("SR disable\n");
 		}
 	} else if (!strncmp(parm[0], "cm", 2)) {
 		if (!strncmp(parm[1], "enable", 6)) {
@@ -3801,8 +3847,8 @@ void init_pq_setting(void)
 	WRITE_VPP_REG_BITS(VPP_SRSHARP0_CTRL, 1, 0, 1);
 	WRITE_VPP_REG_BITS(VPP_SRSHARP1_CTRL, 1, 0, 1);
 	/*default dnlp off*/
-	WRITE_VPP_REG_BITS(SRSHARP0_SHARP_PK_NR_ENABLE, 0, 1, 1);
-	WRITE_VPP_REG_BITS(SRSHARP0_SHARP_PK_NR_ENABLE, 0, 1, 1);
+	WRITE_VPP_REG_BITS(SRSHARP0_PK_NR_ENABLE, 0, 1, 1);
+	WRITE_VPP_REG_BITS(SRSHARP1_PK_NR_ENABLE, 0, 1, 1);
 	WRITE_VPP_REG_BITS(VPP_VE_ENABLE_CTRL,
 				0, DNLP_EN_BIT, DNLP_EN_WID);
 	/*end*/
@@ -3815,6 +3861,8 @@ void init_pq_setting(void)
 		WRITE_VPP_REG(SRSHARP1_SHARP_SR2_CBIC_HCOEF0, 0x4000);
 		WRITE_VPP_REG(SRSHARP1_SHARP_SR2_CBIC_VCOEF0, 0x4000);
 	}
+	if (is_meson_gxlx_cpu())
+		amve_sharpness_init();
 }
 /* #endif*/
 

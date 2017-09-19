@@ -4586,11 +4586,25 @@ static irqreturn_t vsync_isr_in(int irq, void *dev_id)
 
 #if defined(CONFIG_AM_VECM)
 			refresh_on_vs(vf);
-			if (amvecm_on_vs(
-				(cur_dispbuf != &vf_local)
-				? cur_dispbuf : NULL,
-				vf, CSC_FLAG_CHECK_OUTPUT) == 1)
-				break;
+			if (cur_frame_par) {
+				if (amvecm_on_vs(
+					(cur_dispbuf != &vf_local)
+					? cur_dispbuf : NULL,
+					vf,
+					CSC_FLAG_CHECK_OUTPUT,
+					cur_frame_par->supsc1_hori_ratio,
+					cur_frame_par->supsc1_vert_ratio) == 1)
+					break;
+			} else {
+				if (amvecm_on_vs(
+					(cur_dispbuf != &vf_local)
+					? cur_dispbuf : NULL,
+					vf,
+					CSC_FLAG_CHECK_OUTPUT,
+					0,
+					0) == 1)
+					break;
+			}
 #endif
 
 			if (is_dolby_vision_enable()
@@ -4699,11 +4713,26 @@ static irqreturn_t vsync_isr_in(int irq, void *dev_id)
 						break;
 #if defined(CONFIG_AM_VECM)
 					refresh_on_vs(vf);
-					if (amvecm_on_vs(
-						(cur_dispbuf != &vf_local)
-						? cur_dispbuf : NULL,
-						vf, CSC_FLAG_CHECK_OUTPUT) == 1)
-						break;
+					if (cur_frame_par) {
+						if (amvecm_on_vs(
+							(cur_dispbuf != &vf_local)
+							? cur_dispbuf : NULL,
+							vf,
+							CSC_FLAG_CHECK_OUTPUT,
+							cur_frame_par->supsc1_hori_ratio,
+							cur_frame_par->supsc1_vert_ratio)
+							== 1)
+							break;
+					} else {
+						if (amvecm_on_vs(
+							(cur_dispbuf != &vf_local)
+							? cur_dispbuf : NULL,
+							vf,
+							CSC_FLAG_CHECK_OUTPUT,
+							0,
+							0) == 1)
+							break;
+					}
 #endif
 					vf = video_vf_get();
 					if (!vf)
@@ -4778,10 +4807,20 @@ static irqreturn_t vsync_isr_in(int irq, void *dev_id)
 
 SET_FILTER:
 #if defined(CONFIG_AM_VECM)
-	amvecm_on_vs(
-		(cur_dispbuf != &vf_local) ? cur_dispbuf : NULL,
-		toggle_frame,
-		toggle_frame ? CSC_FLAG_TOGGLE_FRAME : 0);
+	if (cur_frame_par)
+		amvecm_on_vs(
+			(cur_dispbuf != &vf_local) ? cur_dispbuf : NULL,
+			toggle_frame,
+			toggle_frame ? CSC_FLAG_TOGGLE_FRAME : 0,
+			cur_frame_par->supsc1_hori_ratio,
+			cur_frame_par->supsc1_vert_ratio);
+	else
+		amvecm_on_vs(
+			(cur_dispbuf != &vf_local) ? cur_dispbuf : NULL,
+			toggle_frame,
+			toggle_frame ? CSC_FLAG_TOGGLE_FRAME : 0,
+			0,
+			0);
 #endif
 
 	/* filter setting management */
