@@ -22,8 +22,10 @@ CROSS_COMPILE=aarch64-linux-gnu-
 
 DEFCONFIG=meson64_defconfig
 UIMAGE_LOADADDR=0x1008000
+ROOTFS=""
 
 BUILDKERNEL=false
+BUILDROOTFS=false
 BUILDDTB=false
 DISTCLEAN=false
 ALLDTS=""
@@ -76,6 +78,18 @@ find_defconfig()
 	fi
 }
 
+#
+# find rootfs
+#
+find_rootfs()
+{
+	if [ -f ${1} ]; then
+		ROOTFS=${1}
+	else
+		echo "find no rootfs ${1}"
+		exit 1
+	fi
+}
 
 #
 # find dts
@@ -124,6 +138,9 @@ build_kernel()
 	OPTION=${OPTION}" ARCH=${ARCH}"
 	OPTION=${OPTION}" CROSS_COMPILE=${CROSS_COMPILE}"
 	OPTION=${OPTION}" UIMAGE_LOADADDR=${UIMAGE_LOADADDR}"
+	if [ "${BUILDROOTFS}" = "true" ]; then
+		OPTION=${OPTION}" CONFIG_INITRAMFS_SOURCE=${ROOTFS}"
+	fi
 
 	make ${OPTION} -j${JLEVEL}
 }
@@ -179,6 +196,7 @@ usage()
 {
 	echo -e "Usage: $PRGNAME [-k def] [-d dts | -p chip] [-c] [-h]\n"
 	echo -e "  -k	specify defconfig or the prefix"
+	echo -e "  -f	specify rootfs"
 	echo -e "  -d	specify dts or the prefix or suffix"
 	echo -e "  -p	specify the prefix of dts for the chip"
 	echo -e "  -c	make distclean"
@@ -186,11 +204,16 @@ usage()
 }
 
 
-while getopts :k:d:p:ch opt; do
+while getopts :k:f:d:p:ch opt; do
 	case $opt in
 		k)
 			BUILDKERNEL=true
 			find_defconfig ${OPTARG%_defconfig}
+			;;
+		f)
+			BUILDKERNEL=true
+			BUILDROOTFS=true
+			find_rootfs ${OPTARG}
 			;;
 		d)
 			BUILDDTB=true
