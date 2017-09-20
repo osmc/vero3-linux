@@ -170,6 +170,7 @@ static ssize_t fr_policy_store(struct class *class,
 			pr_info("%s: %d failed\n", __func__, policy);
 	} else {
 		pr_info("%s: invalid data\n", __func__);
+		mutex_unlock(&vout_mutex);
 		return -EINVAL;
 	}
 	mutex_unlock(&vout_mutex);

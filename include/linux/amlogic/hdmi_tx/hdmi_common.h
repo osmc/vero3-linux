@@ -307,6 +307,8 @@ struct hdmi_format_para {
 	unsigned char *name;
 	unsigned char *sname;
 	char ext_name[32];
+	unsigned int aspect_ratio_num;
+	unsigned int aspect_ratio_den;
 	enum hdmi_color_depth cd; /* cd8, cd10 or cd12 */
 	enum hdmi_color_space cs; /* rgb, y444, y422, y420 */
 	enum hdmi_color_range cr; /* limit, full */
@@ -373,6 +375,8 @@ enum hdmi_aspect_ratio {
 
 struct vesa_standard_timing;
 
+void hdmitx_fmt_para_name_update(char const *vinfo_name, char *hdmi_name);
+struct hdmi_format_para *hdmitx_get_fmt_para(char const *vinfo_name);
 struct hdmi_format_para *hdmi_get_fmt_paras(enum hdmi_vic vic);
 struct hdmi_format_para *hdmi_match_dtd_paras(struct dtd *t);
 void check_detail_fmt(void);

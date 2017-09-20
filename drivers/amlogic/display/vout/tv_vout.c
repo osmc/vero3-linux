@@ -46,6 +46,9 @@
 #ifdef CONFIG_AML_VPU
 #include <linux/amlogic/vpu.h>
 #endif
+#ifdef CONFIG_AML_HDMI_TX
+#include <linux/amlogic/hdmi_tx/hdmi_common.h>
+#endif
 
 /* Local Headers */
 #include "tvregs.h"
@@ -120,6 +123,24 @@ static void cvbs_performance_enhancement(enum tvmode_e mode);
 #endif
 static void cvbs_cntl_output(unsigned int open);
 static void cvbs_performance_config(unsigned int index);
+
+static struct vinfo_s tv_vinfo = {
+	.name              = "null",
+	.mode              = VMODE_NULL,
+	.width             = 1920,
+	.height            = 1080,
+	.field_height      = 1080,
+	.aspect_ratio_num  = 16,
+	.aspect_ratio_den  = 9,
+	.sync_duration_num = 60,
+	.sync_duration_den = 1,
+	.screen_real_width = 16,
+	.screen_real_height = 9,
+	.video_clk         = 1485000000,
+	.htotal            = 2200,
+	.vtotal            = 1125,
+	.viu_color_fmt     = TVIN_YUV444,
+};
 
 static int get_vdac_power_level(void)
 {
@@ -732,28 +753,74 @@ static const struct file_operations am_tv_fops = {
 	.poll		= NULL,
 };
 
-static const struct vinfo_s *get_valid_vinfo(char  *mode)
-{
-	struct vinfo_s *vinfo = NULL;
-	int  i, count = ARRAY_SIZE(tv_info);
-	int mode_name_len = 0;
-
-	for (i = 0; i < count; i++) {
-		if (strncmp(tv_info[i].name, mode,
-			    strlen(tv_info[i].name)) == 0) {
-			if ((vinfo == NULL)
-			    || (strlen(tv_info[i].name) > mode_name_len)) {
-				vinfo = &tv_info[i];
-				mode_name_len = strlen(tv_info[i].name);
-			}
-		}
-	}
-	return vinfo;
-}
-
 static struct vinfo_s *tv_get_current_info(void)
 {
 	return info->vinfo;
+}
+
+static void tv_vinfo_update(struct vmode_match_s *vmatch)
+{
+	struct vinfo_s *vinfo = NULL;
+	int i, count = ARRAY_SIZE(cvbs_info);
+#ifdef CONFIG_AML_HDMI_TX
+	struct hdmi_format_para *para;
+#endif
+
+	switch (vmatch->mode) {
+	case VMODE_480CVBS:
+	case VMODE_NTSC_M:
+	case VMODE_576CVBS:
+	case VMODE_PAL_M:
+	case VMODE_PAL_N:
+		for (i = 0; i < count; i++) {
+			if (cvbs_info[i].mode == vmatch->mode) {
+				vinfo = &cvbs_info[i];
+				break;
+			}
+		}
+		if (vinfo) {
+			tv_vinfo.mode = vinfo->mode;
+			tv_vinfo.width = vinfo->width;
+			tv_vinfo.height = vinfo->height;
+			tv_vinfo.field_height = vinfo->field_height;
+			tv_vinfo.aspect_ratio_num = vinfo->aspect_ratio_num;
+			tv_vinfo.aspect_ratio_den = vinfo->aspect_ratio_den;
+			tv_vinfo.screen_real_width = vinfo->aspect_ratio_num;
+			tv_vinfo.screen_real_height = vinfo->aspect_ratio_den;
+			tv_vinfo.sync_duration_num = vinfo->sync_duration_num;
+			tv_vinfo.sync_duration_den = vinfo->sync_duration_den;
+			tv_vinfo.video_clk = vinfo->video_clk;
+			tv_vinfo.htotal = vinfo->htotal;
+			tv_vinfo.vtotal = vinfo->vtotal;
+			tv_vinfo.viu_color_fmt = TVIN_YUV444;
+		}
+		break;
+	default: /* hdmitx */
+#ifdef CONFIG_AML_HDMI_TX
+		para = hdmitx_get_fmt_para(vmatch->name);
+		if (para) {
+			tv_vinfo.name = vmatch->name;
+			tv_vinfo.mode = vmatch->mode;
+			tv_vinfo.width = para->timing.h_active;
+			if (para->progress_mode)
+				tv_vinfo.height = para->timing.v_active;
+			else
+				tv_vinfo.height = para->timing.v_active * 2;
+			tv_vinfo.field_height = para->timing.v_active;
+			tv_vinfo.aspect_ratio_num = para->aspect_ratio_num;
+			tv_vinfo.aspect_ratio_den = para->aspect_ratio_den;
+			tv_vinfo.screen_real_width = para->aspect_ratio_num;
+			tv_vinfo.screen_real_height = para->aspect_ratio_den;
+			tv_vinfo.sync_duration_num = para->timing.v_freq;
+			tv_vinfo.sync_duration_den = 1000;
+			tv_vinfo.video_clk = para->timing.pixel_freq * 1000;
+			tv_vinfo.htotal = para->timing.h_total;
+			tv_vinfo.vtotal = para->timing.v_total;
+			tv_vinfo.viu_color_fmt = TVIN_YUV444;
+		}
+#endif
+		break;
+	}
 }
 
 static enum tvmode_e vmode_to_tvmode(enum vmode_e mode)
@@ -768,12 +835,16 @@ static enum vmode_e tvmode_to_vmode(enum tvmode_e tvmode)
 
 static struct vinfo_s *get_tv_info(enum vmode_e mode)
 {
+	struct vinfo_s *vinfo = NULL;
 	int i = 0;
-	for (i = 0; i < ARRAY_SIZE(tv_info); i++) {
-		if (mode == tv_info[i].mode)
-			return &tv_info[i];
+
+	for (i = 0; i < ARRAY_SIZE(tv_match_table); i++) {
+		if (mode == tv_match_table[i].mode) {
+			tv_vinfo_update(&tv_match_table[i]);
+			vinfo = info->vinfo;
+		}
 	}
-	return NULL;
+	return vinfo;
 }
 
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
@@ -944,8 +1015,6 @@ static int tv_set_current_vmode(enum vmode_e mode)
 		      __func__, __LINE__, tvmode);
 
 	info->vinfo = update_tv_info_duration(tvmode, fine_tune_mode);
-#else
-	info->vinfo = get_tv_info(tvmode);
 #endif
 	if (!info->vinfo) {
 		vout_log_info("don't get tv_info, mode is %d\n", tvmode);
@@ -977,17 +1046,30 @@ static int tv_set_current_vmode(enum vmode_e mode)
 
 static enum vmode_e tv_validate_vmode(char *mode)
 {
-	const struct vinfo_s *info = get_valid_vinfo(mode);
-	if (info)
-		return info->mode;
-	return VMODE_MAX;
+	enum vmode_e vmode = VMODE_MAX;
+	int  i, count = ARRAY_SIZE(tv_match_table);
+	int mode_name_len = 0;
+
+	for (i = 0; i < count; i++) {
+		if (strncmp(tv_match_table[i].name, mode,
+			strlen(tv_match_table[i].name)) == 0) {
+			if ((vmode == VMODE_INIT_NULL) ||
+			(strlen(tv_match_table[i].name) > mode_name_len)) {
+				vmode = tv_match_table[i].mode;
+				mode_name_len = strlen(tv_match_table[i].name);
+				tv_vinfo_update(&tv_match_table[i]);
+			}
+		}
+	}
+	return vmode;
 }
 static int tv_vmode_is_supported(enum vmode_e mode)
 {
-	int  i, count = ARRAY_SIZE(tv_info);
+	int  i, count = ARRAY_SIZE(tv_match_table);
+
 	mode &= VMODE_MODE_BIT_MASK;
 	for (i = 0; i < count; i++) {
-		if (tv_info[i].mode == mode)
+		if (tv_match_table[i].mode == mode)
 			return true;
 	}
 	return false;
@@ -1009,14 +1091,15 @@ static int tv_module_disable(enum vmode_e cur_vmod)
 static char *get_name_from_vmode(enum vmode_e mode)
 {
 	int i = 0, count = 0;
-	count = ARRAY_SIZE(tv_info);
+
+	count = ARRAY_SIZE(tv_match_table);
 	for (i = 0; i < count; i++) {
-		if (tv_info[i].mode == mode)
+		if (tv_match_table[i].mode == mode)
 			break;
 	}
 	if (i == count)
 		return NULL;
-	return tv_info[i].name;
+	return tv_match_table[i].name;
 }
 
 static int (*hdmi_edid_supported_func)(char *mode_name);
@@ -1079,6 +1162,7 @@ static enum vmode_e get_target_vmode(int fr_vsource)
 	enum vmode_e mode_target = VMODE_INIT_NULL;
 	int i = 0, count = 0;
 	struct fps_mode_conv *s = NULL;
+
 	vout_log_info("fr_vsource = %d\n", fr_vsource);
 	pvinfo = tv_get_current_info();
 	if (!pvinfo) {
@@ -1160,6 +1244,7 @@ static struct vinfo_s *update_tv_info_duration(
 	enum vmode_e target_vmode, enum fine_tune_mode_e fine_tune_mode)
 {
 	struct vinfo_s *vinfo;
+
 	if ((target_vmode&VMODE_MODE_BIT_MASK) > VMODE_MAX)
 		return NULL;
 	vinfo = get_tv_info(target_vmode & VMODE_MODE_BIT_MASK);
@@ -1433,7 +1518,12 @@ static struct vout_server_s tv_server = {
 static void _init_vout(void)
 {
 	if (info->vinfo == NULL)
-		info->vinfo = &tv_info[TVMODE_720P];
+		info->vinfo = &tv_vinfo;
+
+	if (vout_register_server(&tv_server))
+		vout_log_err("register tv module server fail\n");
+	else
+		vout_log_info("register tv module server ok\n");
 }
 
 /* **************************************************** */
@@ -2077,6 +2167,7 @@ static irqreturn_t tvout_vsync_isr(int irq, void *dev_id)
 static int tvout_probe(struct platform_device *pdev)
 {
 	int ret = 0;
+
 #ifdef CONFIG_INSTABOOT
 	INIT_LIST_HEAD(&tvconf_ops.node);
 	register_syscore_ops(&tvconf_ops);
@@ -2090,6 +2181,8 @@ static int tvout_probe(struct platform_device *pdev)
 	spin_lock_init(&tvout_clk_lock);
 #endif
 	sprintf(info->name, TV_CLASS_NAME);
+	_init_vout();
+
 	/*ret = register_chrdev(0, info->name, &am_tv_fops);*/
 	ret = alloc_chrdev_region(&info->devno, 0, 1, info->name);
 	if (ret < 0) {
@@ -2097,12 +2190,8 @@ static int tvout_probe(struct platform_device *pdev)
 		return  ret;
 	}
 	/*info->major = ret;*/
-	_init_vout();
 	vout_log_err("chrdev devno %d for disp\n", info->devno);
-	if (vout_register_server(&tv_server))
-		vout_log_err("register tv module server fail\n");
-	else
-		vout_log_info("register tv module server ok\n");
+
 	ret = create_tv_attr(info);
 	if (ret < 0) {
 		vout_log_err("create_tv_attr error\n");

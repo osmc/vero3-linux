@@ -604,22 +604,9 @@ static int set_disp_mode_auto(void)
 		hdev->HWOp.CntlConfig(hdev, CONF_VIDEO_BLANK_OP, VIDEO_UNBLANK);
 		hdev->para = para = hdmitx_get_fmt_name("invalid", fmt_attr);
 		return -1;
-	} else {
-		memcpy(mode, info->name, strlen(info->name));
-		if (strstr(mode, "fp")) {
-			int i = 0;
-			for (; mode[i]; i++) {
-				if ((mode[i] == 'f') && (mode[i + 1] == 'p')) {
-					/* skip "f", 1080fp60hz -> 1080p60hz */
-					do {
-						mode[i] = mode[i + 1];
-						i++;
-					} while (mode[i]);
-					break;
-				}
-			}
-		}
-	}
+	} else
+		hdmitx_fmt_para_name_update(info->name, mode);
+
 	/* In the file hdmi_common/hdmi_parameters.c,
 	 * the data array all_fmt_paras[] treat 2160p60hz and 2160p60hz420
 	 * as two different modes, such Scrambler
