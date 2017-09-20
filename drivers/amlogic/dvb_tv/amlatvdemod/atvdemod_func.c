@@ -1645,6 +1645,11 @@ int atvauddemod_init(void)
 	return 0;
 }
 
+void atvauddemod_set_outputmode(void)
+{
+	set_outputmode(aud_std, aud_mode);
+}
+
 int atvdemod_init(void)
 {
 	/* unsigned long data32; */

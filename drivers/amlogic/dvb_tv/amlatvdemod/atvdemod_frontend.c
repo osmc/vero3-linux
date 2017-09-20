@@ -105,8 +105,8 @@ static ssize_t aml_atvdemod_store(struct class *cls,
 		if (ret)
 			pr_info("[tuner..] atv_restart error.\n");
 	} else if (!strncmp(parm[0], "audout_mode", strlen("audout_mode"))) {
-		atvauddemod_init();
-		pr_info("[tuner..] atvauddemod_init done ....\n");
+		atvauddemod_set_outputmode();
+		pr_info("[tuner..] atvauddemod_set_outputmode done ....\n");
 	} else if (!strncmp(parm[0], "clk", 3)) {
 		adc_set_pll_cntl(1, 0x1);
 		atvdemod_clk_init();
