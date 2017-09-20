@@ -691,11 +691,7 @@ void tsdemux_release(void)
 	WRITE_PARSER_REG(PARSER_VIDEO_HOLE, 0);
 	WRITE_PARSER_REG(PARSER_AUDIO_HOLE, 0);
 
-#ifdef CONFIG_MULTI_DEC
-	SET_PARSER_REG_MASK(PARSER_ES_CONTROL, ES_VID_MAN_RD_PTR);
-	WRITE_PARSER_REG(PARSER_VIDEO_WP, 0);
-	WRITE_PARSER_REG(PARSER_VIDEO_RP, 0);
-#endif
+
 
 	/*TODO irq */
 
@@ -725,6 +721,11 @@ void tsdemux_release(void)
 	pts_stop(PTS_TYPE_AUDIO);
 
 	WRITE_RESET_REG(RESET1_REGISTER, RESET_PARSER);
+#ifdef CONFIG_MULTI_DEC
+	SET_PARSER_REG_MASK(PARSER_ES_CONTROL, ES_VID_MAN_RD_PTR);
+	WRITE_PARSER_REG(PARSER_VIDEO_WP, 0);
+	WRITE_PARSER_REG(PARSER_VIDEO_RP, 0);
+#endif
 
 	/* #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6 */
 	/*TODO clk */
@@ -733,7 +734,6 @@ void tsdemux_release(void)
 	 */
 	/* #endif */
 	amports_switch_gate("demux", 0);
-
 }
 
 static int limited_delay_check(struct file *file,
