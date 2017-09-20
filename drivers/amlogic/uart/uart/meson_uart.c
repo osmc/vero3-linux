@@ -1126,11 +1126,14 @@ static int meson_uart_resume(struct platform_device *pdev)
 	u32 val;
 
 	port = platform_get_drvdata(pdev);
-	if (port) {
-		if (port->line == 0)
-			return 0;
-		uart_resume_port(&meson_uart_driver, port);
+	if (!port) {
+		dev_err(&pdev->dev, "port is NULL");
+		return 0;
 	}
+
+	if (port->line == 0)
+		return 0;
+	uart_resume_port(&meson_uart_driver, port);
 
 	val = readl(port->membase + AML_UART_CONTROL);
 	if (!(val & AML_UART_TWO_WIRE_EN)) {
@@ -1148,11 +1151,14 @@ static int meson_uart_suspend(struct platform_device *pdev,
 	u32 val;
 
 	port = platform_get_drvdata(pdev);
-	if (port) {
-		if (port->line == 0)
-			return 0;
-		uart_suspend_port(&meson_uart_driver, port);
+	if (!port) {
+		dev_err(&pdev->dev, "port is NULL");
+		return 0;
 	}
+
+	if (port->line == 0)
+		return 0;
+	uart_suspend_port(&meson_uart_driver, port);
 	val = readl(port->membase + AML_UART_CONTROL);
 	/* if rts/cts is open, pull up rts pin
 		when in suspend */
