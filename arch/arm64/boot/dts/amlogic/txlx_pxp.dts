@@ -522,6 +522,7 @@
 			f_min = <400000>;
 			f_max = <50000000>;
 			base =  <0xff634400>;
+			clksrc_base = <0xff63c000>;
 			max_req_size = <0x20000>; /* 256KB */
 			gpio_dat3 = <&gpio BOOT_3 GPIO_ACTIVE_HIGH>;
 			hw_reset =  <&gpio BOOT_9 GPIO_ACTIVE_HIGH>;

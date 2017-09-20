@@ -3687,14 +3687,16 @@ static int aml_sd_emmc_probe(struct platform_device *pdev)
 		host->base = ioremap(pdata->base, 0x200);
 	}
 	/* default clock base reg for txlx */
-	if (pdata->clksrc_base == 0)
-		pdata->clksrc_base = 0xff63c000;
-
-	if (pdata->clksrc_base != 0)
-		host->clksrc_base
-			= ioremap(pdata->clksrc_base
-					+ (P_HHI_NAND_CLK_CNTL << 2),
-					sizeof(u32));
+	if ((host->ctrl_ver >= 3)
+			&& (aml_card_type_mmc(pdata))) {
+		if (pdata->clksrc_base != 0)
+			host->clksrc_base
+				= ioremap(pdata->clksrc_base
+						+ (P_HHI_NAND_CLK_CNTL << 2),
+						sizeof(u32));
+		else
+			sd_emmc_err("Failed to ioremap clksrc_base.\n");
+	}
 	pdata->host = host;
 	pdata->mmc = mmc;
 	pdata->is_fir_init = true;

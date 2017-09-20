@@ -478,10 +478,12 @@ static void aml_sd_emmc_set_clk_rate_v3(struct mmc_host *mmc,
 			&& (aml_card_type_mmc(pdata))) {
 			clk_src_sel = SD_EMMC_CLOCK_SRC_OSC;
 			second_src = SRC_400MHZ;
-			if (host->clksrc_base)
+			if (host->clksrc_base) {
 				writel((1<<7)|(3<<9), host->clksrc_base);
-			emmc_dbg(AMLSD_DBG_V3, "P_HHI_NAND_CLK_CNTL = 0x%x\n",
-				readl(host->clksrc_base));
+				emmc_dbg(AMLSD_DBG_V3, "P_HHI_NAND_CLK_CNTL = 0x%x\n",
+						readl(host->clksrc_base));
+			} else
+				emmc_dbg(AMLSD_DBG_V3, "clksrc_base is err\n");
 		}
 	}
 	emmc_dbg(AMLSD_DBG_CLK_V3, "clk_ios: %u\n", clk_ios);
