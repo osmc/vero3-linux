@@ -2277,9 +2277,11 @@ static long hdmitx_cec_compat_ioctl(struct file *f,
 /* for improve rw permission */
 static char *aml_cec_class_devnode(struct device *dev, umode_t *mode)
 {
-	if (mode)
+	if (mode) {
 		*mode = 0666;
-	CEC_INFO("mode is %x\n", *mode);
+		CEC_INFO("mode is %x\n", *mode);
+	} else
+		CEC_INFO("mode is null\n");
 	return NULL;
 }
 
@@ -2376,8 +2378,10 @@ static int aml_cec_probe(struct platform_device *pdev)
 	}
 	INIT_DELAYED_WORK(&cec_dev->cec_work, cec_task);
 	cec_dev->cec_info.remote_cec_dev = input_allocate_device();
-	if (!cec_dev->cec_info.remote_cec_dev)
+	if (!cec_dev->cec_info.remote_cec_dev) {
 		CEC_INFO("No enough memory\n");
+		return -ENOMEM;
+	}
 
 	cec_dev->cec_info.remote_cec_dev->name = "cec_input";
 
