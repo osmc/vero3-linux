@@ -342,7 +342,7 @@ _cali_retry:
 	pr_info("%s: calibration result @ %d: max(%d), min(%d)\n",
 		mmc_hostname(mmc), cali_retry, max_cal_result, min_cal_result);
 	/* retry cali here! */
-	if ((max_cal_result - min_cal_result) >= 2000) {
+	if ((max_cal_result - min_cal_result) >= 1200) {
 		if (cali_retry < MAX_CALI_RETRY) {
 			cali_retry++;
 			goto _cali_retry;
