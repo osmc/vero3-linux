@@ -959,6 +959,7 @@ show_vframe_status(struct device *dev,
 		ret += sprintf(buf + ret, "vframe buf_avail_num=%d\n",
 			states.buf_avail_num);
 	} else {
+		ret = 0;
 		ret += sprintf(buf + ret, "vframe no states\n");
 	}
 
@@ -2890,7 +2891,10 @@ static int di_init_buf(int width, int height, unsigned char prog_flag)
 		di_post_mem = de_devp->mem_start + di_buf_size*local_buf_num;
 		di_post_buf_size = width * canvas_height*2;
 		/* pre buffer must 2 more than post buffer */
-		di_post_stru.di_post_num = local_buf_num - 2;
+		if ((local_buf_num - 2) > MAX_POST_BUF_NUM)
+			di_post_stru.di_post_num = MAX_POST_BUF_NUM;
+		else
+			di_post_stru.di_post_num = (local_buf_num - 2);
 		pr_info("DI: di post buffer size %u byte.\n", di_post_buf_size);
 	} else {
 		di_post_stru.di_post_num = MAX_POST_BUF_NUM;
@@ -4070,13 +4074,13 @@ module_param_named(combing_cur_lev, cur_lev, int, 0444);
 static int force_lev = 0xff;
 module_param_named(combing_force_lev, force_lev, int, 0664);
 static int dejaggy_flag = -1;
-module_param_named(combing_dejaggy_flag, dejaggy_flag, int, 0664);
+
 static int dejaggy_enable = 1;
-module_param_named(combing_dejaggy_enable, dejaggy_enable, int, 0664);
+
 static uint num_dejaggy_setting = 5;
 /* 0:off 1:1-14-1 2:1-6-1 3:3-10-3 4:100% */
 /* current setting dejaggy always on when interlace source */
-static int combing_dejaggy_setting[5] = {1, 1, 1, 2, 3};
+static int combing_dejaggy_setting[6] = {1, 1, 1, 2, 3, 3};
 module_param_array(combing_dejaggy_setting, uint,
 	&num_dejaggy_setting, 0664);
 #ifdef CONFIG_AM_ATVDEMOD
@@ -5099,9 +5103,11 @@ static void pre_de_done_buf_config(void)
 					}
 				}
 			} else if ((pldn_cmb0 == 6) && (pldn_cmb1 == 6)) {
-				post_wr_buf->reg1_s = 60;
-				post_wr_buf->reg1_e = 180;
-				post_wr_buf->reg1_bmode = 0;
+				if (!IS_ERR_OR_NULL(post_wr_buf)) {
+					post_wr_buf->reg1_s = 60;
+					post_wr_buf->reg1_e = 180;
+					post_wr_buf->reg1_bmode = 0;
+				}
 			}
 		}
 		field_count++;
@@ -5147,7 +5153,7 @@ static void pre_de_done_buf_config(void)
 					"%s: set di_mem_buf_dup_p to di_wr_buf\n",
 					__func__);
 #endif
-			}
+		}
 
 			di_pre_stru.di_wr_buf->seq
 				= di_pre_stru.pre_ready_seq++;
@@ -5218,7 +5224,6 @@ static void pre_de_done_buf_config(void)
 						queue_in(
 							di_buf_tmp,
 							QUEUE_PRE_READY);
-					}
 #ifdef DI_BUFFER_DEBUG
 					di_print(
 					"%s: dummy %s[%d] => pre_ready_list\n",
@@ -5226,6 +5231,7 @@ static void pre_de_done_buf_config(void)
 					vframe_type_name[di_buf_tmp->type],
 					di_buf_tmp->index);
 #endif
+					}
 				}
 			}
 			di_pre_stru.di_wr_buf->seq =
@@ -5393,6 +5399,9 @@ static struct di_buf_s *get_free_linked_buf(int idx)
 				queue_out(di_buf_linked);
 			}
 		}
+		if (IS_ERR_OR_NULL(di_buf))
+			return NULL;
+
 		di_buf->di_wr_linked_buf = di_buf_linked;
 	}
 	return di_buf;
@@ -6382,12 +6391,13 @@ static void inc_post_ref_count(struct di_buf_s *di_buf)
 {
 /* int post_blend_mode; */
 
-	if (di_buf == NULL) {
+	if (IS_ERR_OR_NULL(di_buf)) {
 		pr_dbg("%s: Error\n", __func__);
 		if (recovery_flag == 0)
 			recovery_log_reason = 13;
 
 		recovery_flag++;
+		return;
 	}
 
 	if (di_buf->di_buf_dup_p[1])
@@ -6402,12 +6412,13 @@ static void inc_post_ref_count(struct di_buf_s *di_buf)
 
 static void dec_post_ref_count(struct di_buf_s *di_buf)
 {
-	if (di_buf == NULL) {
+	if (IS_ERR_OR_NULL(di_buf)) {
 		pr_dbg("%s: Error\n", __func__);
 		if (recovery_flag == 0)
 			recovery_log_reason = 14;
 
 		recovery_flag++;
+		return;
 	}
 	if (di_buf->pulldown_mode == PULL_DOWN_BUF1)
 		return;
@@ -6715,7 +6726,7 @@ de_post_process(void *arg, unsigned zoom_start_x_lines,
 		unsigned zoom_end_y_lines, vframe_t *disp_vf)
 {
 	struct di_buf_s *di_buf = (struct di_buf_s *)arg;
-	struct di_buf_s *di_pldn_buf = di_buf->di_buf_dup_p[pldn_dly];
+	struct di_buf_s *di_pldn_buf = NULL;
 	unsigned int di_width, di_height, di_start_x, di_end_x, mv_offset;
 	unsigned int di_start_y, di_end_y, hold_line = post_hold_line;
 	unsigned int post_blend_en = 0, post_blend_mode = 0,
@@ -6734,8 +6745,11 @@ de_post_process(void *arg, unsigned zoom_start_x_lines,
 	    ((force_update_post_reg & 0x10) == 0))
 		return 0;
 
-	if ((di_buf == NULL) || (di_buf->di_buf_dup_p[0] == NULL))
+	if (IS_ERR_OR_NULL(di_buf))
 		return 0;
+	else if (IS_ERR_OR_NULL(di_buf->di_buf_dup_p[0]))
+		return 0;
+	di_pldn_buf = di_buf->di_buf_dup_p[pldn_dly];
 
 	if (is_in_queue(di_buf, QUEUE_POST_FREE) &&
 			post_index != di_buf->index) {
@@ -7399,211 +7413,6 @@ recycle_vframe_type_post_print(struct di_buf_s *di_buf,
 }
 #endif
 
-void check_pulldown_mode(
-	int pulldown_type, int pulldown_mode2,
-	int *win_pd_type,  struct di_buf_s *di_buf)
-{
-	int ii;
-	unsigned mode, fdiff_num, dup1_wp_fdiff,
-		 dup1_wc_fdiff, dup1_wn_fdiff, dup2_wp_fdiff,
-		 dup2_wc_fdiff, dup2_wn_fdiff;
-	if ((pulldown_win_mode & 0xfffff) != 0) {
-		for (ii = 0; ii < 5; ii++) {
-			mode = (pulldown_win_mode >> (ii * 4)) & 0xf;
-			if (mode == 1) {
-				if (di_buf->di_buf_dup_p[1]->
-					pulldown_mode == 0) {
-					fdiff_num =
-						di_buf->di_buf_dup_p[1]->
-						win_pd_info[ii].field_diff_num;
-					if ((fdiff_num * win_pd_th[ii].
-					field_diff_num_th)
-					>= pd_win_prop[ii].pixels_num)
-						break;
-				} else {
-					fdiff_num =
-						di_buf->di_buf_dup_p[2]->
-						win_pd_info[ii].field_diff_num;
-					if ((fdiff_num * win_pd_th[ii].
-					field_diff_num_th)
-					>= pd_win_prop[ii].pixels_num)
-						break;
-				}
-				dup1_wn_fdiff =
-					di_buf->di_buf_dup_p[1]->
-					win_pd_info[ii + 1].field_diff_num;
-				dup1_wc_fdiff =
-					di_buf->di_buf_dup_p[1]->
-					win_pd_info[ii].field_diff_num;
-				dup1_wp_fdiff =
-					di_buf->di_buf_dup_p[1]->
-					win_pd_info[ii - 1].field_diff_num;
-				dup2_wc_fdiff =
-					di_buf->di_buf_dup_p[2]->
-					win_pd_info[ii].field_diff_num;
-				dup2_wn_fdiff =
-					di_buf->di_buf_dup_p[2]->
-					win_pd_info[ii + 1].field_diff_num;
-				dup2_wp_fdiff =
-					di_buf->di_buf_dup_p[2]->
-					win_pd_info[ii - 1].field_diff_num;
-				if ((ii != 0) && (ii != 5) && (ii != 4) &&
-				(pulldown_mode2 == 1) &&
-				(((dup2_wn_fdiff * 100) < dup1_wn_fdiff) &&
-				((dup2_wp_fdiff * 100) < dup1_wp_fdiff) &&
-				((dup2_wc_fdiff * 100) >= dup1_wc_fdiff))) {
-					di_print(
-						"out %x %06x %06x\n",
-						ii,
-						di_buf->di_buf_dup_p[2]->
-						win_pd_info[ii].field_diff_num,
-						di_buf->di_buf_dup_p[1]->
-						win_pd_info[ii].field_diff_num);
-					pd_detect_rst = 0;
-					break;
-				}
-				if ((ii != 0) && (ii != 5) && (ii != 4) &&
-				(pulldown_mode2 == 0) &&
-				((dup1_wn_fdiff * 100) < dup1_wc_fdiff) &&
-				((dup1_wp_fdiff * 100) < dup1_wc_fdiff)) {
-					pd_detect_rst = 0;
-					break;
-				}
-			} else if (mode == 2) {
-				if ((pulldown_type == 0) &&
-				(di_buf->di_buf_dup_p[1]->
-				win_pd_info[ii].field_diff_num_pattern
-				!= di_buf->di_buf_dup_p[1]->
-				field_pd_info.field_diff_num_pattern))
-					break;
-				if ((pulldown_type == 1) &&
-				(di_buf->di_buf_dup_p[1]->
-				win_pd_info[ii].frame_diff_num_pattern
-				!= di_buf->di_buf_dup_p[1]->
-				field_pd_info.frame_diff_num_pattern))
-					break;
-			} else if (mode == 3) {
-				if ((di_buf->di_buf_dup_p[1]->win_pd_mode[ii]
-				!= di_buf->di_buf_dup_p[1]->pulldown_mode)
-				|| (pulldown_type != win_pd_type[ii]))
-					break;
-			}
-		}
-		if (ii < 5)
-			di_buf->pulldown_mode = -1;
-	}
-}
-
-static int pulldown_process(struct di_buf_s *di_buf, int buffer_count)
-{
-	int pulldown_type = -1; /* 0, 2:2; 1, m:n */
-	int win_pd_type[5] = { -1, -1, -1, -1, -1 };
-	int ii;
-	int pulldown_mode2;
-	int pulldown_mode_ret;
-
-	insert_pd_his(&di_buf->di_buf_dup_p[1]->field_pd_info);
-	if (buffer_count == 3) {
-		/* 3 buffers */
-		cal_pd_parameters(&di_buf->di_buf_dup_p[1]->field_pd_info,
-			&di_buf->di_buf_dup_p[0]->field_pd_info,
-			&di_buf->di_buf_dup_p[2]->field_pd_info);
-		/* cal parameters of di_buf_dup_p[1] */
-		pattern_check_pre_2(0, &di_buf->di_buf_dup_p[2]->field_pd_info,
-			&di_buf->di_buf_dup_p[1]->field_pd_info,
-			&di_buf->di_buf_dup_p[0]->field_pd_info,
-			(int *)&di_buf->di_buf_dup_p[1]->pulldown_mode,
-			NULL, &pulldown_type, &field_pd_th);
-
-		for (ii = 0; ii < MAX_WIN_NUM; ii++) {
-			cal_pd_parameters(
-				&di_buf->di_buf_dup_p[1]->win_pd_info[ii],
-				&di_buf->di_buf_dup_p[0]->win_pd_info[ii],
-				&di_buf->di_buf_dup_p[2]->win_pd_info[ii]);
-/* cal parameters of di_buf_dup_p[1] */
-			pattern_check_pre_2(ii + 1,
-				&di_buf->di_buf_dup_p[2]->win_pd_info[ii],
-				&di_buf->di_buf_dup_p[1]->win_pd_info[ii],
-				&di_buf->di_buf_dup_p[0]->win_pd_info[ii],
-				&(di_buf->di_buf_dup_p[1]->win_pd_mode[ii]),
-				NULL, &(win_pd_type[ii]), &win_pd_th[ii]
-				);
-		}
-	}
-	pulldown_mode_ret = pulldown_mode2 = detect_pd32();
-
-	if (di_log_flag & DI_LOG_PULLDOWN) {
-		struct di_buf_s *dp = di_buf->di_buf_dup_p[1];
-		di_print(
-"%02d (%x%x%x) %08x %06x %08x %06x %02x %02x %02x %02x %02x %02x %02x %02x ",
-			dp->seq % 100,
-			dp->pulldown_mode < 0 ? 0xf : dp->pulldown_mode,
-			pulldown_type < 0 ? 0xf : pulldown_type,
-			pulldown_mode2 < 0 ? 0xf : pulldown_mode2,
-			dp->field_pd_info.frame_diff,
-			dp->field_pd_info.frame_diff_num,
-			dp->field_pd_info.field_diff,
-			dp->field_pd_info.field_diff_num,
-			dp->field_pd_info.frame_diff_by_pre,
-			dp->field_pd_info.frame_diff_num_by_pre,
-			dp->field_pd_info.field_diff_by_pre,
-			dp->field_pd_info.field_diff_num_by_pre,
-			dp->field_pd_info.field_diff_by_next,
-			dp->field_pd_info.field_diff_num_by_next,
-			dp->field_pd_info.frame_diff_skew_ratio,
-			dp->field_pd_info.frame_diff_num_skew_ratio);
-		for (ii = 0; ii < MAX_WIN_NUM; ii++) {
-			di_print(
-	"(%x,%x) %08x %06x %08x %06x %02x %02x %02x %02x %02x %02x %02x %02x ",
-				(dp->win_pd_mode[ii] < 0) ?
-					0xf : dp->win_pd_mode[ii],
-				win_pd_type[ii] < 0 ? 0xf : win_pd_type[ii],
-				dp->win_pd_info[ii].frame_diff,
-				dp->win_pd_info[ii].frame_diff_num,
-				dp->win_pd_info[ii].field_diff,
-				dp->win_pd_info[ii].field_diff_num,
-				dp->win_pd_info[ii].frame_diff_by_pre,
-				dp->win_pd_info[ii].frame_diff_num_by_pre,
-				dp->win_pd_info[ii].field_diff_by_pre,
-				dp->win_pd_info[ii].field_diff_num_by_pre,
-				dp->win_pd_info[ii].field_diff_by_next,
-				dp->win_pd_info[ii].field_diff_num_by_next,
-				dp->win_pd_info[ii].frame_diff_skew_ratio,
-				dp->win_pd_info[ii].frame_diff_num_skew_ratio);
-		}
-		di_print("\n");
-	}
-
-	di_buf->pulldown_mode = -1;
-	if (pulldown_detect) {
-		if (pulldown_detect & 0x1)
-			di_buf->pulldown_mode =
-				di_buf->di_buf_dup_p[1]->pulldown_mode;
-		/* used by de_post_process */
-		if (pulldown_detect & 0x10) {
-			if ((pulldown_mode2 >= 0) && (pd_detect_rst > 15))
-				di_buf->pulldown_mode = pulldown_mode2;
-		}
-		if (pd_detect_rst <= 32)
-			pd_detect_rst++;
-
-		check_pulldown_mode(pulldown_type, pulldown_mode2, win_pd_type,
-			di_buf);
-		if (di_buf->pulldown_mode != -1)
-			pulldown_count++;
-
-#if defined(NEW_DI_TV)
-		if (di_buf->vframe->source_type == VFRAME_SOURCE_TYPE_TUNER)
-			di_buf->pulldown_mode = -1;
-		/* pr_dbg("2:2 ignore\n"); */
-
-#endif
-	}
-	return pulldown_mode_ret;
-}
-
-
-static int pulldown_mode;
 static int debug_blend_mode = -1;
 
 static unsigned int pldn_dly1 = 1;
@@ -7612,9 +7421,9 @@ static unsigned int pldn_pst_wver = 5;
 module_param(pldn_pst_wver, uint, 0644);
 MODULE_PARM_DESC(pldn_pst_wver, "/n pulldonw post-weaver for test./n");
 
-int set_pulldown_mode(int buffer_keep_count, struct di_buf_s *di_buf)
+void set_pulldown_mode(int buffer_keep_count, struct di_buf_s *di_buf)
 {
-	int pulldown_mode_hise = 0;
+
 	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXTVBB)) {
 		if (pulldown_enable && !di_pre_stru.cur_prog_flag)
 			di_buf->pulldown_mode =
@@ -7626,22 +7435,8 @@ int set_pulldown_mode(int buffer_keep_count, struct di_buf_s *di_buf)
 				pldn_pst_wver = 5;
 			di_buf->pulldown_mode = pldn_pst_wver;
 		}
-	} else {
-		if (pulldown_mode & 1) {
-			pulldown_mode_hise =
-				pulldown_process(di_buf, buffer_keep_count);
-			if (di_buf->pulldown_mode == -1)
-				di_buf->pulldown_mode = PULL_DOWN_NORMAL;
-			else if (di_buf->pulldown_mode == 0)
-				di_buf->pulldown_mode = PULL_DOWN_BLEND_0;
-			else if (di_buf->pulldown_mode == 1)
-				di_buf->pulldown_mode = PULL_DOWN_BLEND_2;
-		} else {
-			di_buf->pulldown_mode =
-				di_buf->di_buf_dup_p[1]->pulldown_mode;
-		}
 	}
-	return pulldown_mode_hise;
+
 }
 
 void drop_frame(int check_drop, int throw_flag, struct di_buf_s *di_buf)
@@ -7704,7 +7499,6 @@ static int process_post_vframe(void)
  */
 	ulong irq_flag2 = 0;
 	int i = 0;
-	int pulldown_mode_hise = 0;
 	int ret = 0;
 	int buffer_keep_count = 3;
 	struct di_buf_s *di_buf = NULL;
@@ -7799,7 +7593,7 @@ static int process_post_vframe(void)
 						= PULL_DOWN_BLEND_2;
 					/* blend with di_buf->di_buf_dup_p[2] */
 				} else {
-					pulldown_mode_hise = set_pulldown_mode(
+					set_pulldown_mode(
 						buffer_keep_count,
 						di_buf);
 				}
@@ -8337,8 +8131,9 @@ static void di_reg_process(void)
 static void di_rdma_irq(void *arg)
 {
 	struct di_dev_s *di_devp = (struct di_dev_s *)arg;
-
-	if (!di_devp || (di_devp->rdma_handle <= 0)) {
+	if (IS_ERR_OR_NULL(di_devp))
+		return;
+	if (di_devp->rdma_handle <= 0) {
 		pr_err("%s rdma handle %d error.\n", __func__,
 			di_devp->rdma_handle);
 		return;
@@ -9714,7 +9509,6 @@ static void set_di_flag(void)
 	if (is_meson_gxtvbb_cpu() || is_meson_txl_cpu() ||
 		is_meson_txlx_cpu() || is_meson_gxlx_cpu()) {
 		mcpre_en = true;
-		pulldown_mode = 1;
 		pulldown_enable = 1;
 		di_pre_rdma_enable = false;
 		/* txlx atsc 1080i ei only will cause flicker
@@ -9739,7 +9533,6 @@ static void set_di_flag(void)
 		}
 	} else {
 		mcpre_en = false;
-		pulldown_mode = 0;
 		pulldown_enable = 0;
 		di_pre_rdma_enable = false;
 		di_vscale_skip_enable = 4;
@@ -10422,9 +10215,6 @@ module_param(use_2_interlace_buff, int, 0664);
 MODULE_PARM_DESC(use_2_interlace_buff,
 	"/n debug for progress interlace mixed source /n");
 
-module_param(pulldown_mode, int, 0664);
-MODULE_PARM_DESC(pulldown_mode, "\n option for pulldown\n");
-
 module_param(reg_cnt, uint, 0664);
 MODULE_PARM_DESC(reg_cnt, "\n cnt for reg\n");
 
@@ -10545,4 +10335,7 @@ MODULE_PARM_DESC(flm22_sure_num, "ture film-22/n");
 
 module_param(flm22_glbpxlnum_rat, uint, 0644);
 MODULE_PARM_DESC(flm22_glbpxlnum_rat, "flm22_glbpxlnum_rat/n");
+
+module_param_named(combing_dejaggy_flag, dejaggy_flag, int, 0664);
+module_param_named(combing_dejaggy_enable, dejaggy_enable, int, 0664);
 #endif
