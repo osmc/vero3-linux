@@ -90,6 +90,11 @@ static unsigned int fclk_table[] = { /* unit: MHz */
 #define CLK_LEVEL_DFT_TXLX    3
 #define CLK_LEVEL_MAX_TXLX    8
 #define FCLK_TYPE_TXLX        FCLK_2000M
+/* TXHD */
+/* freq max=400M, default=400M */
+#define CLK_LEVEL_DFT_TXHD    3
+#define CLK_LEVEL_MAX_TXHD    6
+#define FCLK_TYPE_TXHD        FCLK_2000M
 
 /* vpu clk setting */
 enum vpu_mux_e {

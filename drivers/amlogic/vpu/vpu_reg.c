@@ -82,6 +82,7 @@ int vpu_ioremap(void)
 
 	switch (vpu_chip_type) {
 	case VPU_CHIP_TXLX:
+	case VPU_CHIP_TXHD:
 		vpu_map = vpu_reg_maps_txlx;
 		vpu_map_num = ARRAY_SIZE(vpu_reg_maps_txlx);
 		break;
@@ -134,6 +135,7 @@ static void __iomem *vpu_hiu_reg_check(unsigned int _reg)
 	case VPU_CHIP_GXM:
 	case VPU_CHIP_TXL:
 	case VPU_CHIP_TXLX:
+	case VPU_CHIP_TXHD:
 		reg_bus = VPU_MAP_HIUBUS;
 		break;
 	default:

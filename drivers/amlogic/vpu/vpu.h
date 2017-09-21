@@ -38,6 +38,7 @@ enum vpu_chip_e {
 	VPU_CHIP_TXL,
 	VPU_CHIP_TXLX,
 	VPU_CHIP_GXLX,
+	VPU_CHIP_TXHD,
 	VPU_CHIP_MAX,
 };
 

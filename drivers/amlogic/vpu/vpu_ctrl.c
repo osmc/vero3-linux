@@ -168,7 +168,7 @@ void switch_vpu_mem_pd_vmod(unsigned int vmod, int flag)
 			vpu_hiu_setb(_reg1, val, 18, 2);
 		break;
 	case VPU_OSD_AFBCD:
-		if (vpu_chip_type == VPU_CHIP_TXLX)
+		if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 			vpu_hiu_setb(_reg1, val, 18, 2);
 		break;
 	case VPU_VENCP:
@@ -346,7 +346,7 @@ int get_vpu_mem_pd_vmod(unsigned int vmod)
 			val = VPU_MEM_PD_ERR;
 		break;
 	case VPU_OSD_AFBCD:
-		if (vpu_chip_type == VPU_CHIP_TXLX)
+		if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 			val = vpu_hiu_getb(_reg0, 18, 2);
 		else
 			val = VPU_MEM_PD_ERR;
@@ -439,14 +439,15 @@ void switch_vpu_clk_gate_vmod(unsigned int vmod, int flag)
 			/* clkb_gen_en */
 			vpu_vcbus_setb(VPU_CLK_GATE, val, 17, 1);
 		}
-		if (vpu_chip_type == VPU_CHIP_TXLX)
+		if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 			vpu_hiu_setb(HHI_VPU_CLKB_CNTL, val, 9, 1);
 		if ((vpu_chip_type == VPU_CHIP_GXBB) ||
 			(vpu_chip_type == VPU_CHIP_GXTVBB) ||
 			(vpu_chip_type == VPU_CHIP_GXL) ||
 			(vpu_chip_type == VPU_CHIP_GXM) ||
 			(vpu_chip_type == VPU_CHIP_TXL) ||
-			(vpu_chip_type == VPU_CHIP_TXLX)) {
+			(vpu_chip_type == VPU_CHIP_TXLX) ||
+			(vpu_chip_type == VPU_CHIP_TXHD)) {
 			/* clkb_gate */
 			vpu_vcbus_setb(VPU_CLK_GATE, val, 16, 1);
 		}
@@ -457,7 +458,8 @@ void switch_vpu_clk_gate_vmod(unsigned int vmod, int flag)
 			(vpu_chip_type == VPU_CHIP_GXL) ||
 			(vpu_chip_type == VPU_CHIP_GXM) ||
 			(vpu_chip_type == VPU_CHIP_TXL) ||
-			(vpu_chip_type == VPU_CHIP_TXLX)) {
+			(vpu_chip_type == VPU_CHIP_TXLX) ||
+			(vpu_chip_type == VPU_CHIP_TXHD)) {
 			vpu_vcbus_setb(VPU_CLK_GATE, val, 15, 1); /* rdma_clk */
 		}
 		break;
@@ -554,7 +556,8 @@ void switch_vpu_clk_gate_vmod(unsigned int vmod, int flag)
 				(vpu_chip_type == VPU_CHIP_GXL) ||
 				(vpu_chip_type == VPU_CHIP_GXM) ||
 				(vpu_chip_type == VPU_CHIP_TXL) ||
-				(vpu_chip_type == VPU_CHIP_TXLX)) {
+				(vpu_chip_type == VPU_CHIP_TXLX) ||
+				(vpu_chip_type == VPU_CHIP_TXHD)) {
 				vpu_vcbus_set_mask(VPP_GCLK_CTRL0, 0xc030);
 			}
 			vpu_vcbus_set_mask(VPP_GCLK_CTRL1, 0xfff);
@@ -571,7 +574,8 @@ void switch_vpu_clk_gate_vmod(unsigned int vmod, int flag)
 				(vpu_chip_type == VPU_CHIP_GXL) ||
 				(vpu_chip_type == VPU_CHIP_GXM) ||
 				(vpu_chip_type == VPU_CHIP_TXL) ||
-				(vpu_chip_type == VPU_CHIP_TXLX)) {
+				(vpu_chip_type == VPU_CHIP_TXLX) ||
+				(vpu_chip_type == VPU_CHIP_TXHD)) {
 				vpu_vcbus_clr_mask(VPP_GCLK_CTRL0, 0xc030);
 			}
 			vpu_vcbus_clr_mask(VPP_GCLK_CTRL1, 0xfff);

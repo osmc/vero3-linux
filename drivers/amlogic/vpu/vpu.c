@@ -136,6 +136,12 @@ static void vpu_chip_detect(void)
 		vpu_conf.clk_level_max = CLK_LEVEL_MAX_TXLX;
 		vpu_conf.fclk_type = FCLK_TYPE_TXLX;
 		break;
+	case MESON_CPU_MAJOR_ID_TXHD:
+		vpu_chip_type = VPU_CHIP_TXHD;
+		vpu_conf.clk_level_dft = CLK_LEVEL_DFT_TXHD;
+		vpu_conf.clk_level_max = CLK_LEVEL_MAX_TXHD;
+		vpu_conf.fclk_type = FCLK_TYPE_TXHD;
+		break;
 	default:
 		vpu_chip_type = VPU_CHIP_MAX;
 		vpu_conf.clk_level_dft = 0;
@@ -438,6 +444,7 @@ static int adjust_vpu_clk(unsigned int clk_level)
 	case VPU_CHIP_TXL:
 	case VPU_CHIP_TXLX:
 	case VPU_CHIP_GXLX:
+	case VPU_CHIP_TXHD:
 		switch_vpu_clk_gx();
 		break;
 	case VPU_CHIP_M8M2:
@@ -1085,6 +1092,7 @@ static int vpu_probe(struct platform_device *pdev)
 	set_vpu_clk(vpu_conf.clk_level);
 	switch (vpu_chip_type) {
 	case VPU_CHIP_TXLX:
+	case VPU_CHIP_TXHD:
 		vpu_clktree_init(&pdev->dev);
 		break;
 	default:
