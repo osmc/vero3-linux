@@ -105,10 +105,13 @@ enum mtx_en_e {
 };
 
 #define POST_MTX_EN_MASK	(1 << POST_MTX_EN)
-#define VD2_MTX_EN_MASK	(1 << VD2_MTX_EN)
-#define VD1_MTX_EN_MASK	(1 << VD1_MTX_EN)
-#define XVY_MTX_EN_MASK	(1 << XVY_MTX_EN)
+#define VD2_MTX_EN_MASK		(1 << VD2_MTX_EN)
+#define VD1_MTX_EN_MASK		(1 << VD1_MTX_EN)
+#define XVY_MTX_EN_MASK		(1 << XVY_MTX_EN)
 #define OSD1_MTX_EN_MASK	(1 << OSD1_MTX_EN)
+
+#define HDR_SUPPORT		(1 << 2)
+#define HLG_SUPPORT		(1 << 3)
 
 #define LUT_289_SIZE	289
 extern unsigned int lut_289_mapping[LUT_289_SIZE];
