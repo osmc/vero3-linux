@@ -2095,6 +2095,11 @@ static void dealloc_mv_bufs(struct hevc_state_s *hevc)
 			hevc->m_mv_BUF[i].used_flag = 0;
 		}
 	}
+	for (i = 0; i < MAX_REF_PIC_NUM; i++) {
+		if (hevc->m_PIC[i] != NULL)
+			hevc->m_PIC[i]->mv_buf_index = -1;
+	}
+
 }
 
 static int alloc_mv_buf(struct hevc_state_s *hevc, int i)
@@ -2205,6 +2210,7 @@ static void put_mv_buf(struct hevc_state_s *hevc,
 	if (hevc->m_mv_BUF[i].start_adr &&
 		hevc->m_mv_BUF[i].used_flag)
 		hevc->m_mv_BUF[i].used_flag = 0;
+	pic->mv_buf_index = -1;
 #endif
 }
 
@@ -2536,6 +2542,7 @@ static void init_pic_list(struct hevc_state_s *hevc)
 		hevc->m_PIC[i] = pic;
 		pic->index = i;
 		pic->BUF_index = -1;
+		pic->mv_buf_index = -1;
 		if (config_pic(hevc, pic) < 0) {
 			if (get_dbg_flag(hevc))
 				hevc_print(hevc, 0,
@@ -2866,6 +2873,14 @@ static int config_mc_buffer(struct hevc_state_s *hevc, struct PIC_s *cur_pic)
 						m_aiRefPOCList0[cur_pic->
 						slice_idx][i]);
 			if (pic) {
+				if ((pic->width != hevc->pic_w) ||
+					(pic->height != hevc->pic_h)) {
+					hevc_print(hevc, 0,
+						"%s: Wrong reference pic (poc %d) width/height %d/%d\n",
+						__func__, pic->POC,
+						pic->width, pic->height);
+					cur_pic->error_mark = 1;
+				}
 				if (pic->error_mark)
 					cur_pic->error_mark = 1;
 				WRITE_VREG(HEVCD_MPP_ANC_CANVAS_DATA_ADDR,
@@ -2908,6 +2923,15 @@ static int config_mc_buffer(struct hevc_state_s *hevc, struct PIC_s *cur_pic)
 						m_aiRefPOCList1[cur_pic->
 						slice_idx][i]);
 			if (pic) {
+				if ((pic->width != hevc->pic_w) ||
+					(pic->height != hevc->pic_h)) {
+					hevc_print(hevc, 0,
+						"%s: Wrong reference pic (poc %d) width/height %d/%d\n",
+						__func__, pic->POC,
+						pic->width, pic->height);
+					cur_pic->error_mark = 1;
+				}
+
 				if (pic->error_mark)
 					cur_pic->error_mark = 1;
 				WRITE_VREG(HEVCD_MPP_ANC_CANVAS_DATA_ADDR,
@@ -5405,6 +5429,19 @@ static int hevc_slice_segment_header_process(struct hevc_state_s *hevc,
 				if (is_log_enable(hevc))
 					add_log(hevc,
 					"WRONG, Col_POC error_mark is 1");
+			} else {
+				if ((hevc->col_pic->width
+					!= hevc->pic_w) ||
+					(hevc->col_pic->height
+					!= hevc->pic_h)) {
+					hevc_print(hevc, 0,
+						"Wrong reference pic (poc %d) width/height %d/%d\n",
+						hevc->col_pic->POC,
+						hevc->col_pic->width,
+						hevc->col_pic->height);
+					hevc->cur_pic->error_mark = 1;
+				}
+
 			}
 
 			if (hevc->cur_pic->error_mark
