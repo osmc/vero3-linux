@@ -4232,9 +4232,7 @@ static void check_timer_func(unsigned long arg)
 		WRITE_VREG(DEBUG_REG1, 0);
 	}
 
-	hw->check_timer.expires = jiffies + CHECK_INTERVAL;
-
-	add_timer(&hw->check_timer);
+	mod_timer(&hw->check_timer, jiffies + CHECK_INTERVAL);
 }
 
 static int dec_status(struct vdec_s *vdec, struct vdec_info *vstatus)
@@ -5158,7 +5156,7 @@ static void run(struct vdec_s *vdec,
 		WRITE_VREG(NAL_SEARCH_CTL, READ_VREG(NAL_SEARCH_CTL) | 0x2);
 	if (udebug_flag)
 		WRITE_VREG(AV_SCRATCH_K, udebug_flag);
-	add_timer(&hw->check_timer);
+	mod_timer(&hw->check_timer, jiffies + CHECK_INTERVAL);
 
 	amvdec_start();
 
