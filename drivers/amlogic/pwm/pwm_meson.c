@@ -75,7 +75,7 @@ struct aml_pwm_channel *pwm_aml_calc(struct aml_pwm_chip *chip,
 						struct clk	*clk)
 {
 	struct aml_pwm_channel *our_chan = pwm_get_chip_data(pwm);
-	unsigned int fout_freq = 0, pwm_pre_div = 0;
+	unsigned int pwm_pre_div = 0;
 	unsigned int i = 0;
 	unsigned long  temp = 0;
 	unsigned long pwm_cnt = 0;
@@ -87,14 +87,22 @@ struct aml_pwm_channel *pwm_aml_calc(struct aml_pwm_chip *chip,
 		dev_err(chip->chip.dev, "Not available duty error!\n");
 		return NULL;
 	}
-
-	if (!IS_ERR(clk))
+	if (period_ns > NSEC_PER_SEC) {
+		dev_err(chip->chip.dev, "Not available period_ns\n");
+		return NULL;
+	}
+	if (!IS_ERR(clk)) {
 		rate = clk_get_rate(clk);
-
+		if (rate == 0) {
+			dev_err(chip->chip.dev, "invalid source clock frequency\n");
+			return NULL;
+		}
+	} else {
+		dev_err(chip->chip.dev, "invalid clk\n");
+		return NULL;
+	}
 	pwm_freq = NSEC_PER_SEC / period_ns;
 
-	fout_freq = ((pwm_freq >= ((rate/1000) * 500)) ?
-					((rate/1000) * 500) : pwm_freq);
 	for (i = 0; i < 0x7f; i++) {
 		pwm_pre_div = i;
 		freq_div = rate / (pwm_pre_div + 1);
