@@ -81,7 +81,7 @@ static int ion_cma_allocate(struct ion_heap *heap, struct ion_buffer *buffer,
 
 	len = PAGE_ALIGN(len);
 	info->cpu_addr = dma_alloc_coherent(dev, len, &(info->handle),
-						__GFP_ZERO);
+						GFP_HIGHUSER | __GFP_ZERO);
 	if (!info->cpu_addr) {
 		dev_err(dev, "Fail to allocate buffer\n");
 		goto err;
