@@ -394,7 +394,8 @@ void di_hw_init(void)
 		fifo_size_vpp = 0x180;
 		fifo_size_di = 0x120;
 	}
-	DI_Wr_reg_bits(DI_ARB_CTRL, 0xffff, 0, 16);
+	/* enable di all arb */
+	DI_Wr_reg_bits(DI_ARB_CTRL, 0xf0f, 0, 16);
 	DI_Wr(VD1_IF0_LUMA_FIFO_SIZE, fifo_size_vpp);
 	DI_Wr(VD2_IF0_LUMA_FIFO_SIZE, fifo_size_vpp);
 	/* 1a83 is vd2_if0_luma_fifo_size */
@@ -1427,41 +1428,72 @@ static void set_di_chan2_mif(struct DI_MIF_s *mif, int urgent, int hold_line)
 {
 	unsigned int bytes_per_pixel;
 	unsigned int demux_mode;
+	unsigned int chro_rpt_lastl_ctrl;
 	unsigned int luma0_rpt_loop_start;
 	unsigned int luma0_rpt_loop_end;
 	unsigned int luma0_rpt_loop_pat;
+	unsigned int chroma0_rpt_loop_start;
+	unsigned int chroma0_rpt_loop_end;
+	unsigned int chroma0_rpt_loop_pat;
 	unsigned int reset_on_gofield;
-
-	bytes_per_pixel = mif->set_separate_en ? 0 :
-((mif->video_mode == 1) ? 2 : 1);
-	demux_mode =  mif->video_mode & 1;
-
-	if (mif->src_field_mode == 1) {
+	if (mif->set_separate_en != 0 && mif->src_field_mode == 1) {
+		chro_rpt_lastl_ctrl = 1;
 		luma0_rpt_loop_start = 1;
 		luma0_rpt_loop_end = 1;
+		chroma0_rpt_loop_start = 1;
+		chroma0_rpt_loop_end = 1;
 		luma0_rpt_loop_pat = 0x80;
-	} else {
+		chroma0_rpt_loop_pat = 0x80;
+	} else if (mif->set_separate_en != 0 && mif->src_field_mode == 0) {
+		chro_rpt_lastl_ctrl = 1;
 		luma0_rpt_loop_start = 0;
 		luma0_rpt_loop_end = 0;
-		luma0_rpt_loop_pat = 0;
+		chroma0_rpt_loop_start = 0;
+		chroma0_rpt_loop_end = 0;
+		luma0_rpt_loop_pat = 0x0;
+		chroma0_rpt_loop_pat = 0x0;
+	} else if (mif->set_separate_en == 0 && mif->src_field_mode == 1) {
+		chro_rpt_lastl_ctrl = 1;
+		luma0_rpt_loop_start = 1;
+		luma0_rpt_loop_end = 1;
+		chroma0_rpt_loop_start = 0;
+		chroma0_rpt_loop_end = 0;
+		luma0_rpt_loop_pat = 0x80;
+		chroma0_rpt_loop_pat = 0x00;
+	} else {
+		chro_rpt_lastl_ctrl = 0;
+		luma0_rpt_loop_start = 0;
+		luma0_rpt_loop_end = 0;
+		chroma0_rpt_loop_start = 0;
+		chroma0_rpt_loop_end = 0;
+		luma0_rpt_loop_pat = 0x00;
+		chroma0_rpt_loop_pat = 0x00;
 	}
+
+	bytes_per_pixel = mif->set_separate_en ? 0 : (mif->video_mode ? 2 : 1);
+	demux_mode = mif->video_mode;
+
+
 	/* ---------------------- */
 	/* General register */
 	/* ---------------------- */
 	reset_on_gofield = (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXBB)?0:1;
 	RDMA_WR(DI_CHAN2_GEN_REG, (reset_on_gofield << 29) |
-				(urgent << 28) | /* urgent */
-				(urgent << 27) | /* luma urgent */
-				(1 << 25) |	/* no dummy data. */
+						/* reset on go field */
+				(urgent << 28)	| /* urgent bit. */
+				(urgent << 27)	| /* urgent bit. */
+				(1 << 25)		| /* no dummy data. */
 				(hold_line << 19) |	/* hold lines */
-				(1 << 18) |/* push dummy pixel */
-				(demux_mode << 16) |
+				(1 << 18) |	/* push dummy pixel */
+				(demux_mode << 16) | /* demux_mode */
 				(bytes_per_pixel << 14)	|
 				(1 << 12)	|/*burst_size_cr*/
 				(1 << 10)	|/*burst_size_cb*/
-				(3 << 8) |/*burst_size_y*/
-((hold_line == 0 ? 1 : 0) << 7) |
-(0 << 6)|(0 << 1)|(0 << 0));
+				(3 << 8)	|/*burst_size_y*/
+				(chro_rpt_lastl_ctrl << 6)	|
+				((mif->set_separate_en != 0) << 1)|
+				(0 << 0)	/* cntl_enable */
+	  );
 	/* ---------------------- */
 	/* Canvas */
 	/* ---------------------- */
@@ -1471,18 +1503,20 @@ static void set_di_chan2_mif(struct DI_MIF_s *mif, int urgent, int hold_line)
 	} else {
 		RDMA_WR_BITS(DI_CHAN2_GEN_REG2, 0, 0, 1);
 	}
-	RDMA_WR(DI_CHAN2_CANVAS, (0 << 16) | /* cntl_canvas0_addr2 */
-(0 << 8)|(mif->canvas0_addr0 << 0));
-
+	RDMA_WR(DI_CHAN2_CANVAS, (mif->canvas0_addr2 << 16) |
+				(mif->canvas0_addr1 << 8) |
+				(mif->canvas0_addr0 << 0));
 	/* ---------------------- */
 	/* Picture 0 X/Y start,end */
 	/* ---------------------- */
 	RDMA_WR(DI_CHAN2_LUMA_X, (mif->luma_x_end0 << 16) |
-	/* cntl_luma_x_end0 */
-(mif->luma_x_start0 << 0));
+				(mif->luma_x_start0 << 0));
 	RDMA_WR(DI_CHAN2_LUMA_Y, (mif->luma_y_end0 << 16) |
-	/* cntl_luma_y_end0 */
-(mif->luma_y_start0 << 0));
+				(mif->luma_y_start0 << 0));
+	RDMA_WR(DI_CHAN2_CHROMA_X0, (mif->chroma_x_end0 << 16) |
+				(mif->chroma_x_start0 << 0));
+	RDMA_WR(DI_CHAN2_CHROMA_Y0, (mif->chroma_y_end0 << 16) |
+				(mif->chroma_y_start0 << 0));
 
 	/* ---------------------- */
 	/* Repeat or skip */
@@ -1974,8 +2008,7 @@ void di_hw_disable(void)
 	}
 }
 
-void enable_film_mode_check(unsigned int width, unsigned int height,
-		enum vframe_source_type_e source_type)
+void film_mode_win_config(unsigned int width, unsigned int height)
 {
 	unsigned int win0_start_x, win0_end_x, win0_start_y, win0_end_y;
 	unsigned int win1_start_x, win1_end_x, win1_start_y, win1_end_y;
@@ -2262,6 +2295,7 @@ void di_top_gate_control(bool top_en, bool mc_en)
 	if (top_en) {
 		/* enable clkb input */
 		DI_Wr_reg_bits(VIUB_GCLK_CTRL0, 1, 0, 1);
+		DI_Wr_reg_bits(VIUB_GCLK_CTRL0, 1, 15, 1);
 		/* enable slow clk */
 		DI_Wr_reg_bits(VIUB_GCLK_CTRL0, mc_en?1:0, 10, 1);
 		/* enable di arb */
@@ -2269,6 +2303,7 @@ void di_top_gate_control(bool top_en, bool mc_en)
 	} else {
 		/* disable clkb input */
 		DI_Wr_reg_bits(VIUB_GCLK_CTRL0, 0, 0, 1);
+		DI_Wr_reg_bits(VIUB_GCLK_CTRL0, 0, 15, 1);
 		/* disable slow clk */
 		DI_Wr_reg_bits(VIUB_GCLK_CTRL0, 0, 10, 1);
 		/* disable di arb */

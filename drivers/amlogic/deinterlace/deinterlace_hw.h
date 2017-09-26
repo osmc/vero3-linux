@@ -23,4 +23,5 @@ void di_load_regs(struct di_pq_parm_s *di_pq_ptr);
 void combing_pd22_window_config(unsigned int width, unsigned int height);
 void calc_lmv_init(void);
 void calc_lmv_base_mcinfo(unsigned int vf_height, unsigned long mcinfo_adr);
+void film_mode_win_config(unsigned int width, unsigned int height);
 #endif

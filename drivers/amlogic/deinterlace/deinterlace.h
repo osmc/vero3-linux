@@ -314,9 +314,6 @@ int get_di_pre_recycle_buf(void);
 
 void disable_post_deinterlace_2(void);
 
-void enable_film_mode_check(unsigned int width, unsigned int height,
-		enum vframe_source_type_e);
-
 void enable_di_pre_aml(
 	struct DI_MIF_s		*di_inp_mif,
 	struct DI_MIF_s		*di_mem_mif,
