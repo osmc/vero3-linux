@@ -397,10 +397,10 @@ unsigned int vdin_cma_alloc(struct vdin_dev_s *devp)
 
 	if ((devp->cma_config_en == 0) ||
 		(devp->cma_mem_alloc == 1)) {
-		pr_err(KERN_ERR "\nvdin%d %s fail for (%d,%d)!!!\n",
+		pr_info(KERN_INFO "\nvdin%d %s use_reserved mem or cma already alloced (%d,%d)!!!\n",
 			devp->index, __func__, devp->cma_config_en,
 			devp->cma_mem_alloc);
-		return 1;
+		return 0;
 	}
 	h_size = devp->h_active;
 	v_size = devp->v_active;

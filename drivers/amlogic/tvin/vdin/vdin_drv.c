@@ -77,6 +77,8 @@ static dev_t vdin_devno;
 static struct class *vdin_clsp;
 static unsigned int vdin_addr_offset[VDIN_MAX_DEVS] = {0, 0x80};
 static struct vdin_dev_s *vdin_devp[VDIN_MAX_DEVS];
+static unsigned long mem_start, mem_end;
+static unsigned int use_reserved_mem;
 /*
  * canvas_config_mode
  * 0: canvas_config in driver probe
@@ -785,7 +787,6 @@ void vdin_start_dec(struct vdin_dev_s *devp)
 		pr_info("[vdin]%s null error.\n", __func__);
 		return;
 	}
-
 	if (devp->frontend && devp->frontend->sm_ops) {
 		sm_ops = devp->frontend->sm_ops;
 		sm_ops->get_sig_propery(devp->frontend, &devp->prop);
@@ -848,7 +849,7 @@ void vdin_start_dec(struct vdin_dev_s *devp)
 #ifdef CONFIG_CMA
 	vdin_cma_malloc_mode(devp);
 	if (vdin_cma_alloc(devp)) {
-		pr_err(KERN_ERR "\nvdin%d %s fail for alloc fail!!!\n",
+		pr_err(KERN_ERR "\nvdin%d %s fail for cma alloc fail!!!\n",
 			devp->index, __func__);
 		return;
 	}
@@ -978,7 +979,7 @@ void vdin_stop_dec(struct vdin_dev_s *devp)
 	if (!devp || !devp->frontend)
 		return;
 #ifdef CONFIG_CMA
-	if (devp->cma_mem_alloc == 0) {
+	if ((devp->cma_mem_alloc == 0) && devp->cma_config_en) {
 		pr_info("%s:cma not alloc,don't need do others!\n", __func__);
 		return;
 	}
@@ -2643,10 +2644,6 @@ static void vdin_delete_device(int minor)
 	dev_t devno = MKDEV(MAJOR(vdin_devno), minor);
 	device_destroy(vdin_clsp, devno);
 }
-
-static struct resource memobj;
-static unsigned long mem_start, mem_end;
-static unsigned int use_reserved_mem;
 static int vdin_drv_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -2659,13 +2656,11 @@ static int vdin_drv_probe(struct platform_device *pdev)
 	/* struct device_node *of_node = pdev->dev.of_node; */
 
 	/* malloc vdev */
-	vdevp = kmalloc(sizeof(struct vdin_dev_s), GFP_KERNEL);
+	vdevp = kzalloc(sizeof(struct vdin_dev_s), GFP_KERNEL);
 	if (!vdevp) {
 		pr_err("%s: failed to allocate memory.\n", __func__);
-		goto fail_kmalloc_vdev;
+		goto fail_kzalloc_vdev;
 	}
-	memset(vdevp, 0, sizeof(struct vdin_dev_s));
-
 	if (pdev->dev.of_node) {
 		ret = of_property_read_u32(pdev->dev.of_node,
 				"vdin_id", &(vdevp->index));
@@ -2699,66 +2694,11 @@ static int vdin_drv_probe(struct platform_device *pdev)
 		pr_err("%s: fail to create vdin attribute files.\n", __func__);
 		goto fail_create_dev_file;
 	}
-	/* get memory address from resource */
-#if 0
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-#elif 0
-	res = &memobj;
-	ret = find_reserve_block(pdev->dev.of_node->name, 0);
-	if (ret < 0) {
-		name = of_get_property(of_node, "share-memory-name", NULL);
-		if (!name) {
-			pr_err("\nvdin memory resource undefined1.\n");
-			ret = -EFAULT;
-			goto fail_get_resource_mem;
-		} else {
-			ret = find_reserve_block_by_name((char *)name);
-			if (ret < 0) {
-				pr_err("\nvdin memory resource undefined2.\n");
-				ret = -EFAULT;
-				goto fail_get_resource_mem;
-			}
-			name = of_get_property(of_node,
-					"share-memory-offset", NULL);
-			if (name)
-				offset = of_read_ulong(name, 1);
-			else {
-				pr_err("\nvdin memory resource undefined3.\n");
-				ret = -EFAULT;
-				goto fail_get_resource_mem;
-			}
-			name = of_get_property(of_node,
-						"share-memory-size", NULL);
-			if (name)
-				size = of_read_ulong(name, 1);
-			else {
-				pr_err("\nvdin memory resource undefined4.\n");
-				ret = -EFAULT;
-				goto fail_get_resource_mem;
-			}
-			res->start =
-				(phys_addr_t)get_reserve_block_addr(ret)+offset;
-			res->end = res->start + size-1;
-		}
-	} else {
-		res->start = (phys_addr_t)get_reserve_block_addr(ret);
-		res->end = res->start +
-				(phys_addr_t)get_reserve_block_size(ret)-1;
-	}
-#else
-	res = &memobj;
 	ret = of_reserved_mem_device_init(&pdev->dev);
 	if (ret == 0)
 		pr_info("\n vdin memory resource done.\n");
 	else
 		pr_info("\n vdin memory resource undefined!!\n");
-#endif
-/* if (!res) { */
-/* pr_err("%s: can't get mem resource !!!!!!!!!!\n", __func__); */
-/* ret = -ENXIO; */
-/* goto fail_get_resource_mem; */
-/* } */
-/*  */
 #ifdef CONFIG_CMA
 	if (!use_reserved_mem) {
 		ret = of_property_read_u32(pdev->dev.of_node,
@@ -2786,32 +2726,15 @@ static int vdin_drv_probe(struct platform_device *pdev)
 	}
 #endif
 	use_reserved_mem = 0;
+	/*use reserved mem*/
 	if (vdevp->cma_config_en != 1) {
 		vdevp->mem_start = mem_start;
-		vdevp->mem_size  = mem_end - mem_start + 1;
+		vdevp->mem_size = mem_end - mem_start + 1;
 		pr_info("vdin%d mem_start = 0x%lx, mem_size = 0x%x\n",
 			vdevp->index, vdevp->mem_start, vdevp->mem_size);
 	}
 
 	/* get irq from resource */
-	#if 0/* def CONFIG_USE_OF */
-	if (pdev->dev.of_node) {
-		ret = of_property_read_u32(pdev->dev.of_node,
-				"interrupts", &(res->start));
-		if (ret) {
-			pr_err("don't find  match irq\n");
-			goto fail_get_resource_irq;
-		}
-		ret = of_property_read_u32(pdev->dev.of_node,
-				"rdma-irq", &(vdevp->rdma_irq));
-		if (ret) {
-			pr_err("don't find  match rdma irq, disable rdma\n");
-			vdevp->rdma_irq = 0;
-		}
-		res->end = res->start;
-		res->flags = IORESOURCE_IRQ;
-	}
-	#else
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res) {
 		pr_err("%s: can't get irq resource\n", __func__);
@@ -2824,33 +2747,26 @@ static int vdin_drv_probe(struct platform_device *pdev)
 		pr_err("don't find  match rdma irq, disable rdma\n");
 		vdevp->rdma_irq = 0;
 	}
-	/* vdin0 for tv */
-	if (vdevp->index == 0) {
-		/* only gxtvbb & txl support 10bit mode@20161108 */
-		if ((get_cpu_type() == MESON_CPU_MAJOR_ID_GXTVBB) ||
-			(get_cpu_type() == MESON_CPU_MAJOR_ID_TXL) ||
-			(get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX) ||
-			(get_cpu_type() == MESON_CPU_MAJOR_ID_TXHD)) {
-			ret = of_property_read_u32(pdev->dev.of_node,
-					"tv_bit_mode", &bit_mode);
-			if (ret)
-				pr_info("no bit mode found, set 8bit as default\n");
-		}
-		vdevp->color_depth_support = bit_mode;
-		vdevp->color_depth_config = 0;
-	}
-	vdevp->color_depth_support = bit_mode;
-	vdevp->color_depth_config = 0;
-	if (vdevp->color_depth_support&VDIN_WR_COLOR_DEPTH_10BIT_FULL_PCAK_MODE)
-		vdevp->color_depth_mode = 1;
-	else
-		vdevp->color_depth_mode = 0;
-	#endif
 	vdevp->irq = res->start;
 	snprintf(vdevp->irq_name, sizeof(vdevp->irq_name),
 			"vdin%d-irq", vdevp->index);
 	pr_info("vdin%d irq: %d rdma irq: %d\n", vdevp->index,
 			vdevp->irq, vdevp->rdma_irq);
+
+	/*set color_depth_mode*/
+	ret = of_property_read_u32(pdev->dev.of_node,
+		"tv_bit_mode", &bit_mode);
+	if (ret)
+		pr_info("no bit mode found, set 8bit as default\n");
+
+	vdevp->color_depth_support = bit_mode;
+	vdevp->color_depth_config = 0;
+
+	if (vdevp->color_depth_support&VDIN_WR_COLOR_DEPTH_10BIT_FULL_PCAK_MODE)
+		vdevp->color_depth_mode = 1;
+	else
+		vdevp->color_depth_mode = 0;
+
 	/*vdin urgent en*/
 	ret = of_property_read_u32(pdev->dev.of_node,
 			"urgent_en", &urgent_en);
@@ -2870,38 +2786,31 @@ static int vdin_drv_probe(struct platform_device *pdev)
 	if (is_meson_gxbb_cpu() && vdevp->index)
 		vdin_addr_offset[vdevp->index] = 0x70;
 	vdevp->addr_offset = vdin_addr_offset[vdevp->index];
-
 	vdevp->flags = 0;
-
 	/*mif reset patch for vdin wr ram bug on gxtvbb*/
 	if (is_meson_gxtvbb_cpu())
 		enable_reset = 1;
 	else
 		enable_reset = 0;
-
 	/* 1: gxtvbb vdin out full range, */
 	/* 0: >=txl vdin out limit range, */
 	if (get_cpu_type() == MESON_CPU_MAJOR_ID_GXTVBB)
 		vdevp->color_range_mode = 1;
 	else
 		vdevp->color_range_mode = 0;
-
 	/* create vf pool */
 	vdevp->vfp = vf_pool_alloc(VDIN_CANVAS_MAX_CNT);
 	if (vdevp->vfp == NULL) {
 		pr_err("%s: fail to alloc vf pool.\n", __func__);
 		goto fail_alloc_vf_pool;
 	}
-
-
 	/* init vframe provider */
 	/* @todo provider name */
 	sprintf(vdevp->name, "%s%d", PROVIDER_NAME, vdevp->index);
 	vf_provider_init(&vdevp->vprov, vdevp->name, &vdin_vf_ops, vdevp->vfp);
-#if 1/*def CONFIG_AM_HDMIIN_DV*/
+
 	vf_provider_init(&vdevp->dv.vprov_dv, "dv_vdin",
 		&vdin_vf_ops, vdevp->vfp);
-#endif
 	/* @todo canvas_config_mode */
 	if (canvas_config_mode == 0 || canvas_config_mode == 1)
 		vdin_canvas_init(vdevp);
@@ -2964,7 +2873,6 @@ static int vdin_drv_probe(struct platform_device *pdev)
 	}
 	/*disable vdin hardware*/
 	vdin_enable_module(vdevp->addr_offset, false);
-
 	/*enable auto cutwindow for atv*/
 	if (vdevp->index == 0) {
 		vdevp->auto_cutwindow_en = 1;
@@ -2974,6 +2882,8 @@ static int vdin_drv_probe(struct platform_device *pdev)
 		#endif
 	}
 	vdevp->rdma_enable = 1;
+	/*set vdin_dev_s size*/
+	vdevp->vdin_dev_ssize = sizeof(struct vdin_dev_s);
 	vdevp->game_mode = game_mode;
 	vdevp->canvas_config_mode = canvas_config_mode;
 	INIT_DELAYED_WORK(&vdevp->dv.dv_dwork, vdin_dv_dwork);
@@ -2989,7 +2899,7 @@ fail_create_device:
 	cdev_del(&vdevp->cdev);
 fail_add_cdev:
 	kfree(vdevp);
-fail_kmalloc_vdev:
+fail_kzalloc_vdev:
 	return ret;
 }
 

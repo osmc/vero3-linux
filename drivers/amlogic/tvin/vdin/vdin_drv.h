@@ -292,6 +292,7 @@ struct vdin_dev_s {
 	unsigned int rdma_irq_cnt;
 	unsigned int vdin_irq_flag;
 	unsigned int vdin_reset_flag;
+	unsigned int vdin_dev_ssize;
 	wait_queue_head_t queue;
 };
 
