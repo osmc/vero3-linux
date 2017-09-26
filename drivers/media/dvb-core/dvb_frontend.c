@@ -55,6 +55,7 @@ static int dvb_mfe_wait_time = 5;
 static int dvb_afc_debug;
 static int disable_set_frotend_param;
 static int dvb_dtv_debug;
+static int dvb_atsc_timeout = 2000;
 
 
 module_param_named(frontend_debug, dvb_frontend_debug, int, 0644);
@@ -75,6 +76,9 @@ module_param(disable_set_frotend_param, int, 0644);
 MODULE_PARM_DESC(disable_set_frotend_param, "disable_set_frotend_param");
 module_param(dvb_dtv_debug, int, 0644);
 MODULE_PARM_DESC(dvb_dtv_debug, "vb_afc_debug");
+module_param(dvb_atsc_timeout, int, 0644);
+MODULE_PARM_DESC(dvb_atsc_timeout, "dvb_atsc_timeout");
+
 
 #define dprintk(a...)\
 		do {\
@@ -893,7 +897,7 @@ static void dvb_frontend_swzigzag(struct dvb_frontend *fe)
 			}
 		} else if (fe->dtv_property_cache.modulation > QAM_AUTO) {
 			if (is_meson_txlx_cpu()) {
-				LOCK_TIMEOUT = 4000;
+				LOCK_TIMEOUT = dvb_atsc_timeout;
 				if (fe->ops.read_status)
 					fe->ops.read_status(fe, &s);
 				if (s != 0x1f) {
@@ -901,9 +905,10 @@ static void dvb_frontend_swzigzag(struct dvb_frontend *fe)
 				if (fe->ops.read_ber)
 					fe->ops.read_ber(fe, &atsc_status);
 				dprintk
-				("[rsj]atsc_status is %x,modulation is %d\n",
+				("[rsj]atsc_status[%x],modulation[%d],TO[%d]\n",
 					atsc_status,
-				fe->dtv_property_cache.modulation);
+				fe->dtv_property_cache.modulation,
+				dvb_atsc_timeout);
 					if (atsc_status < 0x60) {
 						s = FE_TIMEDOUT;
 						dprintk(

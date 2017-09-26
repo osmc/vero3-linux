@@ -378,11 +378,11 @@ static int amdemod_stat_islock(struct aml_fe_dev *dev, int mode)
 		else if (atsc_mode == VSB_8) {
 			atsc_fsm = atsc_read_reg(0x0980);
 			pr_dbg("atsc status [%x]\n", atsc_fsm);
-			return atsc_read_reg(0x0980) >= 0x70;
+			return atsc_read_reg(0x0980) >= 0x79;
 		} else {
 			atsc_fsm = atsc_read_reg(0x0980);
 			pr_dbg("atsc status [%x]\n", atsc_fsm);
-			return atsc_read_reg(0x0980) >= 0x70;
+			return atsc_read_reg(0x0980) >= 0x79;
 		}
 	} else if (mode == 4) {
 		/*DTMB*/
@@ -873,6 +873,7 @@ static int gxtv_demod_atsc_set_frontend(struct dvb_frontend *fe)
 	struct aml_demod_i2c demod_i2c;
 	struct aml_fe *afe = fe->demodulator_priv;
 	struct aml_fe_dev *dev = afe->dtv_demod;
+	static int atsc_flag;
 
 	demod_i2c.tuner = dev->drv->id;
 	demod_i2c.addr = dev->i2c_addr;
@@ -888,6 +889,9 @@ static int gxtv_demod_atsc_set_frontend(struct dvb_frontend *fe)
 	/* param.mode = amdemod_qam(p->u.vsb.modulation);*/
 	aml_fe_analog_set_frontend(fe);
 	if ((c->modulation <= QAM_AUTO) && (c->modulation != QPSK)) {
+		if (atsc_flag != QAM_AUTO)
+			atsc_flag = QAM_AUTO;
+		demod_set_demod_reg(0x502, TXLX_ADC_REG6);
 		demod_set_mode_ts(Gxtv_Dvbc);
 		param_j83b.ch_freq = c->frequency / 1000;
 		param_j83b.mode = amdemod_qam(c->modulation);
@@ -899,6 +903,9 @@ static int gxtv_demod_atsc_set_frontend(struct dvb_frontend *fe)
 			param_j83b.symb_rate = 5361;
 		dvbc_set_ch(&demod_status, &demod_i2c, &param_j83b);
 	} else if (c->modulation > QAM_AUTO) {
+		if (atsc_flag != VSB_8)
+			atsc_flag = VSB_8;
+		demod_set_demod_reg(0x507, TXLX_ADC_REG6);
 		demod_set_mode_ts(Gxtv_Atsc);
 		param_atsc.ch_freq = c->frequency / 1000;
 		param_atsc.mode = c->modulation;

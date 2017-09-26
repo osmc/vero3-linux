@@ -25,6 +25,16 @@ MODULE_PARM_DESC(ar_enable, "\n\t\t Enable ar");
 static int ar_enable;
 module_param(ar_enable, int, 0644);
 
+MODULE_PARM_DESC(cci_enable, "\n\t\t Enable ar");
+static int cci_enable;
+module_param(cci_enable, int, 0644);
+
+MODULE_PARM_DESC(cfo_count, "\n\t\t Enable ar");
+static int cfo_count;
+module_param(cfo_count, int, 0644);
+
+
+
 
 static int dagc_switch;
 static int ar_flag;
@@ -418,7 +428,7 @@ int read_snr_atsc_tune(void)
 
 void set_cr_ck_rate(void)
 {
-	atsc_write_reg(0x0f07, 0x50);
+	atsc_write_reg(0x0f07, 0x21);/*0x50*/
 	/*25M ADC B2*/
 	/*atsc_write_reg(0x070c, 0x19);
 	atsc_write_reg(0x070d, 0x30);
@@ -508,6 +518,19 @@ void set_cr_ck_rate(void)
 	atsc_write_reg(0x53b,  0x0b);
 	atsc_write_reg(0x545,  0x0);
 	atsc_write_reg(0x546,  0x80);
+
+	/*improve phase nosie 20170820*/
+	atsc_write_reg(0x912,  0x00);
+	atsc_write_reg(0xf55,  0x00);
+	atsc_write_reg(0xf56,  0x00);
+	atsc_write_reg(0xf57,  0x00);
+	/*improve impluse nosie 20170820*/
+	atsc_write_reg(0x546,  0xa0);
+	/*improve awgn*/
+	atsc_write_reg(0x52d,  0x04);
+	atsc_write_reg(0x562,  0x0b);
+	atsc_write_reg(0x53b,  0x0d);
+	atsc_write_reg(0x735,  0x00);
 	ar_flag = 0;
 }
 
@@ -750,17 +773,20 @@ int cci_run(void)
 
 int cfo_run(void)
 {
-#define max_count 5
 	int crRate0, crRate1, crRate2, crRate;
 	int Fcent, Fs;
 	int cfo_sta, cr_peak_sta;
 	int i, j;
 	int sys_state;
 	int table_count;
-	int freq_table[max_count] = {0, -50, 50,
-		-100, 100};
+	int max_count;
+	int freq_table[] = {0, -50, 50, -100, 100};
 	int scan_range;
 	int Offset;
+	if (cfo_count)
+		max_count = 3;
+	else
+		max_count = 5;
 	Fcent = Si2176_5M_If*1000;/*if*/
 	Fs = Adc_Clk_24M;/*crystal*/
 	cfo_sta = 0;
@@ -925,7 +951,7 @@ void atsc_thread(void)
 	time[4] = jiffies_to_msecs(jiffies);
 	fsm_status = read_atsc_fsm();
 	if (atsc_thread_enable) {
-		if (fsm_status < Atsc_sync_lock) {
+		if (fsm_status < Atsc_Lock) {
 			/*step1:open dagc*/
 			/*if (dagc_switch == Dagc_Close) {
 				atsc_write_reg(0x716, 0x0);
@@ -940,14 +966,15 @@ void atsc_thread(void)
 		/*step:check AR*/
 		if (ar_enable)
 			AR_run();
-		ret = cci_run();
+		if (cci_enable)
+			ret = cci_run();
 		atsc_reset();
 		time[1] = jiffies_to_msecs(jiffies);
 		time_table[0] = (time[1]-time[0]);
 		fsm_status = read_atsc_fsm();
 		pr_dbg("fsm[%x][atsc_time]cci finish,need to run cfo,cost %d ms\n",
 			fsm_status, time_table[0]);
-		if (fsm_status >= Atsc_sync_lock) {
+		if (fsm_status >= Atsc_Lock) {
 			return;
 		} else if (fsm_status < CR_Lock) {
 			/*step3:run cfo*/
@@ -962,9 +989,9 @@ void atsc_thread(void)
 			read_atsc_fsm(), time_table[1]);
 		if (ret == Cfo_Fail)
 			return;
-		for (i = 0; i < 50; i++) {
+		for (i = 0; i < 35; i++) {
 			fsm_status = read_atsc_fsm();
-			if (fsm_status >= Atsc_sync_lock) {
+			if (fsm_status >= Atsc_Lock) {
 				time[3] = jiffies_to_msecs(jiffies);
 				pr_dbg("----------------------\n");
 				time_table[2] = (time[3] - time[2]);

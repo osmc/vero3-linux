@@ -276,6 +276,8 @@ struct dvb_frontend *get_si2177_tuner(void)
 			return dev->fe->fe;
 		if (!strcmp(dev->drv->name, "r842_tuner"))
 			return dev->fe->fe;
+		if (!strcmp(dev->drv->name, "mxl661_tuner"))
+			return dev->fe->fe;
 		return dev->fe->fe;
 	}
 	pr_error("can not find out tuner drv\n");

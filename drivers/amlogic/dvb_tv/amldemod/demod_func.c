@@ -84,7 +84,7 @@ int get_dtvpll_init_flag(void)
 	return val;
 }
 
-void adc_dpll_setup(int clk_a, int clk_b, int clk_sys)
+void adc_dpll_setup(int clk_a, int clk_b, int clk_sys, int dvb_mode)
 {
 	int unit, found, ena, enb, div2;
 	int pll_m, pll_n, pll_od_a, pll_od_b, pll_xd_a, pll_xd_b;
@@ -240,7 +240,10 @@ void adc_dpll_setup(int clk_a, int clk_b, int clk_sys)
 		demod_set_demod_reg(TXLX_ADC_RESET_VALUE, TXLX_ADC_REG3);
 		demod_set_demod_reg(adc_pll_cntl.d32, TXLX_ADC_REG1);
 		demod_set_demod_reg(dig_clk_cfg.d32, TXLX_ADC_REG6);
-		demod_set_demod_reg(0x502, TXLX_ADC_REG6);
+		if (dvb_mode == Gxtv_Atsc)
+			demod_set_demod_reg(0x507, TXLX_ADC_REG6);
+		else
+			demod_set_demod_reg(0x502, TXLX_ADC_REG6);
 		demod_set_demod_reg(TXLX_ADC_REG3_VALUE, TXLX_ADC_REG3);
 		/* debug */
 		pr_dbg("[adc][%x]%x\n", TXLX_ADC_REG1,
@@ -381,7 +384,7 @@ void adc_dpll_setup(int clk_a, int clk_b, int clk_sys)
 
 void demod_set_adc_core_clk(int adc_clk, int sys_clk, int dvb_mode)
 {
-	adc_dpll_setup(25, adc_clk, sys_clk);
+	adc_dpll_setup(25, adc_clk, sys_clk, dvb_mode);
 }
 
 void demod_set_cbus_reg(unsigned data, unsigned addr)

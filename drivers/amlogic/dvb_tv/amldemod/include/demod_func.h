@@ -487,7 +487,7 @@ int demod_set_sys(struct aml_demod_sta *demod_sta,
 /* #define extadc */
 
 /* for g9tv */
-void adc_dpll_setup(int clk_a, int clk_b, int clk_sys);
+void adc_dpll_setup(int clk_a, int clk_b, int clk_sys, int dvb_mode);
 void demod_power_switch(int pwr_cntl);
 
 union adc_pll_cntl {
