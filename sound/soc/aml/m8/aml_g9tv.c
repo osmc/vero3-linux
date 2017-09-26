@@ -99,6 +99,23 @@ static u32 aml_drc_tko_table[6] = {
 	0xa0000,	0x40000, /*k0, k1*/
 };
 
+static u32 aml_hw_resample_table[7][5] = {
+	/*coef of 32K, fc = 9000, Q:0.55, G= 14.00, */
+	{0x0137fd9a, 0x033fe4a2, 0x0029da1f, 0x001a66fb, 0x00075562},
+	/*coef of 44.1K, fc = 14700, Q:0.55, G= 14.00, */
+	{0x010dac28, 0x03b7f553, 0x0011380c, 0x00479dd8, 0x000f3baf},
+	/*coef of 48K, fc = 15000, Q:0.60, G= 11.00, */
+	{0x00ea14d7, 0x03c59759, 0x001851f0, 0x00375a09, 0x0010a417},
+	/*coef of 88.2K, fc = 26000, Q:0.60, G= 4.00, */
+	{0x009dc098, 0x000972c7, 0x000e7582, 0x00277b49, 0x000e2d97},
+	/*coef of 96K, fc = 36000, Q:0.50, G= 4.00, */
+	{0x0094268c, 0x005d3192, 0x000ea7e2, 0x006a09e6, 0x0015f61a},
+	/*no support filter now*/
+	{0x00800000, 0x0, 0x0, 0x0, 0x0},
+	/*no support filter now*/
+	{0x00800000, 0x0, 0x0, 0x0, 0x0},
+};
+
 static int DRC0_enable(int enable)
 {
 	if (enable == 1) {
@@ -294,7 +311,6 @@ static int aml_spdif_audio_type_set_enum(
 	return 0;
 }
 
-#define RESAMPLE_BUFFER_SOURCE 1
 /*Cnt_ctrl = mclk/fs_out-1 ; fest 256fs */
 #define RESAMPLE_CNT_CONTROL 255
 
@@ -302,11 +318,6 @@ static int hardware_resample_enable(int input_sr)
 {
 	u16 Avg_cnt_init = 0;
 	unsigned int clk_rate = clk81;
-
-	if (input_sr < 8000 || input_sr > 48000) {
-		pr_err("Error input sample rate,input_sr = %d!\n", input_sr);
-		return -1;
-	}
 
 	Avg_cnt_init = (u16)(clk_rate * 4 / input_sr);
 	pr_info("clk_rate = %u, input_sr = %d, Avg_cnt_init = %u\n",
@@ -330,11 +341,30 @@ static int hardware_resample_disable(void)
 	return 0;
 }
 
+static int set_hw_resample_param(int index)
+{
+	int i;
+
+	for (i = 0; i < 5; i++) {
+		aml_audin_write((AUD_RESAMPLE_COEF0 + i),
+			aml_hw_resample_table[index][i]);
+	}
+
+	aml_audin_update_bits(AUD_RESAMPLE_CTRL2,
+			1 << 25, 1 << 25);
+
+	return 0;
+}
+
 static const char *const hardware_resample_texts[] = {
 	"Disable",
-	"Enable:48K",
-	"Enable:44K",
 	"Enable:32K",
+	"Enable:44K",
+	"Enable:48K",
+	"Enable:88K",
+	"Enable:96K",
+	"Enable:176K",
+	"Enable:192K",
 };
 
 static const struct soc_enum hardware_resample_enum =
@@ -353,16 +383,31 @@ static int aml_hardware_resample_set_enum(
 	struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
-	if (ucontrol->value.enumerated.item[0] == 0) {
+	int index = ucontrol->value.enumerated.item[0];
+	if (index == 0)
 		hardware_resample_disable();
-	} else if (ucontrol->value.enumerated.item[0] == 1) {
-		hardware_resample_enable(48000);
-	} else if (ucontrol->value.enumerated.item[0] == 2) {
-		hardware_resample_enable(44100);
-	} else if (ucontrol->value.enumerated.item[0] == 3) {
+	else if (index == 1)
 		hardware_resample_enable(32000);
-	}
-	aml_audio_Hardware_resample = ucontrol->value.enumerated.item[0];
+	else if (index == 2)
+		hardware_resample_enable(44100);
+	else if (index == 3)
+		hardware_resample_enable(48000);
+	else if (index == 4)
+		hardware_resample_enable(88200);
+	else if (index == 5)
+		hardware_resample_enable(96000);
+	else if (index == 6)
+		hardware_resample_enable(176400);
+	else if (index == 7)
+		hardware_resample_enable(192000);
+	else
+		return 0;
+
+	aml_audio_Hardware_resample = index;
+	if (index > 0 &&
+		(is_meson_txlx_cpu() || is_meson_txhd_cpu()))
+		set_hw_resample_param(index - 1);
+
 	return 0;
 }
 

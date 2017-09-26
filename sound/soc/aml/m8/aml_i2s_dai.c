@@ -271,9 +271,12 @@ static int aml_dai_i2s_hw_params(struct snd_pcm_substream *substream,
 
 	srate = params_rate(params);
 	if (i2s->old_samplerate != srate) {
-		i2s->old_samplerate = srate;
-		mclk_rate = srate * DEFAULT_MCLK_RATIO_SR;
-		aml_i2s_set_amclk(i2s, mclk_rate);
+		if (audio_in_source == 0 || substream->stream
+				== SNDRV_PCM_STREAM_PLAYBACK) {
+			i2s->old_samplerate = srate;
+			mclk_rate = srate * DEFAULT_MCLK_RATIO_SR;
+			aml_i2s_set_amclk(i2s, mclk_rate);
+		}
 	}
 
 	return 0;
