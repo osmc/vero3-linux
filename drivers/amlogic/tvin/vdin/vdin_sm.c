@@ -269,13 +269,10 @@ static void hdmirx_dv_check(struct vdin_dev_s *devp,
 	struct tvin_sig_property_s *prop)
 {
 	/*check hdmiin dolby input*/
-	if (prop->dolby_vision)
-		devp->dv_flag_cnt = 0;
-	else if (devp->dv_flag_cnt <= 60)
-		devp->dv_flag_cnt++;
-	if ((prop->dolby_vision != devp->dv_flag) &&
-		(prop->dolby_vision || (devp->dv_flag_cnt >= 60)))
+	if (prop->dolby_vision != devp->dv_flag) {
+		tvin_smr_init(devp->index);
 		devp->dv_flag = prop->dolby_vision;
+	}
 }
 
 /*

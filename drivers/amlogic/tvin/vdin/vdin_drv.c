@@ -923,6 +923,8 @@ void vdin_start_dec(struct vdin_dev_s *devp)
 		vdin_dolby_addr_alloc(devp, devp->vfp->size);
 		/* config dolby vision */
 		vdin_dolby_config(devp);
+		if (vdin_dbg_en)
+			pr_info("vdin start dec dv input config\n");
 	}
 
 	devp->abnormal_cnt = 0;
@@ -1047,7 +1049,7 @@ void vdin_stop_dec(struct vdin_dev_s *devp)
 	vdin_set_def_wr_canvas(devp);
 #if 1/*def CONFIG_AM_HDMIIN_DV*/
 	if (((dolby_input & (1 << devp->index)) ||
-		(devp->dv_flag && is_dolby_vision_enable())) &&
+		is_dolby_vision_enable()) &&
 		(devp->dv_config == true))
 		vf_unreg_provider(&devp->vprov_dv);
 	else

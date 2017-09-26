@@ -283,7 +283,6 @@ struct vdin_dev_s {
 	unsigned int			dv_last_index;
 	dma_addr_t dv_dma_paddr;
 	void *dv_dma_vaddr;
-	unsigned int	dv_flag_cnt;/*cnt for no dv input*/
 	bool	dv_flag;
 	bool	dv_config;
 	bool	dv_crc_check;/*0:fail;1:ok*/
