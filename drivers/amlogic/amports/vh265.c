@@ -413,6 +413,7 @@ static u32 mmu_enable = 1;
 static u32 mmu_enable_force;
 static u32 work_buf_size;
 static unsigned int force_disp_pic_index;
+static unsigned int disp_vframe_valve_level;
 
 #ifdef MULTI_INSTANCE_SUPPORT
 static unsigned int max_decode_instance_num
@@ -1526,6 +1527,7 @@ struct hevc_state_s {
 	u32 vf_put_count;
 
 	u8 head_error_flag;
+	int valve_count;
 } /*hevc_stru_t */;
 
 #ifdef SEND_LMEM_WITH_RPM
@@ -1920,6 +1922,7 @@ static void hevc_init_stru(struct hevc_state_s *hevc,
 	hevc->pre_bot_pic = NULL;
 
 	hevc->sei_present_flag = 0;
+	hevc->valve_count = 0;
 #ifdef MULTI_INSTANCE_SUPPORT
 	hevc->decoded_poc = INVALID_POC;
 	hevc->start_process_time = 0;
@@ -9338,6 +9341,16 @@ static bool run_ready(struct vdec_s *vdec)
 	if (hevc->eos)
 		return 0;
 
+	if (disp_vframe_valve_level &&
+		kfifo_len(&hevc->display_q) >=
+		disp_vframe_valve_level) {
+		hevc->valve_count--;
+		if (hevc->valve_count <= 0)
+			hevc->valve_count = 2;
+		else
+			return 0;
+	}
+
 	ret = is_new_pic_available(hevc);
 	if (!ret) {
 		hevc_print(hevc,
@@ -10372,6 +10385,9 @@ MODULE_PARM_DESC(udebug_pause_val, "\n udebug_pause_val\n");
 
 module_param(udebug_pause_decode_idx, uint, 0664);
 MODULE_PARM_DESC(udebug_pause_decode_idx, "\n udebug_pause_decode_idx\n");
+
+module_param(disp_vframe_valve_level, uint, 0664);
+MODULE_PARM_DESC(disp_vframe_valve_level, "\n disp_vframe_valve_level\n");
 
 module_init(amvdec_h265_driver_init_module);
 module_exit(amvdec_h265_driver_remove_module);

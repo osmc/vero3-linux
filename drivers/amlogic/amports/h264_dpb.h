@@ -820,8 +820,10 @@ int get_free_buf_idx(struct vdec_s *vdec);
 void store_picture_in_dpb(struct h264_dpb_stru *p_H264_Dpb,
 			struct StorablePicture *p, unsigned char data_flag);
 
-int remove_picture(struct h264_dpb_stru *p_H264_Dpb,
+int release_picture(struct h264_dpb_stru *p_H264_Dpb,
 			struct StorablePicture *pic);
+
+void remove_dpb_pictures(struct h264_dpb_stru *p_H264_Dpb);
 
 void bufmgr_post(struct h264_dpb_stru *p_H264_Dpb);
 

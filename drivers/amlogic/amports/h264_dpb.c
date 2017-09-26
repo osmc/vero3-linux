@@ -5324,7 +5324,10 @@ int is_new_picture(struct StorablePicture *dec_picture,
 
 #endif
 
-int remove_picture(struct h264_dpb_stru *p_H264_Dpb,
+/*
+* release bufspec and pic for picture not in dpb buf
+*/
+int release_picture(struct h264_dpb_stru *p_H264_Dpb,
 		   struct StorablePicture *pic)
 {
 	struct DecodedPictureBuffer *p_Dpb = &p_H264_Dpb->mDPB;
@@ -5339,6 +5342,60 @@ int remove_picture(struct h264_dpb_stru *p_H264_Dpb,
 	free_picture(p_H264_Dpb, pic);
 	return 0;
 }
+
+#ifdef ERROR_HANDLE_TEST
+/*
+*  remove all pictures in dpb and release bufspec/pic of them
+*/
+void remove_dpb_pictures(struct h264_dpb_stru *p_H264_Dpb)
+{
+	/* struct VideoParameters *p_Vid = p_Dpb->p_Vid; */
+	struct DecodedPictureBuffer *p_Dpb = &p_H264_Dpb->mDPB;
+	struct Slice *currSlice = &p_H264_Dpb->mSlice;
+	unsigned  i, j;
+
+	dpb_print(p_H264_Dpb->decoder_index, PRINT_FLAG_DPB_DETAIL,
+		"%s\n", __func__);
+
+	if (!p_Dpb->init_done)
+		return;
+
+	for (i = 0; i < p_Dpb->used_size; i++) {
+		if (p_Dpb->fs[i]->colocated_buf_index >= 0) {
+			dpb_print(p_H264_Dpb->decoder_index,
+			PRINT_FLAG_DPB_DETAIL,
+			"release_colocate_buf[%d] for fs[%d]\n",
+			p_Dpb->fs[i]->colocated_buf_index, i);
+
+			release_colocate_buf(p_H264_Dpb,
+				p_Dpb->fs[i]->colocated_buf_index); /* rain */
+			p_Dpb->fs[i]->colocated_buf_index = -1;
+		}
+		if (!p_Dpb->fs[i]->pre_output) {
+			release_buf_spec_num(p_H264_Dpb->vdec,
+				p_Dpb->fs[i]->buf_spec_num);
+			p_Dpb->fs[i]->buf_spec_num = -1;
+		}
+		remove_frame_from_dpb(p_H264_Dpb, i);
+	}
+
+	for (i = 0; i < p_Dpb->used_size; i++) {
+		p_Dpb->fs_ref[i] = NULL;
+		p_Dpb->fs_ltref[i] = NULL;
+		p_Dpb->fs_list0[i] = NULL;
+		p_Dpb->fs_list1[i] = NULL;
+		p_Dpb->fs_listlt[i] = NULL;
+	}
+	for (i = 0; i < 2; i++) {
+		currSlice->listXsize[i] = 0;
+		for (j = 0; j < (MAX_LIST_SIZE * 2); j++)
+			currSlice->listX[i][j] = NULL;
+	}
+	p_Dpb->ref_frames_in_buffer = 0;
+	p_Dpb->ltref_frames_in_buffer = 0;
+	p_Dpb->last_output_poc = INT_MIN;
+}
+#endif
 
 static void check_frame_store_same_pic_num(struct DecodedPictureBuffer *p_Dpb,
 	struct StorablePicture *p, struct Slice *currSlice)
@@ -5567,6 +5624,8 @@ int dpb_check_ref_list_error(
 					currSlice->listX[0][j]->pic_num)
 					return 1;
 			}*/
+			if (currSlice->listX[0][i] == NULL)
+				return 5;
 			if (!is_pic_in_dpb(p_H264_Dpb,
 				currSlice->listX[0][i]))
 				return 1;
@@ -5588,7 +5647,8 @@ int dpb_check_ref_list_error(
 					currSlice->listX[0][j]->pic_num)
 					return 3;
 			}*/
-
+			if (currSlice->listX[1][i] == NULL)
+				return 6;
 			if (!is_pic_in_dpb(p_H264_Dpb,
 				currSlice->listX[1][i]))
 				return 2;
