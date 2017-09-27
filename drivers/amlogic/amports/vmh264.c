@@ -4526,59 +4526,108 @@ static s32 vh264_init(struct vdec_h264_hw_s *hw)
 	*/
 	if (!firmwareloaded) {
 		int r0 , r1 , r2 , r3 , r4 , r5, r6, r7, r8, r9;
-		/*
-		pr_info("start load orignal firmware ...\n");
-		*/
-		/* r0 = amvdec_loadmc_ex(VFORMAT_H264, "vmh264_mc", NULL); */
-		r0 = 0;
+		unsigned int cpu_type = get_cpu_type();
 
-		/*memcpy((u8 *) mc_cpu_addr + MC_OFFSET_HEADER, vh264_header_mc,
-			   MC_SWAP_SIZE);*/
-		r1 = get_decoder_firmware_data(VFORMAT_H264, "vmh264_header_mc",
-			(u8 *) hw->mc_cpu_addr + MC_OFFSET_HEADER,
-			MC_SWAP_SIZE);
-		/*memcpy((u8 *) mc_cpu_addr + MC_OFFSET_DATA, vh264_data_mc,
-			   MC_SWAP_SIZE);
-		*/
-		r2 = get_decoder_firmware_data(VFORMAT_H264, "vmh264_data_mc",
-			(u8 *) hw->mc_cpu_addr + MC_OFFSET_DATA,
-			MC_SWAP_SIZE);
-		/*memcpy((u8 *) mc_cpu_addr + MC_OFFSET_MMCO, vh264_mmco_mc,
-			   MC_SWAP_SIZE);
-		*/
-		r3 = get_decoder_firmware_data(VFORMAT_H264, "vmh264_mmco_mc",
-			(u8 *) hw->mc_cpu_addr + MC_OFFSET_MMCO,
-			MC_SWAP_SIZE);
-		/*memcpy((u8 *) mc_cpu_addr + MC_OFFSET_LIST, vmh264_list_mc,
-			   MC_SWAP_SIZE);
-		*/
-		r4 = get_decoder_firmware_data(VFORMAT_H264, "vmh264_list_mc",
-			(u8 *) hw->mc_cpu_addr + MC_OFFSET_LIST,
-			MC_SWAP_SIZE);
-		/*memcpy((u8 *) mc_cpu_addr + MC_OFFSET_SLICE, vh264_slice_mc,
-			   MC_SWAP_SIZE);
-		*/
-		r5 = get_decoder_firmware_data(VFORMAT_H264, "vmh264_slice_mc",
-			(u8 *) hw->mc_cpu_addr + MC_OFFSET_SLICE,
-			MC_SWAP_SIZE);
-		/*memcpy((u8 *) mc_cpu_addr + MC_OFFSET_MAIN, mbuf,
-		0x800*4)
-		*/
-		r6 = get_decoder_firmware_data(VFORMAT_H264, "vmh264_mc",
-			(u8 *) hw->mc_cpu_addr + MC_OFFSET_MAIN,
-			0x800 * 4);
-		/*memcpy((u8 *) mc_cpu_addr + MC_OFFSET_MAIN + 0x800*4,
-		pvh264_data_mc, 0x400*4);
-		*/
-		r7 = get_decoder_firmware_data(VFORMAT_H264, "vmh264_data_mc",
-			(u8 *) hw->mc_cpu_addr + MC_OFFSET_MAIN + 0x800 * 4,
-			0x400 * 4);
-		/*memcpy((u8 *) mc_cpu_addr + MC_OFFSET_MAIN + 0x800*4 +
-		0x400*4, pvh264_list_mc, 0x400*4);
-		*/
-		r8 = get_decoder_firmware_data(VFORMAT_H264, "vmh264_list_mc",
-			(u8 *) hw->mc_cpu_addr + MC_OFFSET_MAIN + 0x800 * 4
-			+ 0x400 * 4, 0x400 * 4);
+		if ((cpu_type >= MESON_CPU_MAJOR_ID_GXM)
+			&& (cpu_type != MESON_CPU_MAJOR_ID_GXLX)) {
+			/*
+			pr_info("start load gxm orignal firmware ...\n");
+			*/
+			/*
+			r0 = amvdec_loadmc_ex(VFORMAT_H264, "vmh264_mc", NULL);
+			*/
+			r0 = 0;
+
+			r1 = get_decoder_firmware_data(VFORMAT_H264,
+					"gxm_vmh264_header_mc",
+				(u8 *) hw->mc_cpu_addr + MC_OFFSET_HEADER,
+					MC_SWAP_SIZE);
+
+			r2 = get_decoder_firmware_data(VFORMAT_H264,
+					"gxm_vmh264_data_mc",
+					(u8 *) hw->mc_cpu_addr + MC_OFFSET_DATA,
+					MC_SWAP_SIZE);
+
+			r3 = get_decoder_firmware_data(VFORMAT_H264,
+					"gxm_vmh264_mmco_mc",
+					(u8 *) hw->mc_cpu_addr + MC_OFFSET_MMCO,
+					MC_SWAP_SIZE);
+
+			r4 = get_decoder_firmware_data(VFORMAT_H264,
+					"gxm_vmh264_list_mc",
+					(u8 *) hw->mc_cpu_addr + MC_OFFSET_LIST,
+					MC_SWAP_SIZE);
+
+			r5 = get_decoder_firmware_data(VFORMAT_H264,
+					"gxm_vmh264_slice_mc",
+				(u8 *) hw->mc_cpu_addr + MC_OFFSET_SLICE,
+					MC_SWAP_SIZE);
+
+			r6 = get_decoder_firmware_data(VFORMAT_H264,
+					"gxm_vmh264_mc",
+					(u8 *) hw->mc_cpu_addr + MC_OFFSET_MAIN,
+					0x800 * 4);
+
+			r7 = get_decoder_firmware_data(VFORMAT_H264,
+					"gxm_vmh264_data_mc",
+					(u8 *) hw->mc_cpu_addr + MC_OFFSET_MAIN
+					+ 0x800 * 4, 0x400 * 4);
+
+			r8 = get_decoder_firmware_data(VFORMAT_H264,
+					"gxm_vmh264_list_mc",
+					(u8 *) hw->mc_cpu_addr + MC_OFFSET_MAIN
+					+ 0x800 * 4	+ 0x400 * 4, 0x400 * 4);
+
+		} else {
+			/*
+			pr_info("start load gxtvbb orignal firmware ...\n");
+			*/
+			/*
+			r0 = amvdec_loadmc_ex(VFORMAT_H264, "vmh264_mc", NULL);
+			*/
+			r0 = 0;
+
+			r1 = get_decoder_firmware_data(VFORMAT_H264,
+					"vmh264_header_mc",
+				(u8 *) hw->mc_cpu_addr + MC_OFFSET_HEADER,
+					MC_SWAP_SIZE);
+
+			r2 = get_decoder_firmware_data(VFORMAT_H264,
+					"vmh264_data_mc",
+					(u8 *) hw->mc_cpu_addr + MC_OFFSET_DATA,
+					MC_SWAP_SIZE);
+
+			r3 = get_decoder_firmware_data(VFORMAT_H264,
+					"vmh264_mmco_mc",
+					(u8 *) hw->mc_cpu_addr + MC_OFFSET_MMCO,
+					MC_SWAP_SIZE);
+
+			r4 = get_decoder_firmware_data(VFORMAT_H264,
+					"vmh264_list_mc",
+					(u8 *) hw->mc_cpu_addr + MC_OFFSET_LIST,
+					MC_SWAP_SIZE);
+
+			r5 = get_decoder_firmware_data(VFORMAT_H264,
+					"vmh264_slice_mc",
+				(u8 *) hw->mc_cpu_addr + MC_OFFSET_SLICE,
+					MC_SWAP_SIZE);
+
+			r6 = get_decoder_firmware_data(VFORMAT_H264,
+					"vmh264_mc",
+					(u8 *) hw->mc_cpu_addr + MC_OFFSET_MAIN,
+					0x800 * 4);
+
+			r7 = get_decoder_firmware_data(VFORMAT_H264,
+					"vmh264_data_mc",
+					(u8 *) hw->mc_cpu_addr + MC_OFFSET_MAIN
+					+ 0x800 * 4, 0x400 * 4);
+
+			r8 = get_decoder_firmware_data(VFORMAT_H264,
+					"vmh264_list_mc",
+					(u8 *) hw->mc_cpu_addr
+					+ MC_OFFSET_MAIN + 0x800 * 4 + 0x400 * 4
+					, 0x400 * 4);
+		}
 		if (mmu_enable)
 			r9 = amhevc_loadmc_ex(VFORMAT_HEVC,
 					"vmh264_mc_mmu", NULL);
@@ -5120,12 +5169,26 @@ static void run(struct vdec_s *vdec,
 				__func__);
 			return;
 		}
-	} else if (amvdec_vdec_loadmc_ex(vdec, "vmh264_mc") < 0) {
-			amvdec_enable_flag = false;
-			amvdec_disable();
-			pr_info("%s: Error amvdec_vdec_loadmc fail\n",
-				__func__);
-			return;
+	} else {
+		unsigned int cpu_type = get_cpu_type();
+		if ((cpu_type >= MESON_CPU_MAJOR_ID_GXM)
+			&& (cpu_type != MESON_CPU_MAJOR_ID_GXLX)) {
+			if (amvdec_vdec_loadmc_ex(vdec, "gxm_vmh264_mc") < 0) {
+				amvdec_enable_flag = false;
+				amvdec_disable();
+				pr_info("%s: Error gxm amvdec_vdec_loadmc fail\n",
+					__func__);
+				return;
+			}
+		} else {
+			if (amvdec_vdec_loadmc_ex(vdec, "vmh264_mc") < 0) {
+				amvdec_enable_flag = false;
+				amvdec_disable();
+				pr_info("%s: Error gxtvbb amvdec_vdec_loadmc fail\n",
+					__func__);
+				return;
+			}
+		}
 	}
 
 
