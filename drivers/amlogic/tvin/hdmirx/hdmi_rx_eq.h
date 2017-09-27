@@ -67,8 +67,9 @@ as "very long" and therefore */
 /*--------------------------enum define---------------------*/
 enum eq_states_e {
 	EQ_ENABLE,
-	EQ_USE_DEF,
+	EQ_MANUAL,
 	EQ_USE_PRE,
+	EQ_DISABLE,
 };
 
 enum phy_eq_channel_e {

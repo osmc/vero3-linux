@@ -2144,10 +2144,11 @@ void hdmirx_hw_monitor(void)
 		}
 		sts = rx_need_eq_algorithm();
 		switch (sts) {
+		case EQ_DISABLE:
+		case EQ_MANUAL:
 		case EQ_USE_PRE:
-		case EQ_USE_DEF:
 			rx.state = FSM_SIG_UNSTABLE;
-			rx_pr("EQ_INIT-->FSM_SIG_UNSTABLE\n");
+			rx_pr("PHY_INIT-->FSM_SIG_UNSTABLE\n");
 			break;
 		case EQ_ENABLE:
 		default:
