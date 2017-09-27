@@ -433,6 +433,10 @@ static int dwc3_core_init(struct dwc3 *dwc)
 	if (ret)
 		goto err0;
 
+	reg = dwc3_readl(dwc->regs, DWC3_GUCTL1);
+	reg |= (1<<18);
+	dwc3_writel(dwc->regs, DWC3_GUCTL1, reg);
+
 	reg = dwc3_readl(dwc->regs, DWC3_GUCTL);
 	reg |= DWC3_GUCTL_USBHSTINAUTORETRYEN;
 	dwc3_writel(dwc->regs, DWC3_GUCTL, reg);
