@@ -1138,14 +1138,18 @@ static const u32 vreal_mc_9[] __initconst = {
 
 #define FOR_VFORMAT VFORMAT_REAL
 
-#define DEF_FIRMEARE_FOR_TXLX(n) \
+#define DEF_FIRMEARE_FOR_REAL(n)\
+	do {\
 		REGISTER_FIRMARE_PER_CPU(MESON_CPU_MAJOR_ID_TXLX,\
-		FOR_VFORMAT, n)
+		FOR_VFORMAT, n);\
+		REGISTER_FIRMARE_PER_CPU(MESON_CPU_MAJOR_ID_TXHD,\
+		FOR_VFORMAT, n);\
+	} while (0)
 
 #define REG_FIRMWARE_ALL()\
 	do {\
-		DEF_FIRMEARE_FOR_TXLX(vreal_mc_8);\
-		DEF_FIRMEARE_FOR_TXLX(vreal_mc_9);\
+		DEF_FIRMEARE_FOR_REAL(vreal_mc_8);\
+		DEF_FIRMEARE_FOR_REAL(vreal_mc_9);\
 	} while (0)
 
 INIT_DEF_FIRMWARE();
