@@ -1658,7 +1658,7 @@ static inline bool vdec_ready_to_run(struct vdec_s *vdec)
 				vdec->input.total_rd_count) < 2)) {
 			vdec->need_more_data |= VDEC_NEED_MORE_DATA;
 			return false;
-		} else
+		} else if (level > input->prepare_level)
 			vdec->need_more_data &= ~VDEC_NEED_MORE_DATA;
 	}
 

@@ -243,7 +243,7 @@ static unsigned int first_i_policy = (15 << 8) | 2;
 	bit [2], if even poc only, output frame ifthe cuurent poc
 			is 2 big than the previous poc
 */
-static unsigned int fast_output_enable;
+static unsigned int fast_output_enable = 4;
 
 static unsigned int enable_itu_t35 = 1;
 
