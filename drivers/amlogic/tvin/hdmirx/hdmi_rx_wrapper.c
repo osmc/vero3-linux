@@ -1707,6 +1707,7 @@ static void Signal_status_init(void)
 	audio_channel_count = 0;
 	auds_rcv_sts = 0;
 	rx.aud_sr_stable_cnt = 0;
+	rx.aud_sr_unstable_cnt = 0;
 	rx_aud_pll_ctl(0);
 	rx_set_eq_run_state(E_EQ_START);
 	is_hdcp_source = true;
@@ -2249,6 +2250,7 @@ void hdmirx_hw_monitor(void)
 					is_hdcp_source = false;
 				rx.state = FSM_SIG_READY;
 				rx.aud_sr_stable_cnt = 0;
+				rx.aud_sr_unstable_cnt = 0;
 				rx.no_signal = false;
 				memset(&rx.aud_info, 0,
 					sizeof(struct aud_info_s));
@@ -2308,6 +2310,7 @@ void hdmirx_hw_monitor(void)
 				rx.pre_state = FSM_SIG_READY;
 				rx.skip = 0;
 				rx.aud_sr_stable_cnt = 0;
+				rx.aud_sr_unstable_cnt = 0;
 				#ifdef HDCP22_ENABLE
 				if (hdcp22_on)
 					esm_recovery();
@@ -2369,9 +2372,17 @@ void hdmirx_hw_monitor(void)
 						rx_pr("afifo err\n");
 				}
 				hdmirx_audio_fifo_rst();
-				if (hdmirx_get_audio_clock() < 100000)
-					rx_pr("update audio\n");
-					hdmirx_audio_pll_sw_update();
+				rx_pr("update audio\n");
+				hdmirx_audio_pll_sw_update();
+			}
+		}
+		if (is_aud_pll_error()) {
+			rx.aud_sr_unstable_cnt++;
+			if (rx.aud_sr_unstable_cnt > aud_sr_stb_max) {
+				hdmirx_audio_pll_sw_update();
+				if (log_level & AUDIO_LOG)
+					rx_pr("update audio-err\n");
+				rx.aud_sr_unstable_cnt = 0;
 			}
 		}
 		packet_update();

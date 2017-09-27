@@ -33,7 +33,7 @@
 
 
 
-#define RX_VER0 "Ref.2017/09/19"
+#define RX_VER0 "Ref.2017/09/27"
 /*------------------------------*/
 
 #define RX_VER1 "Ref.2017/09/01"
@@ -985,6 +985,7 @@ extern bool esm_print_device_info(void);
 extern void hdmi_rx_ctrl_hdcp_config(const struct hdmi_rx_ctrl_hdcp *hdcp);
 extern void hdmirx_audio_pll_sw_update(void);
 extern bool is_afifo_error(void);
+extern bool is_aud_pll_error(void);
 /* vdac ctrl,adc/dac ref signal,cvbs out signal
  * module index: atv demod:0x01; dtv demod:0x02;
  * tvafe:0x4; dac:0x8, audio pll:0x10

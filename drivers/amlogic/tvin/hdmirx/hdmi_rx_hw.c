@@ -1502,6 +1502,28 @@ bool is_afifo_error(void)
 	return ret;
 }
 
+/***************************************************
+func: is_aud_pll_error
+	noraml mode: aud_pll = aud_sample_rate * 128
+	HBR: aud_pll = aud_sample_rate * 128 * 4
+***************************************************/
+bool is_aud_pll_error(void)
+{
+	bool ret = true;
+	int32_t clk = hdmirx_get_audio_clock();
+	int32_t aud_128fs = rx.aud_info.real_sample_rate * 128;
+	int32_t aud_512fs = rx.aud_info.real_sample_rate * 512;
+	if (rx.aud_info.real_sample_rate == 0)
+		return false;
+	if	((abs(clk - aud_128fs) < 500000) ||
+		(abs(clk - aud_512fs) < 500000)) {
+		ret = false;
+	}
+	if ((ret) && (log_level & AUDIO_LOG))
+		rx_pr("%d,%d,%d,\n", clk, aud_128fs, aud_512fs);
+	return ret;
+}
+
 void rx_aud_pll_ctl(bool en)
 {
 	int tmp = 0;
