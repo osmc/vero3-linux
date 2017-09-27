@@ -1004,6 +1004,31 @@ unsigned long codec_mm_virt_to_phys(void *vaddr)
 	return page_to_phys((struct page *)vaddr);
 }
 
+static unsigned long codec_mm_get_cma_size_int_byte(struct device *dev)
+{
+	static unsigned long static_size = -1;
+	struct cma *cma = NULL;
+
+	if (static_size >= 0)
+		return static_size;
+	if (!dev) {
+		pr_err("CMA: NULL DEV\n");
+		return 0;
+	}
+
+	cma = dev_get_cma_area(dev);
+	if (!cma) {
+		pr_err("CMA:  NO CMA region\n");
+		return 0;
+	}
+	if (cma == dev_get_cma_area(NULL))
+		static_size = 0;/*ignore default cma pool*/
+	else
+		static_size = cma_get_size(cma);
+
+	return static_size;
+}
+
 static int dump_mem_infos(void *buf, int size)
 {
 	struct codec_mm_mgt_s *mgt = get_mem_mgt();
@@ -1055,9 +1080,9 @@ static int dump_mem_infos(void *buf, int size)
 	s = snprintf(pbuf, size - tsize,
 			"\t[%d]CMA size:%d MB:alloced: %d MB,free:%d MB\n",
 			AMPORTS_MEM_FLAGS_FROM_GET_FROM_CMA,
-			(int)(dma_get_cma_size_int_byte(mgt->dev) / SZ_1M),
+			(int)(mgt->total_cma_size / SZ_1M),
 			(int)(mgt->alloced_cma_size / SZ_1M),
-			(int)((dma_get_cma_size_int_byte(mgt->dev) -
+			(int)((mgt->total_cma_size -
 			mgt->alloced_cma_size) / SZ_1M));
 	tsize += s;
 	pbuf += s;
@@ -1231,7 +1256,7 @@ int codec_mm_mgt_init(struct device *dev)
 		mgt->res_mem_flags |= RES_MEM_FLAGS_HAVE_MAPED;
 #endif
 	}
-	mgt->total_cma_size = dma_get_cma_size_int_byte(mgt->dev);
+	mgt->total_cma_size = codec_mm_get_cma_size_int_byte(mgt->dev);
 	mgt->total_codec_mem_size += mgt->total_cma_size;
 	/*2M for audio not protect.*/
 	default_tvp_4k_size = mgt->total_codec_mem_size - SZ_1M * 2;
