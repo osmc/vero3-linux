@@ -3875,8 +3875,12 @@ static void amvecm_gamma_init(bool en)
 		WRITE_VPP_REG_BITS(L_GAMMA_CNTL_PORT,
 				0, GAMMA_EN, 1);
 
-		for (i = 0; i < 256; i++)
+		for (i = 0; i < 256; i++) {
 			data[i] = i << 2;
+			video_gamma_table_r.data[i] = data[i];
+			video_gamma_table_g.data[i] = data[i];
+			video_gamma_table_b.data[i] = data[i];
+		}
 		amve_write_gamma_table(
 					data,
 					H_SEL_R);
