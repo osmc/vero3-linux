@@ -640,6 +640,12 @@ to_cma_ahead:
 					goto isolate_success;
 				}
 			}
+			/* isolate for zs pages */
+			if (unlikely(PageMovable(page)) &&
+				 !PageIsolated(page)) {
+				if (isolate_movable_page(page, mode))
+					goto isolate_success;
+			}
 			continue;
 		}
 
