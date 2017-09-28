@@ -1384,7 +1384,10 @@ static int aml_fe_set_mode(struct dvb_frontend *dev, fe_type_t type)
 		break;
 	case FE_ISDBT:
 		pr_dbg("set mode -> ISDBT\n");
-		mode = AM_FE_ISDBT;
+		if (is_meson_txlx_cpu())
+			mode = AM_FE_OFDM;
+		else
+			mode = AM_FE_ISDBT;
 		break;
 	case FE_DTMB:
 		pr_dbg("set mode -> DTMB\n");

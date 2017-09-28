@@ -108,14 +108,12 @@
 			size = <0x0 0x02800000>;
 			alignment = <0x0 0x400000>;
 		};
-		/*
-		demod_reserved:linux,demod {
+		/*demod_reserved:linux,demod {
 			compatible = "amlogic, demod-mem";
 			size = <0x0 0x600000>; //20m
 			multi-use;
 			//no-map;
-		};
-                */
+		};*/
 
 		/*  POST PROCESS MANAGER */
 		ppmgr_reserved:linux,ppmgr {

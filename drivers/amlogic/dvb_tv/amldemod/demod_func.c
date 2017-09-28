@@ -866,13 +866,13 @@ int dtmb_information(void)
 	fec_bch_add = dtmb_read_reg(DTMB_TOP_FEC_BCH_ACC);
 	fec_ldpc_unc_acc = dtmb_read_reg(DTMB_TOP_FEC_LDPC_UNC_ACC);
 	fec_ldpc_it_avg = dtmb_read_reg(DTMB_TOP_FEC_LDPC_IT_AVG);
-	pr_dbg("¡¾FSM ¡¿: %x %x %x %x\n",
+	pr_dbg("[FSM] : %x %x %x %x\n",
 	       dtmb_read_reg(DTMB_TOP_CTRL_FSM_STATE0),
 	       dtmb_read_reg(DTMB_TOP_CTRL_FSM_STATE1),
 	       dtmb_read_reg(DTMB_TOP_CTRL_FSM_STATE2),
 	       dtmb_read_reg(DTMB_TOP_CTRL_FSM_STATE3));
 	pr_dbg
-	    ("¡¾AGC ¡¿: agc_power %d,agc_if_gain %d,agc_rf_gain %d,",
+	    ("[AGC]: agc_power %d,agc_if_gain %d,agc_rf_gain %d,",
 	     (-(((dtmb_read_reg(DTMB_TOP_FRONT_AGC) >> 22) & 0x3ff) / 16)),
 	     ((dtmb_read_reg(DTMB_TOP_FRONT_AGC)) & 0x3ff),
 	     ((dtmb_read_reg(DTMB_TOP_FRONT_AGC) >> 11) & 0x7ff));
@@ -882,7 +882,7 @@ int dtmb_information(void)
 	     ((dtmb_read_reg(DTMB_TOP_FRONT_DAGC) >> 8) & 0xfff),
 	     (dtmb_read_reg(DTMB_TOP_CTRL_SYS_OFDM_CNT) >> 8) & 0x7ffff);
 	pr_dbg
-	    ("¡¾TPS ¡¿ SC or MC %2d,f_r %2d qam_nr %2d ",
+	    ("[TPS] SC or MC %2d,f_r %2d qam_nr %2d ",
 	     (dtmb_read_reg(DTMB_TOP_CHE_OBS_STATE1) >> 1) & 0x1,
 	     (tps >> 22) & 0x1, (tps >> 21) & 0x1);
 	pr_dbg
@@ -1199,6 +1199,38 @@ int dtmb_set_ch(struct aml_demod_sta *demod_sta,
 	return ret;
 }
 
+int convert_bandwith(int input)
+{
+	int output;
+	output = 3;
+	switch (input) {
+	case 10000000:
+		output = BANDWIDTH_10_MHZ;
+		break;
+	case 8000000:
+		output = BANDWIDTH_8_MHZ;
+		break;
+	case 7000000:
+		output = BANDWIDTH_7_MHZ;
+		break;
+	case 6000000:
+		output = BANDWIDTH_6_MHZ;
+		break;
+	case 5000000:
+		output = BANDWIDTH_5_MHZ;
+		break;
+	case 1712000:
+		output = BANDWIDTH_1_712_MHZ;
+		break;
+	case 0:
+		output = BANDWIDTH_AUTO;
+		break;
+	}
+	return output;
+
+
+}
+
 int dvbt_set_ch(struct aml_demod_sta *demod_sta,
 		struct aml_demod_i2c *demod_i2c,
 		struct aml_demod_dvbt *demod_dvbt)
@@ -1250,6 +1282,8 @@ int dvbt_set_ch(struct aml_demod_sta *demod_sta,
 	/* for si2176 IF:5M   sr 28.57 */
 	sr = 4;
 	ifreq = 4;
+	bw = convert_bandwith(bw);
+	/*bw = BANDWIDTH_AUTO;*/
 	if (bw == BANDWIDTH_AUTO)
 		demod_mode = 2;
 	ofdm_initial(bw,
@@ -1312,6 +1346,11 @@ int demod_set_sys(struct aml_demod_sta *demod_sta,
 	if ((dvb_mode == Gxtv_Dtmb) && !is_meson_txlx_cpu()) {
 		/* open arbit */
 		demod_set_demod_reg(0x8, DEMOD_REG4);
+		pr_dbg("[open arbit]dtmb\n");
+	} else if ((dvb_mode == Gxtv_Dvbt_Isdbt) && is_meson_txlx_cpu()) {
+		/* open arbit */
+		demod_set_demod_reg(0x8, TXLX_DEMOD_REG4);
+		pr_dbg("[open arbit]dvbt,txlx\n");
 	}
 	demod_sta->adc_freq = clk_adc;
 	demod_sta->clk_freq = clk_dem;
@@ -1801,6 +1840,10 @@ void ofdm_initial(int bandwidth,
 	apb_write_reg(DVBT_BASE + (0x29 << 2), (31 << 20) | (1 << 16) |
 	(24 << 9) | (3 << 6) | 20);
 	/* {5'd0,7'd127,1'd0,3'd0,7'd24,3'd5,6'd20}); */
+	/*8K cannot sync*/
+	apb_write_reg(DVBT_BASE + (0x29 << 2),
+			apb_read_reg(DVBT_BASE + (0x29 << 2)) |
+			0x7f << 9 | 0x7f << 20);
 
 	if (mode == 0) {	/* DVBT */
 		if (bandwidth == 0) {	/* 8M */
