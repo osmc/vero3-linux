@@ -6925,6 +6925,28 @@ static ssize_t video_state_show(struct class *cla,
 		    cur_frame_par->vscale_skip_count);
 	len += sprintf(buf + len, "hscale_skip_count %u.\n",
 		    cur_frame_par->hscale_skip_count);
+	len += sprintf(buf + len, "supscl_path %u.\n",
+		    cur_frame_par->supscl_path);
+	len += sprintf(buf + len, "supsc0_enable %u.\n",
+		    cur_frame_par->supsc0_enable);
+	len += sprintf(buf + len, "supsc1_enable %u.\n",
+		    cur_frame_par->supsc1_enable);
+	len += sprintf(buf + len, "supsc0_hori_ratio %u.\n",
+		    cur_frame_par->supsc0_hori_ratio);
+	len += sprintf(buf + len, "supsc1_hori_ratio %u.\n",
+		    cur_frame_par->supsc1_hori_ratio);
+	len += sprintf(buf + len, "supsc0_vert_ratio %u.\n",
+		    cur_frame_par->supsc0_vert_ratio);
+	len += sprintf(buf + len, "supsc1_vert_ratio %u.\n",
+		    cur_frame_par->supsc1_vert_ratio);
+	len += sprintf(buf + len, "spsc0_h_in %u.\n",
+		    cur_frame_par->spsc0_h_in);
+	len += sprintf(buf + len, "spsc1_h_in %u.\n",
+		    cur_frame_par->spsc1_h_in);
+	len += sprintf(buf + len, "spsc0_w_in %u.\n",
+		    cur_frame_par->spsc0_w_in);
+	len += sprintf(buf + len, "spsc1_w_in %u.\n",
+		    cur_frame_par->spsc1_w_in);
 #ifdef TV_3D_FUNCTION_OPEN
 	len += sprintf(buf + len, "vpp_2pic_mode %u.\n",
 		    cur_frame_par->vpp_2pic_mode);

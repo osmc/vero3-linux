@@ -671,8 +671,11 @@ vpp_process_speed_check(s32 width_in,
 				/* di process first, need more a bit of ratio */
 				if (vf->type & VIDTYPE_PRE_INTERLACE)
 					cur_ratio = (cur_ratio * 105) / 100;
-				if ((next_frame_par->vscale_skip_count > 0)
-					&& (vf->type & VIDTYPE_VIU_444))
+				if (((next_frame_par->vscale_skip_count > 0)
+					&& (vf->type & VIDTYPE_VIU_444)) ||
+					(is_meson_gxlx_cpu() &&
+					(next_frame_par->supscl_path ==
+					CORE1_AFTER_PPS)))
 					cur_ratio = cur_ratio * 2;
 				cur_skip_ratio = cur_ratio;
 				if ((cur_ratio > min_ratio_1000) &&
@@ -2714,11 +2717,11 @@ void vpp_super_scaler_support(void)
 		bypass_spscl1 = 1;
 	scaler_path_sel = SCALER_PATH_MAX;
 }
-
+/*for gxlx only have core1 which will affact pip line*/
 void vpp_bypass_ratio_config(void)
 {
 	if (is_meson_gxbb_cpu() || is_meson_gxl_cpu() ||
-		is_meson_gxm_cpu())
+		is_meson_gxm_cpu() || is_meson_gxlx_cpu())
 		bypass_ratio = 125;
 	else if (is_meson_txlx_cpu() || is_meson_txl_cpu())
 		bypass_ratio = 247;/*0x110 * (100/110)=0xf7*/
