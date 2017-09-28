@@ -1004,9 +1004,9 @@ unsigned long codec_mm_virt_to_phys(void *vaddr)
 	return page_to_phys((struct page *)vaddr);
 }
 
-static unsigned long codec_mm_get_cma_size_int_byte(struct device *dev)
+static int codec_mm_get_cma_size_int_byte(struct device *dev)
 {
-	static unsigned long static_size = -1;
+	static int static_size = -1;
 	struct cma *cma = NULL;
 
 	if (static_size >= 0)
