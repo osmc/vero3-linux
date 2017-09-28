@@ -1339,8 +1339,8 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd,
 		osd_log_err("current vinfo NULL\n");
 		return -1;
 	}
-	osd_log_info("current vmode=%s, cmd: 0x%lx\n",
-		vinfo->name, cmd);
+	osd_log_info("current vmode=%s, vinfo w=%d,h=%d, cmd: 0x%lx\n",
+		vinfo->name, vinfo->width, vinfo->height, cmd);
 	switch (cmd) {
 #if 0
 	case VOUT_EVENT_MODE_CHANGE_PRE:
@@ -1408,7 +1408,7 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd,
 			*/
 			fb_dev->osd_ctl.disp_start_x = disp_rect->x;
 			fb_dev->osd_ctl.disp_start_y = disp_rect->y;
-			osd_log_dbg("set disp axis: x:%d y:%d w:%d h:%d\n",
+			osd_log_info("set disp axis: x:%d y:%d w:%d h:%d\n",
 				    disp_rect->x, disp_rect->y,
 				    disp_rect->w, disp_rect->h);
 			if (disp_rect->x + disp_rect->w > vinfo->width)
@@ -1424,7 +1424,7 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd,
 					fb_dev->osd_ctl.disp_start_y +
 					disp_rect->h - 1;
 			disp_rect++;
-			osd_log_dbg("new disp axis: x0:%d y0:%d x1:%d y1:%d\n",
+			osd_log_info("new disp axis: x0:%d y0:%d x1:%d y1:%d\n",
 				    fb_dev->osd_ctl.disp_start_x,
 				    fb_dev->osd_ctl.disp_start_y,
 				    fb_dev->osd_ctl.disp_end_x,

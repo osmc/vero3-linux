@@ -1053,6 +1053,16 @@ void osd_update_disp_axis_hw(
 	memcpy(&osd_hw.dispdata[index], &disp_data, sizeof(struct pandata_s));
 	memcpy(&osd_hw.dispdata_backup[index],
 		&disp_data, sizeof(struct pandata_s));
+	osd_log_info("osd_update_disp_axis_hw:pan_data(%d,%d,%d,%d)\n",
+		pan_data.x_start,
+		pan_data.y_start,
+		pan_data.x_end,
+		pan_data.y_end);
+	osd_log_info("osd_update_disp_axis_hw:dispdata(%d,%d,%d,%d)\n",
+		disp_data.x_start,
+		disp_data.y_start,
+		disp_data.x_end,
+		disp_data.y_end);
 	spin_lock_irqsave(&osd_lock, lock_flags);
 	if (mode_change) /* modify pandata . */
 		osd_hw.reg[index][OSD_COLOR_MODE].update_func();
@@ -1418,6 +1428,10 @@ void osd_set_window_axis_hw(u32 index, s32 x0, s32 y0, s32 x1, s32 y1)
 	const struct vinfo_s *vinfo;
 	s32 temp_y0, temp_y1;
 	vinfo = get_current_vinfo();
+	osd_log_info("osd[%d] set_window_axis_hw: (%d,%d,%d,%d) mode=%d w=%d,h=%d(%s)\n",
+		index, x0, y0, x1, y1,
+		vinfo->mode, vinfo->width, vinfo->height,
+		current->comm);
 	mutex_lock(&osd_mutex);
 	if (vinfo) {
 		switch (vinfo->mode) {
@@ -1457,6 +1471,11 @@ void osd_set_window_axis_hw(u32 index, s32 x0, s32 y0, s32 x1, s32 y1)
 	osd_hw.cursor_dispdata[index].y_start = temp_y0;
 	osd_hw.cursor_dispdata[index].y_end = temp_y1;
 #endif
+	osd_log_info("free_dst_data(%d,%d,%d,%d)\n",
+		osd_hw.free_dst_data[index].x_start,
+		osd_hw.free_dst_data[index].y_start,
+		osd_hw.free_dst_data[index].x_end,
+		osd_hw.free_dst_data[index].y_end);
 	if (osd_hw.free_dst_data[index].y_end >= 2159)
 		osd_set_dummy_data(0xff);
 	osd_update_window_axis = true;
