@@ -632,7 +632,9 @@ static void clocks_set_sys_defaults(unsigned char dvb_mode)
 		demod_set_demod_reg(TXLX_ADC_REG7_VALUE, TXLX_ADC_REG7);
 		demod_set_demod_reg(TXLX_ADC_REG8_VALUE, TXLX_ADC_REG8);
 		demod_set_demod_reg(TXLX_ADC_REG9_VALUE, TXLX_ADC_REG9);
-		demod_set_demod_reg(TXLX_ADC_REGE_VALUE, TXLX_ADC_REGE);
+		demod_set_demod_reg(
+		(demod_read_demod_reg(TXLX_ADC_REGE) |
+				     (0x1 << 9)), TXLX_ADC_REGE);
 
 		demod_set_demod_reg(DEMOD_REG1_VALUE, TXLX_DEMOD_REG1);
 		demod_set_demod_reg(DEMOD_REG2_VALUE, TXLX_DEMOD_REG2);
@@ -670,7 +672,9 @@ static void clocks_set_sys_defaults(unsigned char dvb_mode)
 		demod_set_demod_reg(TXLX_ADC_REG7_VALUE, ADC_REG7);
 		demod_set_demod_reg(TXLX_ADC_REG8_VALUE, ADC_REG8);
 		demod_set_demod_reg(TXLX_ADC_REG9_VALUE, ADC_REG9);
-		demod_set_demod_reg(TXLX_ADC_REGE_VALUE, ADC_REGE);
+		demod_set_demod_reg(
+		(demod_read_demod_reg(ADC_REGE) |
+				     (0x1 << 9)), ADC_REGE);
 
 		demod_set_demod_reg(DEMOD_REG1_VALUE, DEMOD_REG1);
 		demod_set_demod_reg(DEMOD_REG2_VALUE, DEMOD_REG2);
@@ -692,7 +696,9 @@ static void clocks_set_sys_defaults(unsigned char dvb_mode)
 		demod_set_demod_reg(TXLX_ADC_REG7_VALUE, ADC_REG7);
 		demod_set_demod_reg(TXLX_ADC_REG8_VALUE, ADC_REG8);
 		demod_set_demod_reg(TXLX_ADC_REG9_VALUE, ADC_REG9);
-		demod_set_demod_reg(TXLX_ADC_REGE_VALUE, ADC_REGE);
+		demod_set_demod_reg(
+		(demod_read_demod_reg(ADC_REGE) |
+				     (0x1 << 9)), ADC_REGE);
 
 		demod_set_demod_reg(DEMOD_REG1_VALUE, GXLX_DEMOD_REG1);
 		demod_set_demod_reg(DEMOD_REG2_VALUE, GXLX_DEMOD_REG2);
