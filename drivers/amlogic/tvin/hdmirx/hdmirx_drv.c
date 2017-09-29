@@ -946,10 +946,12 @@ static long hdmirx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 	case HDMI_IOC_PC_MODE_ON:
 		pc_mode_en = 1;
+		hotplug_wait_query();
 		rx_pr("pc mode on\n");
 		break;
 	case HDMI_IOC_PC_MODE_OFF:
 		pc_mode_en = 0;
+		hotplug_wait_query();
 		rx_pr("pc mode off\n");
 		break;
 	case HDMI_IOC_HDCP22_AUTO:
@@ -1142,18 +1144,28 @@ void hotplug_wait_query(void)
 	wake_up(&query_wait);
 }
 
-static ssize_t hdmirx_hpd_read(struct file *file,
+static ssize_t hdmirx_sts_read(struct file *file,
 	    char __user *buf, size_t count, loff_t *pos)
 {
 	int ret = 0;
+	int rx_sts;
 
-	if (copy_to_user(buf, &pwr_sts, sizeof(unsigned int)))
+	/*
+	* sysctl set the pc_mode on/off via UI,tvserver need to know
+	* the status,but it cant get the status from sysctl because of the
+	* limit of the communication from sysctl to tvserver,so it needs
+	* hdmi driver to feedback the pc_mode status to tvserver
+	*/
+
+	rx_sts = pwr_sts | (pc_mode_en << 4);
+
+	if (copy_to_user(buf, &rx_sts, sizeof(unsigned int)))
 		return -EFAULT;
 
 	return ret;
 }
 
-static unsigned int hdmirx_hpd_poll(struct file *filp,
+static unsigned int hdmirx_sts_poll(struct file *filp,
 		poll_table *wait)
 {
 	unsigned int mask = 0;
@@ -1168,8 +1180,8 @@ static const struct file_operations hdmirx_fops = {
 	.owner		= THIS_MODULE,
 	.open		= hdmirx_open,
 	.release	= hdmirx_release,
-	.read       = hdmirx_hpd_read,
-	.poll       = hdmirx_hpd_poll,
+	.read       = hdmirx_sts_read,
+	.poll       = hdmirx_sts_poll,
 	.unlocked_ioctl	= hdmirx_ioctl,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = hdmirx_compat_ioctl,
