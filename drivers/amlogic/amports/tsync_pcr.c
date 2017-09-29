@@ -1164,15 +1164,18 @@ static unsigned long tsync_pcr_check(void)
 
 	if (need_recovery && !tsync_pcr_vpause_flag) {
 		if (play_mode == PLAY_MODE_SLOW) {
-			timestamp_pcrscr_set_adj_pcr(-1);
+			timestamp_pcrscr_set(timestamp_pcrscr_get() -
+				tsync_pcr_recovery_span);
 		} else if (play_mode == PLAY_MODE_FORCE_SLOW) {
-			timestamp_pcrscr_set_adj_pcr(-2);
+			timestamp_pcrscr_set(timestamp_pcrscr_get() -
+				FORCE_RECOVERY_SPAN);
 		} else if (play_mode == PLAY_MODE_SPEED) {
-			timestamp_pcrscr_set_adj_pcr(1);
+			timestamp_pcrscr_set(timestamp_pcrscr_get() +
+				tsync_pcr_recovery_span);
 		} else if (play_mode == PLAY_MODE_FORCE_SPEED) {
-			timestamp_pcrscr_set_adj_pcr(2);
-		} else if (play_mode == PLAY_MODE_NORMAL)
-			timestamp_pcrscr_set_adj_pcr(0);
+			timestamp_pcrscr_set(timestamp_pcrscr_get() +
+				FORCE_RECOVERY_SPAN);
+		}
 	}
 	/* } */
 
