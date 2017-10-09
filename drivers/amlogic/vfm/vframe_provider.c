@@ -54,8 +54,10 @@ void provider_update_caller(
 {
 	unsigned long flags;
 	spin_lock_irqsave(&provider_lock, flags);
-	strncpy(last_receiver, receiver, 31);
-	strncpy(last_provider, provider, 31);
+	if (receiver)
+		strncpy(last_receiver, receiver, 31);
+	if (provider)
+		strncpy(last_provider, provider, 31);
 	spin_unlock_irqrestore(&provider_lock, flags);
 }
 
