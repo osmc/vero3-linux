@@ -520,7 +520,7 @@ void set_cr_ck_rate(void)
 	atsc_write_reg(0x546,  0x80);
 
 	/*improve phase nosie 20170820*/
-	atsc_write_reg(0x912,  0x00);
+	atsc_write_reg(0x912,  0x10);
 	atsc_write_reg(0xf55,  0x00);
 	atsc_write_reg(0xf56,  0x00);
 	atsc_write_reg(0xf57,  0x00);
@@ -780,13 +780,15 @@ int cfo_run(void)
 	int sys_state;
 	int table_count;
 	int max_count;
-	int freq_table[] = {0, -50, 50, -100, 100};
+	int freq_table[] = {0, -50, 50, -100, 100, -150, 150};
 	int scan_range;
 	int Offset;
-	if (cfo_count)
+	if (cfo_count == 1)
 		max_count = 3;
-	else
+	else if (cfo_count == 2)
 		max_count = 5;
+	else
+		max_count = 7;
 	Fcent = Si2176_5M_If*1000;/*if*/
 	Fs = Adc_Clk_24M;/*crystal*/
 	cfo_sta = 0;
