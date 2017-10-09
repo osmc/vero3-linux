@@ -779,6 +779,7 @@ static void tv_vinfo_update(struct vmode_match_s *vmatch)
 			}
 		}
 		if (vinfo) {
+			tv_vinfo.name = vmatch->name;
 			tv_vinfo.mode = vinfo->mode;
 			tv_vinfo.width = vinfo->width;
 			tv_vinfo.height = vinfo->height;
@@ -794,6 +795,8 @@ static void tv_vinfo_update(struct vmode_match_s *vmatch)
 			tv_vinfo.vtotal = vinfo->vtotal;
 			tv_vinfo.viu_color_fmt = TVIN_YUV444;
 		}
+		/*vout_log_info("[tv..] %s: tv_vinfo.mode=%d,name:%s\n",
+			__func__, tv_vinfo.mode, tv_vinfo.name);*/
 		break;
 	default: /* hdmitx */
 #ifdef CONFIG_AML_HDMI_TX
@@ -841,7 +844,7 @@ static struct vinfo_s *get_tv_info(enum vmode_e mode)
 	for (i = 0; i < ARRAY_SIZE(tv_match_table); i++) {
 		if (mode == tv_match_table[i].mode) {
 			tv_vinfo_update(&tv_match_table[i]);
-			vinfo = info->vinfo;
+			vinfo = &tv_vinfo;
 		}
 	}
 	return vinfo;
