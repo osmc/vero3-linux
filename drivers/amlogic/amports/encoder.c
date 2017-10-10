@@ -3775,7 +3775,7 @@ static ssize_t encode_status_show(struct class *cla,
 	head = &encode_manager.process_queue;
 	list_for_each_entry(pitem, head , list) {
 		process_count++;
-		if (free_count > MAX_ENCODE_REQUEST)
+		if (process_count > MAX_ENCODE_REQUEST)
 			break;
 	}
 
