@@ -115,7 +115,7 @@ static ssize_t aml_atvdemod_store(struct class *cls,
 	} else if (!strncmp(parm[0], "clk", 3)) {
 		adc_set_pll_cntl(1, 0x1);
 		atvdemod_clk_init();
-		if (is_meson_txlx_cpu())
+		if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 			aud_demod_clk_gate(1);
 		pr_info("atvdemod_clk_init done ....\n");
 	} else if (!strcmp(parm[0], "tune")) {
@@ -289,7 +289,7 @@ static int aml_atvdemod_enter_mode(struct aml_fe *fe, int mode)
 	atvdemod_clk_init();
 	err_code = atvdemod_init();
 
-	if (is_meson_txlx_cpu()) {
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 		aud_demod_clk_gate(1);
 		atvauddemod_init();
 	}
@@ -314,7 +314,7 @@ static int aml_atvdemod_leave_mode(struct aml_fe *fe, int mode)
 	/* reset adc pll flag */
 	/* printk("\n%s: init atvdemod flag...\n",__func__); */
 	adc_set_pll_cntl(0, 0x1);
-	if (is_meson_txlx_cpu())
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 		aud_demod_clk_gate(0);
 	atvdemod_state = ATVDEMOD_STATE_IDEL;
 	return 0;
@@ -665,7 +665,7 @@ void __iomem *amlatvdemod_periphs_reg_base;
 int amlatvdemod_reg_read(unsigned int reg, unsigned int *val)
 {
 	int ret = 0;
-	if (is_meson_txlx_cpu()) {
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 		amlatvdemod_hiu_reg_read(HHI_GCLK_MPEG0, &ret);
 		if (0 == ((1<<29) & ret)) {
 			pr_err("%s GCLK_MPEG0:0x%x\n", __func__, ret);
@@ -682,7 +682,7 @@ int amlatvdemod_reg_read(unsigned int reg, unsigned int *val)
 int amlatvdemod_reg_write(unsigned int reg, unsigned int val)
 {
 	int ret = 0;
-	if (is_meson_txlx_cpu()) {
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 		amlatvdemod_hiu_reg_read(HHI_GCLK_MPEG0, &ret);
 		if (0 == ((1<<29) & ret)) {
 			pr_err("%s GCLK_MPEG0:0x%x\n", __func__, ret);
@@ -698,7 +698,7 @@ int amlatvdemod_reg_write(unsigned int reg, unsigned int val)
 int atvaudiodem_reg_read(unsigned int reg, unsigned int *val)
 {
 	int ret = 0;
-	if (is_meson_txlx_cpu()) {
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 		amlatvdemod_hiu_reg_read(HHI_GCLK_MPEG0, &ret);
 		if (0 == ((1<<31) & ret)) {
 			pr_err("%s GCLK_MPEG0:0x%x\n", __func__, ret);
@@ -714,7 +714,7 @@ int atvaudiodem_reg_read(unsigned int reg, unsigned int *val)
 int atvaudiodem_reg_write(unsigned int reg, unsigned int val)
 {
 	int ret = 0;
-	if (is_meson_txlx_cpu()) {
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 		amlatvdemod_hiu_reg_read(HHI_GCLK_MPEG0, &ret);
 		if (0 == ((1<<31) & ret)) {
 			pr_err("%s GCLK_MPEG0:0x%x\n", __func__, ret);
@@ -810,12 +810,12 @@ static int aml_atvdemod_probe(struct platform_device *pdev)
 			__func__, atvaudiodem_reg_base, size_io_reg);
 	}
 	/*remap hiu mem*/
-	if (get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX)
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 		amlatvdemod_hiu_reg_base = ioremap(0xff63c000, 0x2000);
 	else
 		amlatvdemod_hiu_reg_base = ioremap(0xc883c000, 0x2000);
 	/*remap periphs mem*/
-	if (get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX)
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 		amlatvdemod_periphs_reg_base = ioremap(0xff634000, 0x2000);
 	else
 		amlatvdemod_periphs_reg_base = ioremap(0xc8834000, 0x2000);

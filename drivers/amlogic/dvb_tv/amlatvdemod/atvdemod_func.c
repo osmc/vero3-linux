@@ -405,7 +405,19 @@ void atv_dmd_misc(void)
 		atv_dmd_wr_long(0x0f, 0x3c, reg_23cf);/*zhuangwei*/
 		/*guanzhong@20150804a*/
 		atv_dmd_wr_byte(APB_BLOCK_ADDR_SIF_STG_2, 0x00, 0x1);
-		atv_dmd_wr_long(APB_BLOCK_ADDR_AGC_PWM, 0x08, 0x601b0201);
+		if (is_meson_txhd_cpu()) {
+			atv_dmd_wr_long(APB_BLOCK_ADDR_AGC_PWM,
+					0x10, 0x00011020);
+			atv_dmd_wr_long(APB_BLOCK_ADDR_AGC_PWM,
+					0x08, 0x3d170200);
+			atv_dmd_wr_long(APB_BLOCK_ADDR_AGC_PWM,
+					0x14, 0x01010855);
+			atv_dmd_wr_long(APB_BLOCK_ADDR_AGC_PWM,
+					0x1C, 0x03010855);
+		} else {
+			atv_dmd_wr_long(APB_BLOCK_ADDR_AGC_PWM,
+					0x08, 0x601b0201);
+		}
 		/*dezhi@20150610a 0x1a maybe better?!*/
 		/* atv_dmd_wr_byte(APB_BLOCK_ADDR_AGC_PWM, 0x09, 0x19); */
 	} else {
@@ -1641,7 +1653,7 @@ int amlfmt_aud_standard(int broad_std)
 
 int atvauddemod_init(void)
 {
-	if (is_meson_txlx_cpu()) {
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 		if (aud_auto)
 			aud_std = amlfmt_aud_standard(broad_std);
 		configure_adec(aud_std);
@@ -1669,12 +1681,13 @@ int atvdemod_init(void)
 	/* 1.set system clock when atv enter*/
 
 	pr_err("%s do configure_receiver ...\n", __func__);
-	if (is_meson_txlx_cpu())
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 		sound_format = 1;
 	configure_receiver(broad_std, if_freq, if_inv, gde_curve, sound_format);
 	pr_err("%s do atv_dmd_misc ...\n", __func__);
 	atv_dmd_misc();
 
+	pr_err("%s do atv_dmd_soft_reset ...\n", __func__);
 	/*4.software reset*/
 	atv_dmd_soft_reset();
 	atv_dmd_soft_reset();
@@ -1704,7 +1717,7 @@ int atvdemod_init(void)
 		timer_init_flag = 1;
 	}
 	#endif
-	pr_info("%s done\n", __func__);
+	pr_err("%s done\n", __func__);
 	return 0;
 }
 void atvdemod_uninit(void)

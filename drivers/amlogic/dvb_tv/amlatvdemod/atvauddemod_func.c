@@ -1119,11 +1119,19 @@ void configure_adec(int Audio_mode)
 	pr_info("configure audio demod register\n");
 
 	aud_demod_clk_gate(1);
+
+	/*
+	 * set gate clk for btsc and nicam .
+	 */
+	if (is_meson_txhd_cpu())
+		adec_wr_reg(0x28, 0xa);
+
 	set_standard(Audio_mode);
 
 	set_general();
 	set_i2s_intrp(0);
 }
+
 void adec_soft_reset(void)
 {
 	adec_wr_reg(ADEC_RESET, 0x0);
