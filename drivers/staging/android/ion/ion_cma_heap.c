@@ -20,6 +20,7 @@
 #include <linux/errno.h>
 #include <linux/err.h>
 #include <linux/dma-mapping.h>
+#include <linux/dma-contiguous.h>
 
 #include "ion.h"
 #include "ion_priv.h"
@@ -65,6 +66,7 @@ static int ion_cma_allocate(struct ion_heap *heap, struct ion_buffer *buffer,
 	struct ion_cma_heap *cma_heap = to_cma_heap(heap);
 	struct device *dev = cma_heap->dev;
 	struct ion_cma_buffer_info *info;
+	struct page *page = NULL;
 	dev_dbg(dev, "Request buffer allocation len %ld\n", len);
 
 	if (buffer->flags & ION_FLAG_CACHED)
@@ -78,10 +80,11 @@ static int ion_cma_allocate(struct ion_heap *heap, struct ion_buffer *buffer,
 		dev_err(dev, "Can't allocate buffer info\n");
 		return ION_CMA_ALLOCATE_FAILED;
 	}
-
 	len = PAGE_ALIGN(len);
-	info->cpu_addr = dma_alloc_coherent(dev, len, &(info->handle),
-						GFP_HIGHUSER | __GFP_ZERO);
+	page = dma_alloc_from_contiguous(dev, len >> PAGE_SHIFT,
+			get_order(len));
+	info->cpu_addr = page_address(page);
+	info->handle = PFN_PHYS(page_to_pfn(page));
 	if (!info->cpu_addr) {
 		dev_err(dev, "Fail to allocate buffer\n");
 		goto err;
@@ -115,11 +118,13 @@ static void ion_cma_free(struct ion_buffer *buffer)
 	struct ion_cma_heap *cma_heap = to_cma_heap(buffer->heap);
 	struct device *dev = cma_heap->dev;
 	struct ion_cma_buffer_info *info = buffer->priv_virt;
+	struct page *page;
 
 	dev_dbg(dev, "Release buffer %p\n", buffer);
 	/* release memory */
 	buffer->size = PAGE_ALIGN(buffer->size);
-	dma_free_coherent(dev, buffer->size, info->cpu_addr, info->handle);
+	page = pfn_to_page(PFN_DOWN(info->handle));
+	dma_release_from_contiguous(dev, page, buffer->size >> PAGE_SHIFT);
 	/* release sg table */
 	sg_free_table(info->table);
 	kfree(info->table);
