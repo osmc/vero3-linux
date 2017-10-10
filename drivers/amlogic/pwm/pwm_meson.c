@@ -490,11 +490,16 @@ static int pwm_aml_config(struct pwm_chip *chip,
 		dev_err(chip->dev, "tried to calc pwm freq err\n");
 		return -EINVAL;
 	}
-	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXTVBB) && (id > chip->npwm/2-1))
+	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXTVBB) && (id > PWM_AO_B)
+		&& id < PWM_AO_B2)
 		pwm_meson_config_ext(our_chip, our_chan, id);/*double pwm*/
-	else
-		pwm_meson_config(our_chip, our_chan, id);/*single pwm*/
-
+	else {
+		if (id == PWM_AO_C || id == PWM_AO_D)
+			pwm_meson_config(our_chip, our_chan, id);/*single pwm*/
+		else
+			pwm_meson_config_ext(our_chip, our_chan, id);
+			/*double pwm for pwm ao cd*/
+	}
 	our_chan->period_ns = period_ns;
 	our_chan->duty_ns = duty_ns;
 
@@ -664,6 +669,7 @@ static int pwm_aml_parse_addr(struct aml_pwm_chip *chip)
 		pwm_aml_parse_addr_txl(chip);
 	break;
 	case MESON_CPU_MAJOR_ID_TXLX:
+	case MESON_CPU_MAJOR_ID_TXHD:
 		pwm_aml_parse_addr_txlx(chip);
 	break;
 	default:
@@ -733,6 +739,7 @@ static int pwm_aml_parse_dt(struct aml_pwm_chip *chip)
 		}
 	break;
 	case MESON_CPU_MAJOR_ID_TXLX:
+	case MESON_CPU_MAJOR_ID_TXHD:
 		if ((output_co > AML_PWM_TXLX_NUM) ||
 			(clock_co > AML_PWM_TXLX_NUM)) {
 			goto err;
@@ -809,6 +816,7 @@ static int pwm_aml_probe(struct platform_device *pdev)
 		chip->inverter_mask = BIT(chip->chip.npwm/2) - 1;
 		break;
 	case MESON_CPU_MAJOR_ID_TXLX:
+	case MESON_CPU_MAJOR_ID_TXHD:
 		chip->inverter_mask = BIT(chip->chip.npwm/2) - 1;
 		break;
 	default:
