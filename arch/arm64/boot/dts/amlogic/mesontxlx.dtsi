@@ -349,14 +349,16 @@
 			amlogic,pins="GPIOZ_0", "GPIOZ_1";
 		};
 		sd_clk_cmd_pins:sd_clk_cmd_pins{
-			amlogic,setmask=<6 0x0000000c>;
+			amlogic,setmask=<6 0x0000000c>,
+					<AO 0x00001800>;
 			amlogic,pins = "GPIOC_2","GPIOC_3"; /* GPIOC_2:CLK, GPIOC_3:CMD */
 			amlogic,enable-output=<1>; /* 0:output, 1:input */
 			amlogic,pullup=<1>;
 			amlogic,pullupen=<1>;
 		};
 		sd_all_pins:sd_all_pins{
-			amlogic,setmask=<6 0x0000003f>;
+			amlogic,setmask=<6 0x0000003f>,
+					<AO 0x00001800>;
 			amlogic,clrmask=<6 0xFC00FF00>;
 			amlogic,pins="GPIOC_0","GPIOC_1","GPIOC_2","GPIOC_3","GPIOC_4","GPIOC_5";
 			amlogic,enable-output=<1>; /* 0:output, 1:input */
@@ -364,7 +366,8 @@
 			amlogic,pullupen=<1>;
 		};
 		sd_1bit_pins:sd_1bit_pins{
-			amlogic,setmask=<6 0x0000001c>;
+			amlogic,setmask=<6 0x0000001c>,
+					<AO 0x00001800>;
 			amlogic,clrmask=<6 0x70007F03>;
 			amlogic,pins = "GPIOC_1","GPIOC_2","GPIOC_3";
 			amlogic,enable-output=<1>; /* 0:output, 1:input */
@@ -373,7 +376,8 @@
 		};
 		sd_clk_cmd_uart_pins:sd_clk_cmd_uart_pins{
 			amlogic,setmask=<6 0x0000030c>;
-			amlogic,clrmask=<6 0x3C003C03>;
+			amlogic,clrmask=<6 0x3C003C03>,
+					<AO 0x00001800>;
 			amlogic,pins = "GPIOC_2","GPIOC_3"; /* GPIOC_2:CLK, GPIOC_3:CMD */
 			amlogic,enable-output=<1>; /* 0:output, 1:input */
 			amlogic,pullup=<1>;
@@ -381,16 +385,26 @@
 		};
 		sd_1bit_uart_pins:sd_1bit_uart_pins{
 			amlogic,setmask=<6 0x0000031c>;
-			amlogic,clrmask=<6 0x7C007C03>;
+			amlogic,clrmask=<6 0x7C007C03>,
+					<AO 0x00001800>;
 			amlogic,pins = "GPIOC_1","GPIOC_2","GPIOC_3";
 			amlogic,enable-output=<1>; /* 0:output, 1:input */
 			amlogic,pullup=<1>;
 			amlogic,pullupen=<1>;
 		};
 		/* fixme, begin; yyh */
+		sd_to_ao_uart_pins:sd_to_ao_uart_pins{
+			amlogic,setmask=<AO 0x00001800>;
+			amlogic,clrmask=<6 0x00000300>;
+			amlogic,pins = "GPIOAO_0","GPIOAO_1";
+			amlogic,enable-output=<1>; /* 0:output, 1:input */
+			amlogic,pullup=<1>;
+			amlogic,pullupen=<1>;
+		};
 		ao_to_sd_uart_pins:ao_to_sd_uart_pins{
 			amlogic,setmask=<6 0x300>;
-			amlogic,clrmask=<6 0xc000c03>;
+			amlogic,clrmask=<AO 0x00001800>,
+					<6 0xc000c03>;
 			amlogic,pins = "GPIOC_4","GPIOC_5";
 			amlogic,enable-output=<1>; /* 0:output, 1:input */
 			amlogic,pullup=<1>;
@@ -399,12 +413,23 @@
 		/* switch jtag pins to card from apao */
 		ao_to_sd_jtag_pins:ao_to_sd_jtag_pins{
 			amlogic,setmask=<6 0x300>; /*set for uart-ee, fixme? */
-			amlogic,clrmask=<6 0xf000f03f>; /* clear for jtag */  /* clear for uart-ee, fixme? */
+			amlogic,clrmask=<6 0xfc3ffc3f>,
+					<AO 0x00001800>; /* clear for jtag */  /* clear for uart-ee, fixme? */
 			amlogic,pins = "GPIOC_4","GPIOC_5"; /* should be GPIOC_0/1/2/3 */
 			amlogic,enable-output=<1>; /* 0:output, 1:input */
 			amlogic,pullup=<1>;
 			amlogic,pullupen=<1>;
 		};
+		sd_to_ao_jtag_pins:sd_to_ao_jtag_pins{
+			amlogic,setmask=<AO 0x1800>;
+			amlogic,clrmask=<6 0x0c030f00>;
+			amlogic,pins = "GPIOAO_0","GPIOAO_1";
+			amlogic,enable-output=<1>; /* 0:output, 1:input */
+			amlogic,pullup=<1>;
+			amlogic,pullupen=<1>;
+		};
+
+
 		/* switch jtag pins to apao from card */
 		/* fixme, end; yyh */
 
