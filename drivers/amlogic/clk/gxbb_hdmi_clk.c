@@ -789,8 +789,7 @@ static int encx_clk_set(struct clk_hw *hw, unsigned long drate,
 			break;
 		}
 	}
-	if (i == hdmi_clk->encx_tbl_cnt)
-		enc_tbl = &hdmi_clk->encx_tbl[i-1];
+
 	pr_info("hdmi_clk %s\n", hdmi_clk->name);
 	pr_info(" %s i = %d, prate =%ld,drate =%ld\n", __func__, i, prate,
 		drate);
@@ -839,8 +838,7 @@ static long encx_clk_round(struct clk_hw *hw, unsigned long drate,
 			break;
 		}
 	}
-	if (i == hdmi_clk->encx_tbl_cnt)
-		enc_tbl = &hdmi_clk->encx_tbl[i-1];
+
 	pr_info("%s,enc_tbl->rate =%d,prate =%ld\n",
 				__func__, enc_tbl->rate, *prate);
 	return enc_tbl->rate;
