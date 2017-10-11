@@ -421,7 +421,7 @@ static int init_EQ_DRC_module(void)
 static int set_internal_EQ_volume(unsigned master_volume,
 			unsigned channel_1_volume, unsigned channel_2_volume)
 {
-	aml_eqdrc_write(AED_EQ_VOLUME, (2 << 30) /* volume step: 0.5dB*/
+	aml_eqdrc_write(AED_EQ_VOLUME, (0 << 30) /* volume step: 0.125dB*/
 			| (master_volume << 16) /* master volume: 0dB*/
 			| (channel_1_volume << 8) /* channel 1 volume: 0dB*/
 			| (channel_2_volume << 0) /* channel 2 volume: 0dB*/
@@ -1458,6 +1458,8 @@ static void aml_pinmux_work_func(struct work_struct *pinmux_work)
 		set_internal_EQ_volume(0xc0, 0x30, 0x30);
 		init_EQ_DRC_module();
 		/*set_HW_resample_pause_thd(128);*/
+	} else if (is_meson_txlx_cpu()) {
+		set_internal_EQ_volume(0xc0, 0x30, 0x30);
 	}
 
 	channel_mask_parse(card);
