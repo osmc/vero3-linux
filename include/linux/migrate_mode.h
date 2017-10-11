@@ -16,6 +16,5 @@ enum migrate_mode {
 enum migrate_type {
 	COMPACT_NORMAL,
 	COMPACT_CMA,
-	COMPACT_TO_CMA,
 };
 #endif		/* MIGRATE_MODE_H_INCLUDED */
