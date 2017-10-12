@@ -368,6 +368,8 @@ static void meson_uart_start_tx(struct uart_port *port)
 		} else
 			break;
 	}
+	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
+		uart_write_wakeup(port);
 	spin_unlock_irqrestore(&mup->wr_lock, flags);
 }
 
