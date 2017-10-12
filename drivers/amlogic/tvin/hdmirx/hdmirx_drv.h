@@ -42,7 +42,7 @@
 #define RX_VER2 "Ref.2017/09/29"
 /*------------------------------*/
 
-#define RX_VER3 "Ref.2017/09/27"
+#define RX_VER3 "Ref.2017/10/12"
 /*------------------------------*/
 
 #define RX_VER4 "Ref.2017/07/28"
@@ -938,6 +938,7 @@ unsigned int hdmirx_get_tmds_clock(void);
 unsigned int hdmirx_get_pixel_clock(void);
 unsigned int hdmirx_get_audio_clock(void);
 unsigned int hdmirx_get_esm_clock(void);
+unsigned int hdmirx_get_mpll_div_clk(void);
 
 unsigned int hdmirx_get_clock(int index);
 irqreturn_t irq_handler(int irq, void *params);
@@ -967,6 +968,7 @@ extern int hdmirx_hw_get_pixel_repeat(void);
 extern bool hdmirx_hw_check_frame_skip(void);
 extern int rx_pr(const char *fmt, ...);
 extern int hdmirx_hw_dump_reg(unsigned char *buf, int size);
+extern int hdmirx_show_info(unsigned char *buf, int size);
 extern bool hdmirx_audio_pll_lock(void);
 extern bool is_clk_stable(void);
 extern bool hdmirx_tmds_pll_lock(void);

@@ -1742,6 +1742,11 @@ unsigned int hdmirx_get_audio_clock(void)
 	return clk_util_clk_msr(24);
 }
 
+unsigned int hdmirx_get_mpll_div_clk(void)
+{
+	return clk_util_clk_msr(27);
+}
+
 unsigned int hdmirx_get_esm_clock(void)
 {
 	return clk_util_clk_msr(68);

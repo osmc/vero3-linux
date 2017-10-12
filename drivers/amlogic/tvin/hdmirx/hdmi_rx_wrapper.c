@@ -3048,6 +3048,113 @@ int hdmirx_hw_dump_reg(unsigned char *buf, int size)
 	return 0;
 }
 
+int hdmirx_show_info(unsigned char *buf, int size)
+{
+	int pos = 0;
+	struct drm_infoframe_st *drmpkt;
+
+	drmpkt = (struct drm_infoframe_st *)&(rx.drm_info);
+
+	pos += snprintf(buf+pos, size-pos,
+		"HDMI info\n\n");
+	if (rx.cur.colorspace == E_COLOR_RGB)
+		pos += snprintf(buf+pos, size-pos,
+			"Color Space: %s\n", "0-RGB");
+	else if (rx.cur.colorspace == E_COLOR_YUV422)
+		pos += snprintf(buf+pos, size-pos,
+			"Color Space: %s\n", "1-YUV422");
+	else if (rx.cur.colorspace == E_COLOR_YUV444)
+		pos += snprintf(buf+pos, size-pos,
+			"Color Space: %s\n", "1-YUV444");
+	else if (rx.cur.colorspace == E_COLOR_YUV420)
+		pos += snprintf(buf+pos, size-pos,
+			"Color Space: %s\n", "1-YUV420");
+	pos += snprintf(buf+pos, size-pos,
+		"Dvi: %d\n", rx.cur.hw_dvi);
+	pos += snprintf(buf+pos, size-pos,
+		"Interlace: %d\n", rx.cur.interlaced);
+	pos += snprintf(buf+pos, size-pos,
+		"Htotal: %d\n", rx.cur.htotal);
+	pos += snprintf(buf+pos, size-pos,
+		"Hactive: %d\n", rx.cur.hactive);
+	pos += snprintf(buf+pos, size-pos,
+		"Vtotal: %d\n", rx.cur.vtotal);
+	pos += snprintf(buf+pos, size-pos,
+		"Vactive: %d\n", rx.cur.vactive);
+	pos += snprintf(buf+pos, size-pos,
+		"Repetition: %d\n", rx.cur.repeat);
+	pos += snprintf(buf+pos, size-pos,
+		"Color Depth: %d\n", rx.cur.colordepth);
+	pos += snprintf(buf+pos, size-pos,
+		"Frame Rate: %d\n", rx.cur.frame_rate);
+	pos += snprintf(buf+pos, size-pos,
+		"Skip frame: %d\n", rx.skip);
+	pos += snprintf(buf+pos, size-pos,
+		"avmute skip: %d\n", rx.avmute_skip);
+	pos += snprintf(buf+pos, size-pos,
+		"TMDS clock: %d\n", hdmirx_get_tmds_clock());
+	pos += snprintf(buf+pos, size-pos,
+		"Pixel clock: %d\n", hdmirx_get_pixel_clock());
+	if (drmpkt->des_u.tp1.eotf == EOTF_SDR)
+		pos += snprintf(buf+pos, size-pos,
+			"HDR EOTF: %s\n", "SDR");
+	else if (drmpkt->des_u.tp1.eotf == EOTF_HDR)
+		pos += snprintf(buf+pos, size-pos,
+		"HDR EOTF: %s\n", "HDR");
+	else if (drmpkt->des_u.tp1.eotf == EOTF_SMPTE_ST_2048)
+		pos += snprintf(buf+pos, size-pos,
+		"HDR EOTF: %s\n", "SMPTE_ST_2048");
+	pos += snprintf(buf+pos, size-pos,
+		"Dolby Vision: %s\n", (rx.vsi_info.dolby_vision?"on":"off"));
+
+	pos += snprintf(buf+pos, size-pos,
+		"\n\nAudio info\n\n");
+	pos += snprintf(buf+pos, size-pos,
+		"CTS: %d\n", rx.aud_info.cts);
+	pos += snprintf(buf+pos, size-pos,
+		"N: %d\n", rx.aud_info.n);
+	pos += snprintf(buf+pos, size-pos,
+		"Recovery clock: %d\n", rx.aud_info.arc);
+	pos += snprintf(buf+pos, size-pos,
+		"audio receive data: %d\n", auds_rcv_sts);
+	pos += snprintf(buf+pos, size-pos,
+		"Audio PLL clock: %d\n", hdmirx_get_audio_clock());
+	pos += snprintf(buf+pos, size-pos,
+		"mpll_div_clk: %d\n", hdmirx_get_mpll_div_clk());
+
+	pos += snprintf(buf+pos, size-pos,
+		"\n\nHDCP info\n\n");
+	pos += snprintf(buf+pos, size-pos,
+		"HDCP Debug Value: 0x%x\n", hdmirx_rd_dwc(DWC_HDCP_DBG));
+	pos += snprintf(buf+pos, size-pos,
+		"HDCP14 state: %d\n", rx.cur.hdcp14_state);
+	pos += snprintf(buf+pos, size-pos,
+		"HDCP22 state: %d\n", rx.cur.hdcp22_state);
+	if (rx.port == E_PORT0)
+		pos += snprintf(buf+pos, size-pos,
+			"Source Physical address: %d.0.0.0\n", 1);
+	else if (rx.port == E_PORT1)
+		pos += snprintf(buf+pos, size-pos,
+			"Source Physical address: %d.0.0.0\n", 3);
+	else if (rx.port == E_PORT2)
+		pos += snprintf(buf+pos, size-pos,
+			"Source Physical address: %d.0.0.0\n", 2);
+	else if (rx.port == E_PORT3)
+		pos += snprintf(buf+pos, size-pos,
+			"Source Physical address: %d.0.0.0\n", 4);
+	pos += snprintf(buf+pos, size-pos,
+		"HDCP22_ON: %d\n", hdcp22_on);
+	pos += snprintf(buf+pos, size-pos,
+		"HDCP22 sts: 0x%x\n", rx_hdcp22_rd_reg(0x60));
+	pos += snprintf(buf+pos, size-pos,
+		"HDCP22_capable_sts: %d\n", hdcp22_capable_sts);
+	pos += snprintf(buf+pos, size-pos,
+		"sts0x8fc: 0x%x\n", hdmirx_rd_dwc(DWC_HDCP22_STATUS));
+	pos += snprintf(buf+pos, size-pos,
+		"sts0x81c: 0x%x\n", hdmirx_rd_dwc(DWC_HDCP22_CONTROL));
+
+	return pos;
+}
 static void dump_state(unsigned char enable)
 {
 	/*int error = 0;*/

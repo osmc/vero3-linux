@@ -1417,25 +1417,40 @@ static ssize_t param_set_value(struct device *dev,
 }
 
 static ssize_t esm_get_base(struct device *dev,
-struct device_attribute *attr,
-char *buf)
+	struct device_attribute *attr,
+	char *buf)
 {
-int pos = 0;
+	int pos = 0;
 
-pos += snprintf(buf, PAGE_SIZE, "0x%x\n",
-	reg_maps[rx.chip_id][MAP_ADDR_MODULE_HDMIRX_CAPB3].phy_addr);
-rx_pr("hdcp_rx22 get esm base:%#x\n",
-	reg_maps[rx.chip_id][MAP_ADDR_MODULE_HDMIRX_CAPB3].phy_addr);
+	pos += snprintf(buf, PAGE_SIZE, "0x%x\n",
+		reg_maps[rx.chip_id][MAP_ADDR_MODULE_HDMIRX_CAPB3].phy_addr);
+	rx_pr("hdcp_rx22 get esm base:%#x\n",
+		reg_maps[rx.chip_id][MAP_ADDR_MODULE_HDMIRX_CAPB3].phy_addr);
 
-return pos;
+	return pos;
 }
 
 static ssize_t esm_set_base(struct device *dev,
-struct device_attribute *attr,
-const char *buf,
-size_t count)
+	struct device_attribute *attr,
+	const char *buf,
+	size_t count)
 {
-return count;
+	return count;
+}
+
+static ssize_t show_info(struct device *dev,
+	struct device_attribute *attr,
+	char *buf)
+{
+	return hdmirx_show_info(buf, PAGE_SIZE);
+}
+
+static ssize_t store_info(struct device *dev,
+	struct device_attribute *attr,
+	const char *buf,
+	size_t count)
+{
+	return count;
 }
 
 
@@ -1447,6 +1462,8 @@ static DEVICE_ATTR(reg, 0666, show_reg, store_log);
 static DEVICE_ATTR(cec, 0666, cec_get_state, cec_set_state);
 static DEVICE_ATTR(param, 0666, param_get_value, param_set_value);
 static DEVICE_ATTR(esm_base, 0666, esm_get_base, esm_set_base);
+static DEVICE_ATTR(info, 0666, show_info, store_info);
+
 
 static int hdmirx_add_cdev(struct cdev *cdevp,
 		const struct file_operations *fops,
@@ -1643,6 +1660,11 @@ static int hdmirx_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		rx_pr("hdmirx: fail to create param attribute file\n");
 		goto fail_create_param_file;
+	}
+	ret = device_create_file(hdevp->dev, &dev_attr_info);
+	if (ret < 0) {
+		rx_pr("hdmirx: fail to create info attribute file\n");
+		goto fail_create_info_file;
 	}
 	ret = device_create_file(hdevp->dev, &dev_attr_esm_base);
 	if (ret < 0) {
@@ -1842,6 +1864,8 @@ fail_create_debug_file:
 	device_remove_file(hdevp->dev, &dev_attr_debug);
 fail_create_param_file:
 	device_remove_file(hdevp->dev, &dev_attr_param);
+fail_create_info_file:
+		device_remove_file(hdevp->dev, &dev_attr_info);
 
 /* fail_get_resource_irq: */
 	/* hdmirx_delete_device(hdevp->index); */
