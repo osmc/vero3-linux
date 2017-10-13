@@ -371,6 +371,7 @@ static int aml_pmus_probe(struct platform_device *pdev)
 			continue;
 		}
 		strncpy(board_info.type, str, I2C_NAME_SIZE);
+		board_info.type[I2C_NAME_SIZE - 1] = '\0';
 		board_info.addr = addr;
 		board_info.of_node = child;	 /* for device driver */
 		board_info.irq = irq_of_parse_and_map(child, 0);
