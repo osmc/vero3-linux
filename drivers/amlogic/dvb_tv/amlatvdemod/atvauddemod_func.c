@@ -18,6 +18,10 @@ static int btsc_detect_delay = 10;
 module_param(btsc_detect_delay, int, 0644);
 MODULE_PARM_DESC(btsc_detect_delay, "\n btsc_detect_delay for btsc detect delay\n");
 
+int signal_audmode = 0;
+module_param(signal_audmode, int, 0644);
+MODULE_PARM_DESC(signal_audmode, "\n signal_audmode for btsc signal audio mode\n");
+
 
 #undef pr_info
 #define pr_info(args...)\
@@ -821,6 +825,9 @@ void update_btsc_mode(int auto_en, int *stereo_flag, int *sap_flag)
 		else
 			*sap_flag = 0;
 	}
+
+	/*0:MONO 1:Stereo 2:MONO+SAP 3:Stereo+SAP*/
+	signal_audmode = (*stereo_flag) | (*sap_flag << 1);
 
 }
 
