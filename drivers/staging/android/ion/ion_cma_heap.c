@@ -83,6 +83,8 @@ static int ion_cma_allocate(struct ion_heap *heap, struct ion_buffer *buffer,
 	len = PAGE_ALIGN(len);
 	page = dma_alloc_from_contiguous(dev, len >> PAGE_SHIFT,
 			get_order(len));
+	if (!page)
+		return ION_CMA_ALLOCATE_FAILED;
 	info->cpu_addr = page_address(page);
 	info->handle = PFN_PHYS(page_to_pfn(page));
 	if (!info->cpu_addr) {
@@ -107,7 +109,7 @@ static int ion_cma_allocate(struct ion_heap *heap, struct ion_buffer *buffer,
 free_table:
 	kfree(info->table);
 free_mem:
-	dma_free_coherent(dev, len, info->cpu_addr, info->handle);
+	dma_release_from_contiguous(dev, page, len >> PAGE_SHIFT);
 err:
 	kfree(info);
 	return ION_CMA_ALLOCATE_FAILED;
