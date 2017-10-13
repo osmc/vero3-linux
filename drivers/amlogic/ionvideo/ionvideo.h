@@ -187,6 +187,12 @@ struct ionvideo_dev {
 
 	int active_state;
 	struct completion inactive_done;
+
+	void *alloc_from;
+};
+
+struct ionvideo_priv_s {
+	int dummy;	/* reserved */
 };
 
 unsigned get_ionvideo_debug(void);
@@ -203,6 +209,9 @@ void ppmgr2_set_angle(struct ppmgr2_device *ppd, int angle);
 void ppmgr2_set_mirror(struct ppmgr2_device *ppd, int mirror);
 void ppmgr2_set_paint_mode(struct ppmgr2_device *ppd, int paint_mode);
 int v4l_to_ge2d_format(int v4l2_format);
+
+/* force ionvideo device to free instance ID */
+void ionvideo_release_map_forced(struct ionvideo_priv_s *);
 
 #define IONVIDEO_IOC_MAGIC  'I'
 #define IONVIDEO_IOCTL_ALLOC_ID   _IOW(IONVIDEO_IOC_MAGIC, 0x00, int)

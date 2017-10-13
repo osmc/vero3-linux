@@ -1256,7 +1256,7 @@ int ionvideo_assign_map(char **receiver_name, int *inst)
 	return -ENODEV;
 }
 
-int ionvideo_alloc_map(int *inst)
+int ionvideo_alloc_map(int *inst, void *alloc_from)
 {
 	unsigned long flags;
 	struct ionvideo_dev *dev = NULL;
@@ -1269,6 +1269,7 @@ int ionvideo_alloc_map(int *inst)
 
 		if ((dev->inst >= 0) && (!dev->mapped)) {
 			dev->mapped = true;
+			dev->alloc_from = alloc_from;
 			*inst = dev->inst;
 			ionvideo_devlist_unlock(flags);
 			return 0;
@@ -1298,6 +1299,27 @@ void ionvideo_release_map(int inst)
 
 	ionvideo_devlist_unlock(flags);
 	return;
+}
+
+void ionvideo_release_map_forced(struct ionvideo_priv_s *priv)
+{
+	unsigned long flags;
+	struct ionvideo_dev *dev = NULL;
+	struct list_head *p;
+
+	flags = ionvideo_devlist_lock();
+
+	list_for_each(p, &ionvideo_devlist) {
+		dev = list_entry(p, struct ionvideo_dev, ionvideo_devlist);
+
+		if ((dev->inst >= 0) && (dev->mapped) &&
+			(dev->alloc_from == priv)) {
+			dev->mapped = false;
+			pr_info("force ionvideo device to free Instance ID\n");
+		}
+	}
+
+	ionvideo_devlist_unlock(flags);
 }
 
 static ssize_t vframe_states_show(struct class *class,
@@ -1382,11 +1404,25 @@ ion_video_class_attrs, };
 
 static int ionvideo_open(struct inode *inode, struct file *file)
 {
+	struct ionvideo_priv_s *priv =
+		kzalloc(sizeof(struct ionvideo_priv_s), GFP_KERNEL);
+	if (priv == NULL)
+		return -ENOMEM;
+
+	file->private_data = priv;
 	return 0;
 }
 
+
 static int ionvideo_release(struct inode *inode, struct file *file)
 {
+	struct ionvideo_priv_s *priv = file->private_data;
+
+	if (priv != NULL) {
+		ionvideo_release_map_forced(priv);
+		kfree(priv);
+		file->private_data = NULL;
+	}
 	return 0;
 }
 
@@ -1399,9 +1435,12 @@ static long ionvideo_ioctl(struct file *file,
 	switch (cmd) {
 	case IONVIDEO_IOCTL_ALLOC_ID:{
 			u32 ionvideo_id = 0;
-			ret = ionvideo_alloc_map(&ionvideo_id);
-			if (ret != 0)
+			ret = ionvideo_alloc_map(&ionvideo_id,
+				file->private_data);
+			if (ret != 0) {
+				pr_err("ionvideo_alloc_map failed\n");
 				break;
+			}
 			put_user(ionvideo_id, (u32 __user *)argp);
 		}
 		break;
