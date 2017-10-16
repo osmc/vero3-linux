@@ -700,7 +700,10 @@ void ge2d_set_dp_gen(struct ge2d_dp_gen_s *cfg)
 		       );
 
 
-	ge2d_reg_set_bits(GE2D_GEN_CTRL1, cfg->src1_gb_alpha, 0, 8);
+	ge2d_reg_set_bits(GE2D_GEN_CTRL1,
+		cfg->src1_gb_alpha, 0, 8);
+	ge2d_reg_set_bits(GE2D_GEN_CTRL2,
+		cfg->src1_gb_alpha_en, 29, 1);
 
 	ge2d_reg_write(GE2D_ALU_CONST_COLOR, cfg->alu_const_color);
 

@@ -1127,6 +1127,9 @@ int ge2d_context_config_ex(struct ge2d_context_s *context,
 	/* 1bit, 0: using minus  1: using repeat data */
 	dp_gen_cfg->src1_vsc_rpt_ctrl = ge2d_config->src1_vsc_rpt_ctrl;
 
+	dp_gen_cfg->src1_gb_alpha = 0xff;
+	dp_gen_cfg->src1_gb_alpha_en = 0;
+
 	dp_gen_cfg->src2_key_en = ge2d_config->src2_key.key_enable;
 	dp_gen_cfg->src2_key_mode = ge2d_config->src2_key.key_mode;
 	dp_gen_cfg->src2_key =   ge2d_config->src2_key.key_color;
@@ -1406,6 +1409,9 @@ int ge2d_context_config_ex_ion(struct ge2d_context_s *context,
 	/* 1bit, 0: using minus  1: using repeat data */
 	dp_gen_cfg->src1_vsc_rpt_ctrl = ge2d_config->src1_vsc_rpt_ctrl;
 
+	dp_gen_cfg->src1_gb_alpha = ge2d_config->src1_gb_alpha & 0xff;
+	dp_gen_cfg->src1_gb_alpha_en = ge2d_config->src1_gb_alpha_en & 1;
+
 	dp_gen_cfg->src2_key_en = ge2d_config->src2_key.key_enable;
 	dp_gen_cfg->src2_key_mode = ge2d_config->src2_key.key_mode;
 	dp_gen_cfg->src2_key =   ge2d_config->src2_key.key_color;
@@ -1435,8 +1441,11 @@ int ge2d_context_config_ex_ion(struct ge2d_context_s *context,
 	ge2d_cmd_cfg->hsc_phase_step = ge2d_config->hsc_start_phase_step;
 	ge2d_cmd_cfg->hsc_rpt_p0_num = ge2d_config->hf_rpt_num;
 
-	ge2d_cmd_cfg->src1_cmult_asel = 0;
-	ge2d_cmd_cfg->src2_cmult_asel = 0;
+	ge2d_cmd_cfg->src1_cmult_asel =
+		(ge2d_config->src1_cmult_asel < 3) ?
+		ge2d_config->src1_cmult_asel : 0;
+	ge2d_cmd_cfg->src2_cmult_asel =
+		(ge2d_config->src2_cmult_asel != 0) ? 1 : 0;
 	context->config.update_flag = UPDATE_ALL;
 	/* context->config.src1_data.ddr_burst_size_y = 3; */
 	/* context->config.src1_data.ddr_burst_size_cb = 3; */

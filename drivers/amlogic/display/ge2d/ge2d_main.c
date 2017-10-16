@@ -420,8 +420,15 @@ static long ge2d_ioctl(struct file *filp, unsigned int cmd, unsigned long args)
 				&uf_ex_ion->src2_key,
 				sizeof(struct src_key_ctrl_s));
 
+			r |= get_user(ge2d_config_ex_ion.src1_cmult_asel,
+				&uf_ex_ion->src1_cmult_asel);
+			r |= get_user(ge2d_config_ex_ion.src2_cmult_asel,
+				&uf_ex_ion->src2_cmult_asel);
+
 			r |= get_user(ge2d_config_ex_ion.alu_const_color,
 				&uf_ex_ion->alu_const_color);
+			r |= get_user(ge2d_config_ex_ion.src1_gb_alpha_en,
+				&uf_ex_ion->src1_gb_alpha_en);
 			r |= get_user(ge2d_config_ex_ion.src1_gb_alpha,
 				&uf_ex_ion->src1_gb_alpha);
 			r |= get_user(ge2d_config_ex_ion.op_mode,
