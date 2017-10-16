@@ -38,6 +38,7 @@ module_param(cfo_count, int, 0644);
 
 static int dagc_switch;
 static int ar_flag;
+static int awgn_flag;
 
 /* 8vsb */
 static struct atsc_cfg list_8vsb[22] = {
@@ -531,6 +532,17 @@ void set_cr_ck_rate(void)
 	atsc_write_reg(0x562,  0x0b);
 	atsc_write_reg(0x53b,  0x0d);
 	atsc_write_reg(0x735,  0x00);
+
+	/*r2,2 case*/
+	atsc_write_reg(0x912, 0x50);
+	atsc_write_reg(0x505, 0x19);
+	atsc_write_reg(0x506, 0x15);
+	atsc_write_reg(0xf6f, 0xc0);
+	atsc_write_reg(0xf6e, 0x09);
+	atsc_write_reg(0x5bc, 0x08);
+	atsc_write_reg(0x562, 0x08);
+	if (awgn_flag == 1)
+		atsc_write_reg(0x5bc, 0x01);
 	ar_flag = 0;
 }
 
@@ -651,6 +663,17 @@ int atsc_read_snr(void)
 	return SNR_dB/10;
 
 }
+
+int atsc_read_snr_10(void)
+{
+	int SNR;
+	int SNR_dB;
+	SNR = (atsc_read_reg(0x0511) << 8) +
+			atsc_read_reg(0x0512);
+	SNR_dB = SNR_dB_table[atsc_find(SNR, SNR_table, 56)];
+	return SNR_dB;
+}
+
 
 int check_snr_ser(int ser_threshholds)
 {
@@ -938,7 +961,33 @@ int atsc_check_fsm_status_oneshot(void)
 	return atsc_snr;
 }
 
-
+void atsc_set_r22_register(int flag)
+{
+	int i;
+	int snr_table[100], snr_all = 0;
+	int cnt = 0;
+	for (i = 0; i < 100; i++) {
+		snr_table[i] = atsc_read_snr_10();
+		snr_all += snr_table[i];
+		cnt++;
+		if (cnt > 10) {
+			cnt = 0;
+			msleep(20);
+		};
+	}
+	snr_all /= 100;
+	pr_dbg("snr_all is %d\n", snr_all);
+	if ((flag == 1) && (snr_all  < 160) && (awgn_flag == 0)) {
+		atsc_write_reg(0x5bc, 0x01);
+		awgn_flag = 1;
+		pr_dbg("open r22 setting\n");
+		msleep(50);
+	} else {
+		awgn_flag = 0;
+		/*atsc_write_reg(0x5bc, 0x08);*/
+		pr_dbg("close r22 setting\n");
+	}
+}
 
 void atsc_thread(void)
 {
@@ -953,6 +1002,7 @@ void atsc_thread(void)
 	time[4] = jiffies_to_msecs(jiffies);
 	fsm_status = read_atsc_fsm();
 	if (atsc_thread_enable) {
+		pr_dbg("awgn_flag is %d\n", awgn_flag);
 		if (fsm_status < Atsc_Lock) {
 			/*step1:open dagc*/
 			/*if (dagc_switch == Dagc_Close) {
@@ -1008,6 +1058,7 @@ void atsc_thread(void)
 				pr_dbg("atsc idle,retune, and reset\n");
 				set_cr_ck_rate();
 				atsc_reset();
+				awgn_flag = 0;
 				break;
 			}
 			msleep(20);
@@ -1020,6 +1071,10 @@ void atsc_thread(void)
 		fsm_status = read_atsc_fsm();
 		pr_dbg("lock\n");
 		msleep(100);
+		if (atsc_read_snr() <= 16)
+			atsc_set_r22_register(1);
+		else
+			awgn_flag = 0;
 		/*step5:close dagc*/
 		/*if (dagc_switch == Dagc_Open) {
 			atsc_write_reg(0x716, 0x2);
