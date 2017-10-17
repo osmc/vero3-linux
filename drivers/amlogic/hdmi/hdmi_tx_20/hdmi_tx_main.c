@@ -1679,6 +1679,19 @@ static ssize_t show_disp_cap(struct device *dev,
 				pos += snprintf(buf+pos, PAGE_SIZE, "\n");
 		}
 	}
+	if (hdmitx_device.vr_disp_flag) {
+		struct hdmi_format_para *para = NULL;
+		enum hdmi_vic *vesa_t = &hdmitx_device.RXCap.vesa_timing[0];
+
+		pos += snprintf(buf+pos, PAGE_SIZE,
+			"---vesa---\n");
+		for (i = 0; vesa_t[i] && i < VESA_MAX_TIMING; i++) {
+			para = hdmi_get_fmt_paras(vesa_t[i]);
+			if (para && (para->vic >= HDMITX_VESA_OFFSET))
+				pos += snprintf(buf+pos, PAGE_SIZE, "%s\n",
+					para->name);
+		}
+	}
 	return pos;
 }
 
@@ -2599,6 +2612,27 @@ static ssize_t store_sdr_hdr(struct device *dev,
 	return count;
 }
 
+/*if this flag is 1, the vesa mode will appear in disp_cap note*/
+static ssize_t show_vr_disp_flag(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	int pos = 0;
+
+	pos += snprintf(buf+pos, PAGE_SIZE, "%d\r\n",
+		hdmitx_device.vr_disp_flag);
+	return pos;
+}
+
+static ssize_t store_vr_disp_flag(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	if (strncmp(buf, "0", 1) == 0)
+		hdmitx_device.vr_disp_flag = 0;
+	if (strncmp(buf, "1", 1) == 0)
+		hdmitx_device.vr_disp_flag = 1;
+	return count;
+}
+
 void hdmi_print(int dbg_lvl, const char *fmt, ...)
 {
 	va_list args;
@@ -2676,6 +2710,8 @@ static DEVICE_ATTR(hdmi_init, S_IRUGO, show_hdmi_init, NULL);
 static DEVICE_ATTR(ready, S_IWUSR | S_IRUGO | S_IWGRP, show_ready, store_ready);
 static DEVICE_ATTR(support_3d, S_IRUGO, show_support_3d, NULL);
 static DEVICE_ATTR(sdr_hdr, S_IWUSR  | S_IWGRP, NULL, store_sdr_hdr);
+static DEVICE_ATTR(vr_disp_flag, S_IWUSR | S_IRUGO | S_IWGRP,
+	show_vr_disp_flag, store_vr_disp_flag);
 
 /*****************************
 *	hdmitx display client interface
@@ -3581,6 +3617,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
 	ret = device_create_file(dev, &dev_attr_dc_cap);
 	ret = device_create_file(dev, &dev_attr_valid_mode);
 	ret = device_create_file(dev, &dev_attr_sdr_hdr);
+	ret = device_create_file(dev, &dev_attr_vr_disp_flag);
 
 #ifdef CONFIG_AM_TV_OUTPUT
 	vout_register_client(&hdmitx_notifier_nb_v);
@@ -3757,6 +3794,7 @@ static int amhdmitx_remove(struct platform_device *pdev)
 	device_remove_file(dev, &dev_attr_hdcp22_type);
 	device_remove_file(dev, &dev_attr_hdcp22_base);
 	device_remove_file(dev, &dev_attr_sdr_hdr);
+	device_remove_file(dev, &dev_attr_vr_disp_flag);
 
 	cdev_del(&hdmitx_device.cdev);
 

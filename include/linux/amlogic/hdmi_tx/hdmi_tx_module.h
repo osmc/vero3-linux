@@ -343,6 +343,7 @@ struct hdmitx_dev {
 	enum hdmi_hdr_color hdr_color_feature;
 	unsigned int dv_src_feature;
 	unsigned int sdr_hdr_feature;
+	unsigned int vr_disp_flag:1;
 	unsigned int flag_3dfp:1;
 	unsigned int flag_3dtb:1;
 	unsigned int flag_3dss:1;
