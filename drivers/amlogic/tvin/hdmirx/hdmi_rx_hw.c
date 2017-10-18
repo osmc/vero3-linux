@@ -504,15 +504,15 @@ void hdmirx_irq_enable(bool enable)
 		hdmirx_wr_dwc(DWC_PDEC_IEN_SET, data32);
 		hdmirx_wr_dwc(DWC_AUD_FIFO_IEN_SET, OVERFL|UNDERFL);
 		/*hdmirx_wr_dwc(DWC_MD_IEN_SET, rx_md_ists_en);*/
-		data32 = 0;
+		/*data32 = 0;
 		data32 |= AKSV_RCV;
-		/*data32 |= SCDC_TMDS_CFG_CHG;
+		data32 |= SCDC_TMDS_CFG_CHG;
 		data32 |= _BIT(6);
-		data32 |= _BIT(5);*/
-		hdmirx_wr_dwc(DWC_HDMI_IEN_SET, data32);
+		data32 |= _BIT(5);
+		hdmirx_wr_dwc(DWC_HDMI_IEN_SET, data32);*/
 		/* hdcp2.2*/
-		if (hdcp22_on)
-			hdmirx_wr_dwc(DWC_HDMI2_IEN_SET, 0x3f);
+		/*if (hdcp22_on)
+			hdmirx_wr_dwc(DWC_HDMI2_IEN_SET, 0x3f);*/
 	} else {
 		/* clear enable */
 		hdmirx_wr_dwc(DWC_PDEC_IEN_CLR, ~0);
@@ -533,7 +533,7 @@ void hdmirx_irq_hdcp_enable(bool enable)
 	if (enable) {
 		/* hdcp2.2 */
 		if (hdcp22_on)
-			hdmirx_wr_dwc(DWC_HDMI2_IEN_SET, 0x3f);
+			hdmirx_wr_dwc(DWC_HDMI2_IEN_SET, 0x1f);
 
 		/* hdcp1.4 */
 		hdmirx_wr_dwc(DWC_HDMI_IEN_SET, AKSV_RCV);

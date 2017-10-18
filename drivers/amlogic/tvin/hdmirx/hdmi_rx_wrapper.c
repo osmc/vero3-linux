@@ -966,9 +966,9 @@ static int hdmi_rx_ctrl_irq_handler(struct hdmi_rx_ctrl *ctx)
 		}
 		if (log_level & HDCP_LOG) {
 			rx_pr("intr=%#x\n", intr_hdcp22);
-			rx_pr("capble sts = %d\n",
+			/*rx_pr("capble sts = %d\n",
 					hdcp22_capable_sts);
-			rx_pr("auth sts=%d\n", hdcp22_auth_sts);
+			rx_pr("auth sts=%d\n", hdcp22_auth_sts);*/
 		}
 	}
 
