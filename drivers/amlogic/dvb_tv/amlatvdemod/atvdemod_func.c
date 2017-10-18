@@ -144,6 +144,10 @@ static unsigned int atvdemod_det_snr_en = 1;
 module_param(atvdemod_det_snr_en, uint, 0644);
 MODULE_PARM_DESC(atvdemod_det_snr_en, "\n atvdemod_det_snr_en\n");
 
+static unsigned int audio_thd_en = 1;
+module_param(audio_thd_en, uint, 0644);
+MODULE_PARM_DESC(audio_thd_en, "\n audio_thd_en\n");
+
 static unsigned int pwm_kp = 0x19;
 module_param(pwm_kp, uint, 0644);
 MODULE_PARM_DESC(pwm_kp, "\n pwm_kp\n");
@@ -1502,6 +1506,8 @@ void atvdemod_timer_hander(unsigned long arg)
 		aml_atvdemod_overmodule_det();
 	if (atvdemod_det_snr_en)
 		atvdemod_det_snr_serice();
+	if (audio_thd_en)
+		audio_thd_det();
 }
 
 int atvdemod_clk_init(void)
@@ -1685,6 +1691,8 @@ int atvdemod_init(void)
 	}*/
 	#if 1/* temp mark */
 	if (atvdemod_timer_en == 1) {
+		if (audio_thd_en)
+			audio_thd_init();
 		/*atvdemod timer hander*/
 		init_timer(&atvdemod_timer);
 		/* atvdemod_timer.data = (ulong) devp; */

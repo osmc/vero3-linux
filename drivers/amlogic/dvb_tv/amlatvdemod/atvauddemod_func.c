@@ -22,6 +22,13 @@ int signal_audmode = 0;
 module_param(signal_audmode, int, 0644);
 MODULE_PARM_DESC(signal_audmode, "\n signal_audmode for btsc signal audio mode\n");
 
+static unsigned int audio_thd_threshold1 = 0x1000;
+module_param(audio_thd_threshold1, uint, 0644);
+MODULE_PARM_DESC(audio_thd_threshold1, "\n audio_thd_threshold1\n");
+
+static unsigned int audio_thd_threshold2 = 0xf00;
+module_param(audio_thd_threshold2, uint, 0644);
+MODULE_PARM_DESC(audio_thd_threshold2, "\n audio_thd_threshold2\n");
 
 #undef pr_info
 #define pr_info(args...)\
@@ -88,6 +95,10 @@ int qfilter1[7] =  {10, 6, 459, -1434,  -330, 0, 330};
 int qfilter2[7] =  {9, 5, 0, 0, 0, 0,  512};
 int pfilter0[7] =  {10, 6, 0, -972, 0, -920, 920};
 int pfilter1[7] =  {10, 6, 0, -1023, 0, 29, 29};
+
+static int thd_flag;
+static uint32_t thd_tmp_v;
+static uint8_t thd_cnt;
 
 static inline uint32_t R_AUDDEMOD_REG(uint32_t reg)
 {
@@ -1117,6 +1128,50 @@ void adec_soft_reset(void)
 {
 	adec_wr_reg(ADEC_RESET, 0x0);
 	adec_wr_reg(ADEC_RESET, 0x1);
+}
+
+void audio_thd_init(void)
+{
+	adec_wr_reg(CNT_MAX0, 0x6f2a9);
+	adec_wr_reg(THD_OV0, 0x18000);
+	thd_flag = 0;
+	thd_tmp_v = 0;
+	thd_cnt = 0;
+}
+
+void audio_thd_det(void)
+{
+	thd_cnt++;
+	if (thd_cnt % 5 != 0)
+		return;
+
+	if (thd_flag == 0) {
+		thd_tmp_v += adec_rd_reg(OV_CNT_REPORT) & 0xffff;
+
+		pr_info("#0x12:0x%x\n", (adec_rd_reg(OV_CNT_REPORT) & 0xffff));
+		if (thd_cnt == 15) {
+			thd_tmp_v /= 3;
+			if (thd_tmp_v > audio_thd_threshold1) {
+				thd_flag = 1;
+				adec_wr_reg(ADDR_DEMOD_GAIN, 0x13);
+			}
+			thd_cnt = 0;
+			thd_tmp_v = 0;
+		}
+	} else if (thd_flag == 1) {
+		thd_tmp_v += adec_rd_reg(OV_CNT_REPORT) & 0xffff;
+
+		pr_info("#0x13:0x%x\n", (adec_rd_reg(OV_CNT_REPORT) & 0xffff));
+		if (thd_cnt == 15) {
+			thd_tmp_v /= 3;
+			if (thd_tmp_v <= audio_thd_threshold2) {
+				thd_flag = 0;
+				adec_wr_reg(ADDR_DEMOD_GAIN, 0x12);
+			}
+			thd_cnt = 0;
+			thd_tmp_v = 0;
+		}
+	}
 }
 
 #endif /* __ATVAUDDEMOD_FUN_H */
