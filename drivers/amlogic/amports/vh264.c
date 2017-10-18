@@ -1784,7 +1784,8 @@ static void vh264_isr(void)
 				 flg_1080_itl)
 				&& (frame_width == 1920)
 				&& (frame_height >= 1080)
-				&& (vf->duration == 3203))
+				&& ((vf->duration == 3203)
+					|| (vf->duration == 3200)))
 				force_interlaced_frame = true;
 			else if ((dec_control &
 					  flg_576_itl)
