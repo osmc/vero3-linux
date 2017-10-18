@@ -458,7 +458,8 @@ static int	encx_clk_set(struct clk_hw *hw, unsigned long drate,
 			break;
 		}
 	}
-
+	if (i == hdmi_clk->encx_tbl_cnt)
+		enc_tbl = &hdmi_clk->encx_tbl[i-1];
 	val = readl(reg_base_cbus+OFFSET(HHI_VID_CLK_DIV));
 	val = (val & (~(0xff))) | (enc_tbl->final_div-1);
 	writel(val, (reg_base_cbus+OFFSET(HHI_VID_CLK_DIV)));
@@ -491,7 +492,8 @@ static long encx_clk_round(struct clk_hw *hw, unsigned long drate,
 			break;
 		}
 	}
-
+	if (i == hdmi_clk->encx_tbl_cnt)
+		enc_tbl = &hdmi_clk->encx_tbl[i-1];
 	*prate = enc_tbl->prate;
 	return enc_tbl->rate;
 }
