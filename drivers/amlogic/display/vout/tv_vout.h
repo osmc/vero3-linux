@@ -665,7 +665,7 @@ static struct vmode_match_s tv_match_table[] = {
 	{"1080fp50hz",     VMODE_1080FP50HZ},
 	{"1080fp60hz",     VMODE_1080FP60HZ},
 	/* Extra VMODE for 3D Frame Packing End */
-	{"null",           VMODE_INIT_NULL},
+	{"null",           VMODE_NULL},
 };
 
 

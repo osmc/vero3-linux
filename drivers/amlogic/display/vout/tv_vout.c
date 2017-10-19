@@ -772,6 +772,7 @@ static void tv_vinfo_update(struct vmode_match_s *vmatch)
 	case VMODE_576CVBS:
 	case VMODE_PAL_M:
 	case VMODE_PAL_N:
+	case VMODE_NULL:
 		for (i = 0; i < count; i++) {
 			if (cvbs_info[i].mode == vmatch->mode) {
 				vinfo = &cvbs_info[i];
