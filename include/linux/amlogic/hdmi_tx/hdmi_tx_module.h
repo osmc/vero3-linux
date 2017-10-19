@@ -344,6 +344,7 @@ struct hdmitx_dev {
 	unsigned int dv_src_feature;
 	unsigned int sdr_hdr_feature;
 	unsigned int vr_disp_flag:1;
+	unsigned int arc_on_flag:1;
 	unsigned int flag_3dfp:1;
 	unsigned int flag_3dtb:1;
 	unsigned int flag_3dss:1;
@@ -631,8 +632,11 @@ extern void hdmitx_video_mute_op(unsigned int flag);
 #define INTR_MASKN_DISABLE  1
 #define INTR_CLEAR          2
 
-#define HDMI_HDCP_DELAYTIME_AFTER_DISPLAY    20      /* unit: ms */
+#define HDMITX_HW_MUX_ARC   21
+#define ARC_CHANNEL_OFF     0
+#define ARC_CHANNEL_ON      1
 
+#define HDMI_HDCP_DELAYTIME_AFTER_DISPLAY    20      /* unit: ms */
 #define HDMITX_HDCP_MONITOR_BUF_SIZE         1024
 struct Hdcp_Sub {
 	char *hdcp_sub_name;

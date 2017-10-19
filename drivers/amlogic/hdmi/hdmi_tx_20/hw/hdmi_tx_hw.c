@@ -2794,6 +2794,8 @@ static void hw_reset_dbg(void)
 
 static int hdmitx_cntl(struct hdmitx_dev *hdev, unsigned cmd, unsigned argv)
 {
+	static unsigned int arc_flag;
+
 	if (cmd == HDMITX_AVMUTE_CNTL) {
 		return 0;
 	} else if (cmd == HDMITX_EARLY_SUSPEND_RESUME_CNTL) {
@@ -2823,6 +2825,64 @@ static int hdmitx_cntl(struct hdmitx_dev *hdev, unsigned cmd, unsigned argv)
 		}
 	} else if (cmd == HDMITX_HWCMD_MUX_HPD)
 		hdmitx_hpd_hw_op(HPD_MUX_HPD);
+
+	else if (cmd == HDMITX_HW_MUX_ARC) {
+		switch (get_cpu_type()) {
+		case MESON_CPU_MAJOR_ID_TXLX:
+			if (argv == ARC_CHANNEL_ON) {
+				/*turn on PIN_MUX_10 & PAD_GPIO3*/
+				if ((hd_read_reg(P_PERIPHS_PIN_MUX_10) >> 23)
+					& 0x1)
+					arc_flag |= 1;
+				hd_set_reg_bits(P_PERIPHS_PIN_MUX_10, 1, 23, 1);
+
+				if ((hd_read_reg(P_PREG_PAD_GPIO3_EN_N) >> 4)
+					& 0x1)
+					arc_flag |= (1 << 1);
+				hd_set_reg_bits(P_PREG_PAD_GPIO3_EN_N, 1, 4, 1);
+
+				if ((hd_read_reg(P_PREG_PAD_GPIO3_O) >> 4) &
+					0x1)
+					arc_flag |= (1 << 2);
+				hd_set_reg_bits(P_PREG_PAD_GPIO3_O, 1, 4, 1);
+
+				if ((hd_read_reg(P_PAD_PULL_UP_EN_REG3) >> 4)
+					& 0x1)
+					arc_flag |= (1 << 3);
+				hd_set_reg_bits(P_PAD_PULL_UP_EN_REG3, 1, 4, 1);
+
+				if ((hd_read_reg(P_PAD_PULL_UP_REG3) >> 4)
+					& 0x1)
+					arc_flag |= (1 << 4);
+				hd_set_reg_bits(P_PAD_PULL_UP_REG3, 1, 4, 1);
+			}
+			if (argv == ARC_CHANNEL_OFF) {
+				/*return to origin value*/
+				if ((arc_flag & 0x1) == 0)
+					hd_set_reg_bits(P_PERIPHS_PIN_MUX_10,
+						0, 23, 1);
+				if (((arc_flag >> 1) & 0x1) == 0)
+					hd_set_reg_bits(P_PREG_PAD_GPIO3_EN_N,
+						0, 4, 1);
+				if (((arc_flag >> 2) & 0x1) == 0)
+					hd_set_reg_bits(P_PREG_PAD_GPIO3_O,
+						0, 4, 1);
+				if (((arc_flag >> 3) & 0x1) == 0)
+					hd_set_reg_bits(P_PAD_PULL_UP_EN_REG3,
+						0, 4, 1);
+				if (((arc_flag >> 4) & 0x1) == 0)
+					hd_set_reg_bits(P_PAD_PULL_UP_REG3,
+						0, 4, 1);
+			}
+			break;
+		default:
+			/*other cases can't operate these registers*/
+			pr_info("hdmitx: these chips don't support arc function\n");
+			break;
+		}
+		return 0;
+	}
+
 /* For test only. */
 	else if (cmd == HDMITX_HWCMD_TURNOFF_HDMIHW) {
 		int unmux_hpd_flag = argv;

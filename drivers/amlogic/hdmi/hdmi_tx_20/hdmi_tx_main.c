@@ -2633,6 +2633,35 @@ static ssize_t store_vr_disp_flag(struct device *dev,
 	return count;
 }
 
+/*if this flag is 1, the arc channel is on, otherwise the channel is off*/
+static ssize_t show_arc_pinmux(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	int pos = 0;
+
+	pos += snprintf(buf+pos, PAGE_SIZE, "%d\r\n",
+		hdmitx_device.arc_on_flag);
+	return pos;
+}
+
+static ssize_t store_arc_pinmux(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	/*the arc channel is on*/
+	if (strncmp(buf, "0", 1) == 0) {
+		hdmitx_device.HWOp.Cntl(&hdmitx_device,
+			HDMITX_HW_MUX_ARC, ARC_CHANNEL_OFF);
+		hdmitx_device.arc_on_flag = 0;
+	}
+	/*and these register value return to original value */
+	if (strncmp(buf, "1", 1) == 0) {
+		hdmitx_device.HWOp.Cntl(&hdmitx_device,
+			HDMITX_HW_MUX_ARC, ARC_CHANNEL_ON);
+		hdmitx_device.arc_on_flag = 1;
+	}
+	return count;
+}
+
 void hdmi_print(int dbg_lvl, const char *fmt, ...)
 {
 	va_list args;
@@ -2712,6 +2741,9 @@ static DEVICE_ATTR(support_3d, S_IRUGO, show_support_3d, NULL);
 static DEVICE_ATTR(sdr_hdr, S_IWUSR  | S_IWGRP, NULL, store_sdr_hdr);
 static DEVICE_ATTR(vr_disp_flag, S_IWUSR | S_IRUGO | S_IWGRP,
 	show_vr_disp_flag, store_vr_disp_flag);
+static DEVICE_ATTR(arc_pinmux, S_IWUSR | S_IRUGO | S_IWGRP,
+	show_arc_pinmux, store_arc_pinmux);
+
 
 /*****************************
 *	hdmitx display client interface
@@ -3618,6 +3650,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
 	ret = device_create_file(dev, &dev_attr_valid_mode);
 	ret = device_create_file(dev, &dev_attr_sdr_hdr);
 	ret = device_create_file(dev, &dev_attr_vr_disp_flag);
+	ret = device_create_file(dev, &dev_attr_arc_pinmux);
 
 #ifdef CONFIG_AM_TV_OUTPUT
 	vout_register_client(&hdmitx_notifier_nb_v);
@@ -3795,6 +3828,7 @@ static int amhdmitx_remove(struct platform_device *pdev)
 	device_remove_file(dev, &dev_attr_hdcp22_base);
 	device_remove_file(dev, &dev_attr_sdr_hdr);
 	device_remove_file(dev, &dev_attr_vr_disp_flag);
+	device_remove_file(dev, &dev_attr_arc_pinmux);
 
 	cdev_del(&hdmitx_device.cdev);
 
