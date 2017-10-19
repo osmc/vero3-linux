@@ -140,96 +140,96 @@ unsigned int hdmirx_data_port;
 unsigned int hdmirx_ctrl_port;
 
 struct reg_map reg_maps[][MAP_ADDR_MODULE_NUM] = {
-{	/*gxtvbb*/
-	{ /* CBUS */
-		.phy_addr = 0xc0800000,
-		.size = 0xa00000,
+	{	/*gxtvbb*/
+		{ /* CBUS */
+			.phy_addr = 0xc0800000,
+			.size = 0xa00000,
+		},
+		{ /* HIU */
+			.phy_addr = 0xC883C000,
+			.size = 0x2000,
+		},
+		{ /* HDMIRX CAPB3 */
+			.phy_addr = 0xd0076000,
+			.size = 0x2000,
+		},
+		{ /* HDMIRX SEC AHB */
+			.phy_addr = 0xc883e000,
+			.size = 0x2000,
+		},
+		{ /* HDMIRX SEC AHB */
+			.phy_addr = 0xda83e000,
+			.size = 0x2000,
+		},
+		{ /* HDMIRX SEC APB4 */
+			.phy_addr = 0xc8834400,
+			.size = 0x2000,
+		},
+		{
+			.phy_addr = 0xda846000,
+			.size = 0x57ba000,
+		},
 	},
-	{ /* HIU */
-		.phy_addr = 0xC883C000,
-		.size = 0x2000,
+	{	/*txl*/
+		{ /* CBUS */
+			.phy_addr = 0xc0800000,
+			.size = 0xa00000,
+		},
+		{ /* HIU */
+			.phy_addr = 0xC883C000,
+			.size = 0x2000,
+		},
+		{ /* HDMIRX CAPB3 */
+			.phy_addr = 0xd0076000,
+			.size = 0x2000,
+		},
+		{ /* HDMIRX SEC AHB */
+			.phy_addr = 0xc883e000,
+			.size = 0x2000,
+		},
+		{ /* HDMIRX SEC AHB */
+			.phy_addr = 0xda83e000,
+			.size = 0x2000,
+		},
+		{ /* HDMIRX SEC APB4 */
+			.phy_addr = 0xc8834400,
+			.size = 0x2000,
+		},
+		{
+			.phy_addr = 0xda846000,
+			.size = 0x57ba000,
+		},
 	},
-	{ /* HDMIRX CAPB3 */
-		.phy_addr = 0xd0076000,
-		.size = 0x2000,
+	{	/*txlx,txhd*/
+		{ /* CBUS */
+			.phy_addr = 0xffd26000,
+			.size = 0xa00000,
+		},
+		{ /* HIU */
+			.phy_addr = 0xff63C000,
+			.size = 0x2000,
+		},
+		{ /* HDMIRX CAPB3 */
+			.phy_addr = 0xffe0d000,
+			.size = 0x2000,
+		},
+		{ /* HDMIRX SEC AHB */
+			.phy_addr = 0xff63e000,
+			.size = 0x2000,
+		},
+		{ /* HDMIRX SEC AHB */
+			.phy_addr = 0,
+			.size = 0,
+		},
+		{ /* HDMIRX SEC APB4 */
+			.phy_addr = 0xff634400,
+			.size = 0x2000,
+		},
+		{
+			.phy_addr = 0xff646000,
+			.size = 0x2000,
+		},
 	},
-	{ /* HDMIRX SEC AHB */
-		.phy_addr = 0xc883e000,
-		.size = 0x2000,
-	},
-	{ /* HDMIRX SEC AHB */
-		.phy_addr = 0xda83e000,
-		.size = 0x2000,
-	},
-	{ /* HDMIRX SEC APB4 */
-		.phy_addr = 0xc8834400,
-		.size = 0x2000,
-	},
-	{
-		.phy_addr = 0xda846000,
-		.size = 0x57ba000,
-	},
-},
-{	/*txl*/
-	{ /* CBUS */
-		.phy_addr = 0xc0800000,
-		.size = 0xa00000,
-	},
-	{ /* HIU */
-		.phy_addr = 0xC883C000,
-		.size = 0x2000,
-	},
-	{ /* HDMIRX CAPB3 */
-		.phy_addr = 0xd0076000,
-		.size = 0x2000,
-	},
-	{ /* HDMIRX SEC AHB */
-		.phy_addr = 0xc883e000,
-		.size = 0x2000,
-	},
-	{ /* HDMIRX SEC AHB */
-		.phy_addr = 0xda83e000,
-		.size = 0x2000,
-	},
-	{ /* HDMIRX SEC APB4 */
-		.phy_addr = 0xc8834400,
-		.size = 0x2000,
-	},
-	{
-		.phy_addr = 0xda846000,
-		.size = 0x57ba000,
-	},
-},
-{	/*txlx*/
-	{ /* CBUS */
-		.phy_addr = 0xffd26000,
-		.size = 0xa00000,
-	},
-	{ /* HIU */
-		.phy_addr = 0xff63C000,
-		.size = 0x2000,
-	},
-	{ /* HDMIRX CAPB3 */
-		.phy_addr = 0xffe0d000,
-		.size = 0x2000,
-	},
-	{ /* HDMIRX SEC AHB */
-		.phy_addr = 0xff63e000,
-		.size = 0x2000,
-	},
-	{ /* HDMIRX SEC AHB */
-		.phy_addr = 0,
-		.size = 0,
-	},
-	{ /* HDMIRX SEC APB4 */
-		.phy_addr = 0xff634400,
-		.size = 0x2000,
-	},
-	{
-		.phy_addr = 0xff646000,
-		.size = 0x2000,
-	},
-},
 };
 
 static struct notifier_block aml_hdcp22_pm_notifier = {
@@ -246,7 +246,7 @@ static const struct of_device_id hdmirx_dt_match[] = {
 /*------------------------variable define end------------------------------*/
 
 
-static enum chip_id_e get_chip_id(void)
+enum chip_id_e get_chip_id(void)
 {
 	if (is_meson_txlx_cpu())
 		return CHIP_ID_TXLX;
@@ -254,6 +254,8 @@ static enum chip_id_e get_chip_id(void)
 		return CHIP_ID_TXL;
 	else if (is_meson_gxtvbb_cpu())
 		return CHIP_ID_GXTVBB;
+	else if (is_meson_txhd_cpu())
+		return CHIP_ID_TXHD;
 	else
 		return CHIP_ID_TXLX;
 }
@@ -1702,10 +1704,12 @@ static int hdmirx_probe(struct platform_device *pdev)
 		rx_pr("hdmirx: fail to create esm_base attribute file\n");
 		goto fail_create_esm_base_file;
 	}
-	ret = device_create_file(hdevp->dev, &dev_attr_cec);
-	if (ret < 0) {
-		rx_pr("hdmirx: fail to create cec attribute file\n");
-		goto fail_create_cec_file;
+	if (!is_meson_txlx_cpu() && !is_meson_txhd_cpu()) {
+		ret = device_create_file(hdevp->dev, &dev_attr_cec);
+		if (ret < 0) {
+			rx_pr("hdmirx: fail to create cec attribute file\n");
+			goto fail_create_cec_file;
+		}
 	}
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res) {
@@ -1790,7 +1794,7 @@ static int hdmirx_probe(struct platform_device *pdev)
 				clk_rate/1000000);
 	}
 
-	if (is_meson_txlx_cpu()) {
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 		tmds_clk_fs = clk_get(&pdev->dev, "hdmirx_aud_pll2fs");
 		if (IS_ERR(tmds_clk_fs))
 			rx_pr("get tmds_clk_fs err\n");
@@ -1850,16 +1854,19 @@ static int hdmirx_probe(struct platform_device *pdev)
 	ret = of_property_read_u32(pdev->dev.of_node,
 				"en_4k_2_2k", &en_4k_2_2k);
 	if (ret) {
-			pr_err("%s:don't find  en_4k_2_2k.\n", __func__);
-			en_4k_2_2k = 0;
+		pr_err("%s:don't find  en_4k_2_2k.\n", __func__);
+		en_4k_2_2k = 0;
 	}
 
 	ret = of_property_read_u32(pdev->dev.of_node,
 				"en_4k_timing", &en_4k_timing);
 	if (ret) {
-			pr_err("%s:don't find  en_4k_timing.\n", __func__);
-			en_4k_timing = 1;
+		pr_err("%s:don't find  en_4k_timing.\n", __func__);
+		en_4k_timing = 1;
 	}
+
+	rx_pr("rept:%d\n", repeat_function);
+	rx_pr("hdcp22_on=%d\n", hdcp22_on);
 
 	hdmirx_hw_probe();
 	hdmirx_switch_pinmux(pdev->dev);
@@ -1877,7 +1884,7 @@ static int hdmirx_probe(struct platform_device *pdev)
 
 	return 0;
 fail_create_cec_file:
-		if (!is_meson_txlx_cpu())
+		if (!is_meson_txlx_cpu() && !is_meson_txhd_cpu())
 			device_remove_file(hdevp->dev, &dev_attr_cec);
 fail_create_esm_base_file:
 	device_remove_file(hdevp->dev, &dev_attr_esm_base);
@@ -1929,7 +1936,7 @@ static int hdmirx_remove(struct platform_device *pdev)
 	device_remove_file(hdevp->dev, &dev_attr_key);
 	device_remove_file(hdevp->dev, &dev_attr_log);
 	device_remove_file(hdevp->dev, &dev_attr_reg);
-	if (!is_meson_txlx_cpu())
+	if (!is_meson_txlx_cpu() && !is_meson_txhd_cpu())
 		device_remove_file(hdevp->dev, &dev_attr_cec);
 	tvin_unreg_frontend(&hdevp->frontend);
 	hdmirx_delete_device(hdevp->index);

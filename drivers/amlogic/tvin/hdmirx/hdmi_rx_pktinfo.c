@@ -162,16 +162,17 @@ void rx_pkt_debug(void)
 	data32 |= (rx_pkt_type_mapping(PKT_TYPE_INFOFRAME_AUD));
 	data32 |= (rx_pkt_type_mapping(PKT_TYPE_INFOFRAME_VSI));
 	data32 |= (rx_pkt_type_mapping(PKT_TYPE_INFOFRAME_MPEGSRC));
-	data32 |= (rx_pkt_type_mapping(PKT_TYPE_INFOFRAME_NVBI));
-	data32 |= (rx_pkt_type_mapping(PKT_TYPE_INFOFRAME_DRM));
-
+	if (!is_meson_txhd_cpu()) {
+		data32 |= (rx_pkt_type_mapping(PKT_TYPE_INFOFRAME_NVBI));
+		data32 |= (rx_pkt_type_mapping(PKT_TYPE_INFOFRAME_DRM));
+		data32 |= (rx_pkt_type_mapping(PKT_TYPE_AUD_META));
+	}
 	data32 |= (rx_pkt_type_mapping(PKT_TYPE_ACR));
 	data32 |= (rx_pkt_type_mapping(PKT_TYPE_GCP));
 	data32 |= (rx_pkt_type_mapping(PKT_TYPE_ACP));
 	data32 |= (rx_pkt_type_mapping(PKT_TYPE_ISRC1));
 	data32 |= (rx_pkt_type_mapping(PKT_TYPE_ISRC2));
 	data32 |= (rx_pkt_type_mapping(PKT_TYPE_GAMUT_META));
-	data32 |= (rx_pkt_type_mapping(PKT_TYPE_AUD_META));
 	hdmirx_wr_dwc(DWC_PDEC_CTRL, data32);
 	rx_pr("enable fifo\n");
 
@@ -225,7 +226,7 @@ void rx_debug_pktinfo(char input[][20])
 		rx_pr("pdec_ists_en=0x%x\n", pdec_ists_en);
 		hdmirx_irq_enable(1);
 	} else if (strncmp(input[1], "debugext", 8) == 0) {
-		if (is_meson_txlx_cpu())
+		if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 			enable |= _BIT(30);/* DRC_RCV*/
 		else
 			enable |= _BIT(9);/* DRC_RCV*/
@@ -250,7 +251,7 @@ void rx_debug_pktinfo(char input[][20])
 		if (strncmp(input[2], "fifo", 4) == 0)
 			sts = (PD_FIFO_START_PASS|PD_FIFO_OVERFL);
 		else if (strncmp(input[2], "drm", 3) == 0) {
-			if (is_meson_txlx_cpu())
+			if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 				sts = _BIT(30);
 			else
 				sts = _BIT(9);
@@ -278,7 +279,7 @@ void rx_debug_pktinfo(char input[][20])
 		if (strncmp(input[2], "fifo", 4) == 0)
 			enable |= (PD_FIFO_START_PASS|PD_FIFO_OVERFL);
 		else if (strncmp(input[2], "drm", 3) == 0) {
-			if (is_meson_txlx_cpu())
+			if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 				enable |= _BIT(30);
 			else
 				enable |= _BIT(9);
@@ -969,12 +970,20 @@ void rx_pkt_get_vsi_ex(void *pktinfo)
 	pkt->ver_st.version = 0;
 	pkt->ver_st.chgbit = 0;
 
-	pkt->sbpkt.payload.data[0] = hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD0);
-	pkt->sbpkt.payload.data[1] = hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD1);
-	pkt->sbpkt.payload.data[2] = hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD2);
-	pkt->sbpkt.payload.data[3] = hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD3);
-	pkt->sbpkt.payload.data[4] = hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD4);
-	pkt->sbpkt.payload.data[5] = hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD5);
+	if (!is_meson_txhd_cpu()) {
+		pkt->sbpkt.payload.data[0] =
+			hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD0);
+		pkt->sbpkt.payload.data[1] =
+			hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD1);
+		pkt->sbpkt.payload.data[2] =
+			hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD2);
+		pkt->sbpkt.payload.data[3] =
+			hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD3);
+		pkt->sbpkt.payload.data[4] =
+			hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD4);
+		pkt->sbpkt.payload.data[5] =
+			hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD5);
+	}
 }
 
 /*return 32 byte data , data struct see register spec*/
@@ -989,16 +998,17 @@ void rx_pkt_get_amp_ex(void *pktinfo)
 	}
 
 	/*memset(pkt, 0, sizeof(struct pd_infoframe_s));*/
-
-	HB = hdmirx_rd_dwc(DWC_PDEC_AMP_HB);
-	pkt->HB = (HB << 8) | PKT_TYPE_AUD_META;
-	pkt->PB0 = hdmirx_rd_dwc(DWC_PDEC_AMP_PB0);
-	pkt->PB1 = hdmirx_rd_dwc(DWC_PDEC_AMP_PB1);
-	pkt->PB2 = hdmirx_rd_dwc(DWC_PDEC_AMP_PB2);
-	pkt->PB3 = hdmirx_rd_dwc(DWC_PDEC_AMP_PB3);
-	pkt->PB4 = hdmirx_rd_dwc(DWC_PDEC_AMP_PB4);
-	pkt->PB5 = hdmirx_rd_dwc(DWC_PDEC_AMP_PB5);
-	pkt->PB6 = hdmirx_rd_dwc(DWC_PDEC_AMP_PB6);
+	if (!is_meson_txhd_cpu()) {
+		HB = hdmirx_rd_dwc(DWC_PDEC_AMP_HB);
+		pkt->HB = (HB << 8) | PKT_TYPE_AUD_META;
+		pkt->PB0 = hdmirx_rd_dwc(DWC_PDEC_AMP_PB0);
+		pkt->PB1 = hdmirx_rd_dwc(DWC_PDEC_AMP_PB1);
+		pkt->PB2 = hdmirx_rd_dwc(DWC_PDEC_AMP_PB2);
+		pkt->PB3 = hdmirx_rd_dwc(DWC_PDEC_AMP_PB3);
+		pkt->PB4 = hdmirx_rd_dwc(DWC_PDEC_AMP_PB4);
+		pkt->PB5 = hdmirx_rd_dwc(DWC_PDEC_AMP_PB5);
+		pkt->PB6 = hdmirx_rd_dwc(DWC_PDEC_AMP_PB6);
+	}
 }
 
 void rx_pkt_get_gmd_ex(void *pktinfo)
@@ -1068,23 +1078,25 @@ void rx_pkt_get_drm_ex(void *pktinfo)
 	}
 
 	drmpkt->pkttype = PKT_TYPE_INFOFRAME_DRM;
-	drmpkt->length = (hdmirx_rd_dwc(DWC_PDEC_DRM_HB) >> 8);
-	drmpkt->version = hdmirx_rd_dwc(DWC_PDEC_DRM_HB);
+	if (!is_meson_txhd_cpu()) {
+		drmpkt->length = (hdmirx_rd_dwc(DWC_PDEC_DRM_HB) >> 8);
+		drmpkt->version = hdmirx_rd_dwc(DWC_PDEC_DRM_HB);
 
-	drmpkt->des_u.payload[0] =
-		hdmirx_rd_dwc(DWC_PDEC_DRM_PAYLOAD0);
-	drmpkt->des_u.payload[1] =
-		hdmirx_rd_dwc(DWC_PDEC_DRM_PAYLOAD1);
-	drmpkt->des_u.payload[2] =
-		hdmirx_rd_dwc(DWC_PDEC_DRM_PAYLOAD2);
-	drmpkt->des_u.payload[3] =
-		hdmirx_rd_dwc(DWC_PDEC_DRM_PAYLOAD3);
-	drmpkt->des_u.payload[4] =
-		hdmirx_rd_dwc(DWC_PDEC_DRM_PAYLOAD4);
-	drmpkt->des_u.payload[5] =
-		hdmirx_rd_dwc(DWC_PDEC_DRM_PAYLOAD5);
-	drmpkt->des_u.payload[6] =
-		hdmirx_rd_dwc(DWC_PDEC_DRM_PAYLOAD6);
+		drmpkt->des_u.payload[0] =
+			hdmirx_rd_dwc(DWC_PDEC_DRM_PAYLOAD0);
+		drmpkt->des_u.payload[1] =
+			hdmirx_rd_dwc(DWC_PDEC_DRM_PAYLOAD1);
+		drmpkt->des_u.payload[2] =
+			hdmirx_rd_dwc(DWC_PDEC_DRM_PAYLOAD2);
+		drmpkt->des_u.payload[3] =
+			hdmirx_rd_dwc(DWC_PDEC_DRM_PAYLOAD3);
+		drmpkt->des_u.payload[4] =
+			hdmirx_rd_dwc(DWC_PDEC_DRM_PAYLOAD4);
+		drmpkt->des_u.payload[5] =
+			hdmirx_rd_dwc(DWC_PDEC_DRM_PAYLOAD5);
+		drmpkt->des_u.payload[6] =
+			hdmirx_rd_dwc(DWC_PDEC_DRM_PAYLOAD6);
+	}
 }
 
 /*return 32 byte data , data struct see register spec*/
@@ -1096,15 +1108,18 @@ void rx_pkt_get_ntscvbi_ex(void *pktinfo)
 		rx_pr("pkinfo null\n");
 		return;
 	}
-	/*byte 0 , 1*/
-	pkt->HB = hdmirx_rd_dwc(DWC_PDEC_NTSCVBI_HB);
-	pkt->PB0 = hdmirx_rd_dwc(DWC_PDEC_NTSCVBI_PB0);
-	pkt->PB1 = hdmirx_rd_dwc(DWC_PDEC_NTSCVBI_PB1);
-	pkt->PB2 = hdmirx_rd_dwc(DWC_PDEC_NTSCVBI_PB2);
-	pkt->PB3 = hdmirx_rd_dwc(DWC_PDEC_NTSCVBI_PB3);
-	pkt->PB4 = hdmirx_rd_dwc(DWC_PDEC_NTSCVBI_PB4);
-	pkt->PB5 = hdmirx_rd_dwc(DWC_PDEC_NTSCVBI_PB5);
-	pkt->PB6 = hdmirx_rd_dwc(DWC_PDEC_NTSCVBI_PB6);
+
+	if (!is_meson_txhd_cpu()) {
+		/*byte 0 , 1*/
+		pkt->HB = hdmirx_rd_dwc(DWC_PDEC_NTSCVBI_HB);
+		pkt->PB0 = hdmirx_rd_dwc(DWC_PDEC_NTSCVBI_PB0);
+		pkt->PB1 = hdmirx_rd_dwc(DWC_PDEC_NTSCVBI_PB1);
+		pkt->PB2 = hdmirx_rd_dwc(DWC_PDEC_NTSCVBI_PB2);
+		pkt->PB3 = hdmirx_rd_dwc(DWC_PDEC_NTSCVBI_PB3);
+		pkt->PB4 = hdmirx_rd_dwc(DWC_PDEC_NTSCVBI_PB4);
+		pkt->PB5 = hdmirx_rd_dwc(DWC_PDEC_NTSCVBI_PB5);
+		pkt->PB6 = hdmirx_rd_dwc(DWC_PDEC_NTSCVBI_PB6);
+	}
 }
 
 uint32_t rx_pkt_chk_attach_vsi(void)

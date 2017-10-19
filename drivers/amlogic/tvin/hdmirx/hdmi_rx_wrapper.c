@@ -941,9 +941,12 @@ static int hdmi_rx_ctrl_irq_handler(struct hdmi_rx_ctrl *ctx)
 		}
 	}
 
-	intr_hdcp22 =
-		hdmirx_rd_dwc(DWC_HDMI2_ISTS) &
-	    hdmirx_rd_dwc(DWC_HDMI2_IEN);
+	if (!is_meson_txhd_cpu()) {
+		/*txhd no hdcp2.2*/
+		intr_hdcp22 =
+			hdmirx_rd_dwc(DWC_HDMI2_ISTS) &
+		    hdmirx_rd_dwc(DWC_HDMI2_IEN);
+	}
 
 	if (intr_hdcp22 != 0) {
 		hdmirx_wr_dwc(DWC_HDMI2_ICLR, intr_hdcp22);
@@ -1061,7 +1064,7 @@ static int hdmi_rx_ctrl_irq_handler(struct hdmi_rx_ctrl *ctx)
 		}
 		if (!is_meson_txlx_cpu()) {
 			if (get(intr_pedc,
-				DRM_RCV_EN | DRM_CKS_CHG) != 0) {
+				DRM_RCV_EN) != 0) {
 				if (log_level & 0x400)
 					rx_pr("[irq] DRM_RCV_EN %#x\n",
 					intr_pedc);
@@ -1069,7 +1072,7 @@ static int hdmi_rx_ctrl_irq_handler(struct hdmi_rx_ctrl *ctx)
 			}
 		} else {
 			if (get(intr_pedc,
-				DRM_RCV_EN_TXLX | DRM_CKS_CHG_TXLX) != 0) {
+				DRM_RCV_EN_TXLX) != 0) {
 				if (log_level & 0x400)
 					rx_pr("[irq] DRM_RCV_EN %#x\n",
 					intr_pedc);
@@ -1837,6 +1840,9 @@ void rx_dwc_reset(void)
 
 void set_scdc_cfg(int hpdlow, int pwrprovided)
 {
+	if (is_meson_txhd_cpu())
+		return;
+
 	hdmirx_wr_dwc(DWC_SCDC_CONFIG,
 		(hpdlow << 1) | (pwrprovided << 0));
 }
@@ -1852,7 +1858,10 @@ int get_cur_hpd_sts(void)
 
 bool hdmirx_tmds_6g(void)
 {
-	return (hdmirx_rd_dwc(DWC_SCDC_REGS0) >> 17) & 1;
+	if (is_meson_txhd_cpu())
+		return 0;
+	else
+		return (hdmirx_rd_dwc(DWC_SCDC_REGS0) >> 17) & 1;
 }
 
 #ifdef HDCP22_ENABLE
@@ -2313,9 +2322,9 @@ void hdmirx_hw_monitor(void)
 			rx_pr("clk rate changed\n");
 			break;
 		}
-	    hdmirx_get_video_info();
-	    /* video info change */
-	    if ((hdmirx_tmds_pll_lock() == false) ||
+		hdmirx_get_video_info();
+		/* video info change */
+		if ((hdmirx_tmds_pll_lock() == false) ||
 			(is_timing_stable() == false)) {
 			skip_frame();
 			if (++sig_unready_cnt >= sig_unready_max) {
@@ -3948,7 +3957,20 @@ int hdmirx_debug(const char *buf, int size)
 		rx_pr("Hdmirx version: %s\n", RX_VER3);
 		rx_pr("Hdmirx version: %s\n", RX_VER4);
 		rx_pr("------------------\n");
+	} else if (strncmp(input[0], "port0", 5) == 0) {
+		hdmirx_hw_init(TVIN_PORT_HDMI0);
+		rx.open_fg = 1;
+	} else if (strncmp(input[0], "port1", 5) == 0) {
+		hdmirx_hw_init(TVIN_PORT_HDMI1);
+		rx.open_fg = 1;
+	} else if (strncmp(input[0], "port2", 5) == 0) {
+		hdmirx_hw_init(TVIN_PORT_HDMI2);
+		rx.open_fg = 1;
+	} else if (strncmp(input[0], "port3", 5) == 0) {
+		hdmirx_hw_init(TVIN_PORT_HDMI3);
+		rx.open_fg = 1;
 	}
+
 	return 0;
 }
 

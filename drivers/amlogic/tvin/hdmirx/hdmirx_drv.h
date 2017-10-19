@@ -45,7 +45,7 @@
 #define RX_VER3 "Ref.2017/10/12"
 /*------------------------------*/
 
-#define RX_VER4 "Ref.2017/07/28"
+#define RX_VER4 "Ref.2017/10/19"
 /*------------------------------*/
 
 
@@ -394,6 +394,7 @@ enum chip_id_e {
 	CHIP_ID_GXTVBB,
 	CHIP_ID_TXL,
 	CHIP_ID_TXLX,
+	CHIP_ID_TXHD = CHIP_ID_TXLX,
 };
 
 enum esm_recovery_mode_e {
@@ -878,7 +879,6 @@ void wr_reg(enum map_addr_module_e module,
 void hdmirx_wr_top(unsigned long addr, unsigned long data);
 void hdmirx_wr_ctl_port(unsigned int offset, unsigned long data);
 bool hdmirx_phy_clk_rate_monitor(void);
-
 unsigned long hdmirx_rd_top(unsigned long addr);
 void hdmirx_wr_dwc(uint16_t addr, uint32_t data);
 uint32_t hdmirx_rd_dwc(uint16_t addr);
