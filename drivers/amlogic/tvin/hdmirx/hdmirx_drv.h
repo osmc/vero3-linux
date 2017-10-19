@@ -33,7 +33,7 @@
 
 
 
-#define RX_VER0 "Ref.2017/09/27"
+#define RX_VER0 "Ref.2017/10/19"
 /*------------------------------*/
 
 #define RX_VER1 "Ref.2017/10/18"
@@ -850,7 +850,6 @@ extern void rx_esm_tmdsclk_en(bool en);
 extern void clk_off(void);
 extern void set_scdc_cfg(int hpdlow, int pwrprovided);
 extern bool irq_ctrl_reg_en; /* enable/disable reg rd/wr in irq  */
-
 extern int rgb_quant_range;
 extern int yuv_quant_range;
 extern int hdcp22_on;

@@ -131,6 +131,10 @@ int en_4k_timing = 1;
 MODULE_PARM_DESC(en_4k_timing, "\n en_4k_timing\n");
 module_param(en_4k_timing, int, 0664);
 
+static bool hdmi_cec_en;
+MODULE_PARM_DESC(hdmi_cec_en, "\n hdmi_cec_en\n");
+module_param(hdmi_cec_en, bool, 0664);
+
 unsigned int hdmirx_addr_port;
 unsigned int hdmirx_data_port;
 unsigned int hdmirx_ctrl_port;
@@ -931,16 +935,21 @@ static long hdmirx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		fsm_restart();
 		break;
 	case HDMI_IOC_EDID_UPDATE:
-		hdmi_rx_ctrl_edid_update();
 		if (rx.open_fg) {
 			rx_set_hpd(0);
 			edid_update_flag = 1;
-		} else {
-			if (is_meson_gxtvbb_cpu())
-				hdmirx_wr_top(TOP_HPD_PWR5V, 0x1f);
-			else
-				hdmirx_wr_top(TOP_HPD_PWR5V, 0x10);
 		}
+		/* else {
+			if (hdmi_cec_en) {
+				if (is_meson_gxtvbb_cpu())
+					hdmirx_wr_top(TOP_HPD_PWR5V, 0x1f);
+				else
+					hdmirx_wr_top(TOP_HPD_PWR5V, 0x10);
+				hdmi_rx_ctrl_edid_update();
+			} else
+				rx_pr("cec_off,ignore edid update\n");
+		} */
+		hdmi_rx_ctrl_edid_update();
 		fsm_restart();
 		rx_pr("*update edid*\n");
 		break;
@@ -1391,11 +1400,33 @@ static ssize_t cec_get_state(struct device *dev,
 	return 0;
 }
 
+/*************************************
+*  val == 0 : cec diable
+*  val == 1 : cec on
+*  val == 2 : cec on && system startup
+**************************************/
 static ssize_t cec_set_state(struct device *dev,
 	struct device_attribute *attr,
 	const char *buf,
 	size_t count)
 {
+	int cnt, val;
+
+	cnt = sscanf(buf, "%x", &val);
+	if (cnt < 0 || val > 0xff)
+		return -EINVAL;
+	if (0 == val)
+		hdmi_cec_en = 0;
+	else if (1 == val)
+		hdmi_cec_en = 1;
+	else if (2 == val) {
+		hdmi_cec_en = 1;
+		if (is_meson_gxtvbb_cpu())
+			hdmirx_wr_top(TOP_HPD_PWR5V, 0x1f);
+		else
+			hdmirx_wr_top(TOP_HPD_PWR5V, 0x10);
+	}
+	rx_pr("cec sts = %d\n", val);
 	return count;
 }
 
@@ -1671,12 +1702,10 @@ static int hdmirx_probe(struct platform_device *pdev)
 		rx_pr("hdmirx: fail to create esm_base attribute file\n");
 		goto fail_create_esm_base_file;
 	}
-	if (!is_meson_txlx_cpu()) {
-		ret = device_create_file(hdevp->dev, &dev_attr_cec);
-		if (ret < 0) {
-			rx_pr("hdmirx: fail to create cec attribute file\n");
-			goto fail_create_cec_file;
-		}
+	ret = device_create_file(hdevp->dev, &dev_attr_cec);
+	if (ret < 0) {
+		rx_pr("hdmirx: fail to create cec attribute file\n");
+		goto fail_create_cec_file;
 	}
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res) {
@@ -1941,6 +1970,13 @@ static int hdmirx_suspend(struct platform_device *pdev, pm_message_t state)
 	hdevp = platform_get_drvdata(pdev);
 	rx_pr("[hdmirx]: hdmirx_suspend\n");
 	del_timer_sync(&hdevp->timer);
+	/* set HPD low when cec off. */
+	if (!hdmi_cec_en) {
+		if (is_meson_gxtvbb_cpu())
+			hdmirx_wr_top(TOP_HPD_PWR5V, 0x10);
+		else
+			hdmirx_wr_top(TOP_HPD_PWR5V, 0x1f);
+	}
 	/* phy powerdown */
 	hdmirx_phy_pddq(1);
 	if (hdcp22_on)
@@ -1970,6 +2006,13 @@ static void hdmirx_shutdown(struct platform_device *pdev)
 	hdevp = platform_get_drvdata(pdev);
 	rx_pr("[hdmirx]: hdmirx_shutdown\n");
 	del_timer_sync(&hdevp->timer);
+	/* set HPD low when cec off. */
+	if (!hdmi_cec_en) {
+		if (is_meson_gxtvbb_cpu())
+			hdmirx_wr_top(TOP_HPD_PWR5V, 0x10);
+		else
+			hdmirx_wr_top(TOP_HPD_PWR5V, 0x1f);
+	}
 	/* phy powerdown */
 	hdmirx_phy_pddq(1);
 	if (hdcp22_on)
