@@ -101,7 +101,15 @@ static int vdin_ctl_dbg;
 module_param(vdin_ctl_dbg, int, 0664);
 MODULE_PARM_DESC(vdin_ctl_dbg, "vdin_ctl_dbg");
 
-static unsigned int vpu_reg_27af = 0x3;
+/*0: auto ---according to hdmirx read from reg*/
+/*1: force full     2: force limit*/
+static int force_vdin_color_range;
+module_param(force_vdin_color_range, int, 0664);
+MODULE_PARM_DESC(force_vdin_color_range, "force_vdin_color_range");
+#define FORCE_VDIN_FULL 0x1
+#define FORCE_VDIN_LIMIT 0x2
+
+unsigned int vpu_reg_27af = 0x3;
 
 /***************************Local defines**********************************/
 #define BBAR_BLOCK_THR_FACTOR           3
@@ -1099,6 +1107,11 @@ static inline void vdin_set_color_matrix0(unsigned int offset,
 	struct vdin_matrix_lup_s *matrix_tbl;
 	struct tvin_format_s *fmt_info = tvin_fmt_p;
 
+	if (force_vdin_color_range == FORCE_VDIN_FULL)
+		color_fmt_range = TVIN_RGB_FULL | TVIN_YUV_FULL;
+	else if (force_vdin_color_range == FORCE_VDIN_LIMIT)
+		color_fmt_range = TVIN_RGB_LIMIT | TVIN_YUV_LIMIT;
+
 	switch (format_convert)	{
 	case VDIN_MATRIX_XXX_YUV_BLACK:
 		matrix_csc = VDIN_MATRIX_XXX_YUV601_BLACK;
@@ -1109,7 +1122,7 @@ static inline void vdin_set_color_matrix0(unsigned int offset,
 		if ((port >= TVIN_PORT_HDMI0) &&
 			(port <= TVIN_PORT_HDMI7)) {
 			if (color_range_mode == 1) {
-				if (color_fmt_range == TVIN_RGB_FULL) {
+				if (color_fmt_range & TVIN_RGB_FULL) {
 					matrix_csc = VDIN_MATRIX_RGB_YUV709F;
 					if (vdin_hdr_flag == 1)
 						matrix_csc =
@@ -1122,7 +1135,7 @@ static inline void vdin_set_color_matrix0(unsigned int offset,
 						VDIN_MATRIX_RGBS_YUV709;
 				}
 			} else {
-				if (color_fmt_range == TVIN_RGB_FULL)
+				if (color_fmt_range & TVIN_RGB_FULL)
 					matrix_csc = VDIN_MATRIX_RGB_YUV709;
 				else
 					matrix_csc = VDIN_MATRIX_RGBS_YUV709;
@@ -1144,7 +1157,7 @@ static inline void vdin_set_color_matrix0(unsigned int offset,
 		if ((port >= TVIN_PORT_HDMI0) &&
 			(port <= TVIN_PORT_HDMI7)) {
 			if (color_range_mode == 1) {
-				if (color_fmt_range == TVIN_RGB_FULL) {
+				if (color_fmt_range & TVIN_RGB_FULL) {
 					matrix_csc = VDIN_MATRIX_RGB_YUV709F;
 					if (vdin_hdr_flag == 1)
 						matrix_csc =
@@ -1156,7 +1169,7 @@ static inline void vdin_set_color_matrix0(unsigned int offset,
 						VDIN_MATRIX_RGBS_YUV709;
 				}
 			} else {
-				if (color_fmt_range == TVIN_RGB_FULL)
+				if (color_fmt_range & TVIN_RGB_FULL)
 					matrix_csc = VDIN_MATRIX_RGB_YUV709;
 				else
 					matrix_csc = VDIN_MATRIX_RGBS_YUV709;
@@ -1208,20 +1221,20 @@ static inline void vdin_set_color_matrix0(unsigned int offset,
 			(fmt_info->v_active >= 540))    /* 1080i & above */
 		   ) {
 			if	((color_range_mode == 1) &&
-				(color_fmt_range != TVIN_YUV_FULL))
+				(!(color_fmt_range & TVIN_YUV_FULL)))
 				matrix_csc = VDIN_MATRIX_YUV709_YUV709F;
 			else if ((color_range_mode == 0) &&
-				(color_fmt_range == TVIN_YUV_FULL))
+				(color_fmt_range & TVIN_YUV_FULL))
 				matrix_csc = VDIN_MATRIX_YUV709F_YUV709;
 		} else {
 			if (color_range_mode == 1) {
-				if (color_fmt_range == TVIN_YUV_FULL)
+				if (color_fmt_range & TVIN_YUV_FULL)
 					matrix_csc =
 						VDIN_MATRIX_YUV601F_YUV709F;
 				else
 					matrix_csc = VDIN_MATRIX_YUV601_YUV709F;
 			} else {
-				if (color_fmt_range == TVIN_YUV_FULL)
+				if (color_fmt_range & TVIN_YUV_FULL)
 					matrix_csc = VDIN_MATRIX_YUV601F_YUV709;
 				else
 					matrix_csc = VDIN_MATRIX_YUV601_YUV709;

@@ -438,10 +438,10 @@ enum tvin_color_fmt_e {
 
 enum tvin_color_fmt_range_e {
 	TVIN_FMT_RANGE_NULL = 0,  /* depend on vedio fromat */
-	TVIN_RGB_FULL,  /* 1 */
-	TVIN_RGB_LIMIT, /* 2 */
-	TVIN_YUV_FULL,  /* 3 */
-	TVIN_YUV_LIMIT, /* 4 */
+	TVIN_RGB_FULL = 0x1,  /*bit 0 */
+	TVIN_RGB_LIMIT = 0x2, /*bit 1 */
+	TVIN_YUV_FULL = 0x4,  /*bit 2 */
+	TVIN_YUV_LIMIT = 0x8, /*bit 3 */
 	TVIN_COLOR_FMT_RANGE_MAX,
 };
 
