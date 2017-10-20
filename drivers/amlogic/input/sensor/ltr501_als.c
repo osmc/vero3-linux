@@ -526,7 +526,8 @@ static struct attribute_group attribute_group = {
 static ssize_t ltr_dbg_i2c(struct class *class,
 		struct class_attribute *attr, const char *buf, size_t count)
 {
-	unsigned int reg, val, ret;
+	unsigned int reg, val;
+	unsigned int ret = 1;
 	int n = 1, i;
 	if (buf[0] == 'a') {
 		dprintk("Get all registers for ltr501\n");
@@ -548,7 +549,7 @@ static ssize_t ltr_dbg_i2c(struct class *class,
 		}
 	}
 
-	if (ret != 1 || ret != 2)
+	if (ret != 1 && ret != 2)
 		return -EINVAL;
 
 	return 0;
