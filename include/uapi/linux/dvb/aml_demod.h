@@ -169,6 +169,14 @@ struct fpga_m1_sdio {
 	unsigned char *data_buf;
 };
 
+struct aml_demod_para {
+	u32_t dvbc_symbol;
+	u32_t dvbc_qam;
+	u32_t dtmb_qam;
+	u32_t dtmb_coderate;
+};
+
+
 #define AML_DEMOD_SET_SYS        _IOW('D',  0, struct aml_demod_sys)
 #define AML_DEMOD_GET_SYS        _IOR('D',  1, struct aml_demod_sys)
 #define AML_DEMOD_TEST           _IOR('D',  2, u32_t)

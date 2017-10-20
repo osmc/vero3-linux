@@ -59,6 +59,7 @@ static int cci_thread;
 static int freq_dvbc;
 static struct aml_demod_sta demod_status;
 static fe_modulation_t atsc_mode = VSB_8;
+static struct aml_demod_para para_demod;
 
 long *mem_buf;
 
@@ -105,6 +106,8 @@ static ssize_t dvbc_auto_sym_store(struct class *cls,
 
 static unsigned dtmb_mode;
 static unsigned atsc_mode_para;
+static unsigned demod_mode_para;
+
 
 enum {
 	DTMB_READ_STRENGTH = 0,
@@ -120,6 +123,18 @@ enum {
 	ATSC_READ_SER = 3,
 	ATSC_READ_FREQ = 4,
 };
+
+enum {
+	UNKNOWN = 0,
+	AML_DVBC,
+	AML_DTMB,
+	AML_DVBT,
+	AML_ATSC,
+	AML_J83B,
+	AML_ISDBT,
+	AML_DVBT2
+};
+
 
 
 
@@ -196,6 +211,96 @@ static ssize_t atsc_para_store(struct class *cls,
 
 	return count;
 }
+
+static ssize_t demod_para_store(struct class *cls,
+				   struct class_attribute *attr,
+				   const char *buf, size_t count)
+{
+	if (buf[0] == '0')
+		demod_mode_para = UNKNOWN;
+	else if (buf[0] == '1')
+		demod_mode_para = AML_DVBC;
+	else if (buf[0] == '2')
+		demod_mode_para = AML_DTMB;
+	else if (buf[0] == '3')
+		demod_mode_para = AML_DVBT;
+	else if (buf[0] == '4')
+		demod_mode_para = AML_ATSC;
+	else if (buf[0] == '5')
+		demod_mode_para = AML_J83B;
+	else if (buf[0] == '6')
+		demod_mode_para = AML_ISDBT;
+	else if (buf[0] == '7')
+		demod_mode_para = AML_DVBT2;
+
+	return count;
+}
+
+void store_dvbc_qam_mode(int qam_mode, int symbolrate)
+{
+	int qam_para;
+	switch (qam_mode) {
+	case QAM_16:
+		qam_para = 4;
+		break;
+	case QAM_32:
+		qam_para = 5;
+		break;
+	case QAM_64:
+		qam_para = 6;
+		break;
+	case QAM_128:
+		qam_para = 7;
+		break;
+	case QAM_256:
+		qam_para = 8;
+		break;
+	case QAM_AUTO:
+		qam_para = 6;
+		break;
+	default:
+		qam_para = 6;
+		break;
+	}
+	para_demod.dvbc_qam = qam_para;
+	para_demod.dvbc_symbol = symbolrate;
+	pr_dbg("dvbc_qam is %d, symbolrate is %d\n",
+		para_demod.dvbc_qam, para_demod.dvbc_symbol);
+}
+
+static ssize_t demod_para_show(struct class *cls,
+				  struct class_attribute *attr, char *buf)
+{
+	int rate, symolrate, qam, coderate, a;
+	if (demod_mode_para == AML_DVBC) {
+		symolrate = para_demod.dvbc_symbol;
+		qam = para_demod.dvbc_qam;
+		rate = 944*symolrate*qam;
+		rate /= 1000;
+	} else if (demod_mode_para == AML_DTMB) {
+		coderate = para_demod.dtmb_coderate;
+		qam = para_demod.dtmb_qam;
+		a = 4725;
+		rate = 25614*qam*coderate/a;
+		rate *= 1024;
+	} else if (demod_mode_para == AML_DVBT) {
+		rate = 19855;
+	} else if (demod_mode_para == AML_ATSC) {
+		if (atsc_mode == VSB_8)
+			rate = 19855;
+		else if (atsc_mode == QAM_64)
+			rate = 27617;
+		else if (atsc_mode == QAM_256)
+			rate = 39741;
+		else
+			rate = 19855;
+	} else {
+		return sprintf(buf, "can't match mode\n");
+	}
+	return sprintf(buf, "rate %d\n", rate);
+}
+
+
 
 
 
@@ -276,6 +381,8 @@ static CLASS_ATTR(auto_sym, 0644, dvbc_auto_sym_show, dvbc_auto_sym_store);
 static CLASS_ATTR(dtmb_para, 0644, dtmb_para_show, dtmb_para_store);
 static CLASS_ATTR(dvbc_reg, 0666, dvbc_reg_show, dvbc_reg_store);
 static CLASS_ATTR(atsc_para, 0666, atsc_para_show, atsc_para_store);
+static CLASS_ATTR(demod_rate, 0644, demod_para_show, demod_para_store);
+
 
 
 #if 0
@@ -507,6 +614,7 @@ static int gxtv_demod_dvbc_set_frontend(struct dvb_frontend *fe)
 	param.ch_freq = c->frequency / 1000;
 	param.mode = amdemod_qam(c->modulation);
 	param.symb_rate = c->symbol_rate / 1000;
+	store_dvbc_qam_mode(c->modulation, param.symb_rate);
 	if ((param.mode == 3) && (demod_status.tmp != Adc_mode)) {
 		Gxtv_Demod_Dvbc_Init(dev, Adc_mode);
 		pr_dbg("Gxtv_Demod_Dvbc_Init,Adc_mode\n");
@@ -596,6 +704,7 @@ static int Gxtv_Demod_Dvbc_Init(struct aml_fe_dev *dev, int mode)
 	       sys.demod_clk);
 	autoFlagsTrig = 0;
 	demod_set_sys(&demod_status, &i2c, &sys);
+	demod_mode_para = AML_DVBC;
 	return 0;
 }
 
@@ -744,6 +853,7 @@ int Gxtv_Demod_Dvbt_Init(struct aml_fe_dev *dev)
 	sys.demod_clk = Demod_Clk_60M;
 	demod_status.ch_if = Si2176_5M_If * 1000;
 	demod_set_sys(&demod_status, &i2c, &sys);
+	demod_mode_para = AML_DVBT;
 	return 0;
 }
 
@@ -835,10 +945,19 @@ static int gxtv_demod_atsc_read_signal_strength
 {
 	struct aml_fe *afe = fe->demodulator_priv;
 	struct aml_fe_dev *dev = afe->dtv_demod;
-	*strength = tuner_get_ch_power(dev);
-	*strength -= 100;
+	int read_strength;
+	read_strength = tuner_get_ch_power(dev);
+	read_strength -= 100;
+	if (read_strength < -100)
+		*strength = 0;
+	else
+		*strength = (100 + read_strength);
+	pr_dbg("[read_strength]read_strength is %d,*strength is %d\n",
+		read_strength, *strength);
 	if (*strength < 0)
-		*strength = 0 - *strength;
+		*strength = 0;
+	else if (*strength > 100)
+		*strength = 100;
 	return 0;
 }
 
@@ -945,6 +1064,7 @@ int Gxtv_Demod_Atsc_Init(struct aml_fe_dev *dev)
 	demod_status.ch_if = 5000;
 	demod_status.tmp = Adc_mode;
 	demod_set_sys(&demod_status, &i2c, &sys);
+	demod_mode_para = AML_ATSC;
 	return 0;
 }
 
@@ -1115,6 +1235,7 @@ int Gxtv_Demod_Dtmb_Init(struct aml_fe_dev *dev)
 	demod_status.tmp = Adc_mode;
 	demod_status.spectrum = dev->spectrum;
 	demod_set_sys(&demod_status, &i2c, &sys);
+	demod_mode_para = AML_DTMB;
 	return 0;
 }
 
@@ -1408,6 +1529,10 @@ static int __init gxtvdemodfrontend_init(void)
 	if (ret)
 		pr_error("[gxtv demod]%s create class error.\n", __func__);
 
+	ret = class_create_file(gxtv_clsp, &class_attr_demod_rate);
+	if (ret)
+		pr_error("[gxtv demod]%s create class error.\n", __func__);
+
 	return aml_register_fe_drv(AM_DEV_DTV_DEMOD, &gxtv_demod_dtv_demod_drv);
 }
 
@@ -1421,6 +1546,7 @@ static void __exit gxtvdemodfrontend_exit(void)
 	class_remove_file(gxtv_clsp, &class_attr_dtmb_para);
 	class_remove_file(gxtv_clsp, &class_attr_dvbc_reg);
 	class_remove_file(gxtv_clsp, &class_attr_atsc_para);
+	class_remove_file(gxtv_clsp, &class_attr_demod_rate);
 	class_destroy(gxtv_clsp);
 	aml_unregister_fe_drv(AM_DEV_DTV_DEMOD, &gxtv_demod_dtv_demod_drv);
 }
