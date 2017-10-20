@@ -709,8 +709,6 @@ static int lis3dh_acc_register_write(struct lis3dh_acc_status *stat,
 	buf[0] = reg_address;
 	buf[1] = new_value;
 	err = lis3dh_acc_i2c_write(stat, buf, 1);
-	if (err < 0)
-		return err;
 	return err;
 }
 
