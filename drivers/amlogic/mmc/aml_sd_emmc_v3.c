@@ -26,6 +26,7 @@
 #include <linux/amlogic/aml_gpio_consumer.h>
 #include <linux/mmc/emmc_partitions.h>
 #include <../drivers/mmc/core/mmc_ops.h>
+#include <../drivers/mmc/core/core.h>
 #include "amlsd.h"
 #include "aml_sd_emmc_internal.h"
 #define CALI_BLK_CNT    80
@@ -812,6 +813,88 @@ static int aml_sd_emmc_cali_v3(struct mmc_host *mmc,
 	return data.error | cmd.error;
 }
 
+static int emmc_send_status(struct mmc_host *mmc)
+{
+	struct mmc_command cmd = {0};
+	u32 err = 0;
+
+	cmd.opcode = MMC_SEND_STATUS;
+	cmd.arg = (1<<16);
+	cmd.flags = MMC_RSP_R1 | MMC_CMD_AC;
+
+	err = mmc_wait_for_cmd(mmc, &cmd, MMC_CMD_RETRIES);
+	if (err) {
+		pr_info("[%s][%d] cmd:0x%x send error\n",
+				__func__, __LINE__, cmd.opcode);
+		return err;
+	}
+	return err;
+}
+
+static int emmc_send_deselect(struct mmc_host *mmc)
+{
+	struct mmc_command cmd = {0};
+	u32 err = 0;
+
+	cmd.opcode = MMC_SELECT_CARD;
+	cmd.arg = 0;
+	cmd.flags = MMC_RSP_NONE | MMC_CMD_AC;
+
+	err = mmc_wait_for_cmd(mmc, &cmd, MMC_CMD_RETRIES);
+	if (err) {
+		pr_info("[%s][%d] cmd:0x%x send error\n",
+				__func__, __LINE__, cmd.opcode);
+		return err;
+	}
+	return err;
+}
+
+static int emmc_send_select(struct mmc_host *mmc)
+{
+	struct mmc_command cmd = {0};
+	u32 err = 0;
+
+	cmd.opcode = MMC_SELECT_CARD;
+	cmd.arg = (1 << 16);
+	cmd.flags = MMC_RSP_R1 | MMC_CMD_AC;
+
+	err = mmc_wait_for_cmd(mmc, &cmd, MMC_CMD_RETRIES);
+	if (err) {
+		pr_info("[%s][%d] cmd:0x%x send error\n",
+				__func__, __LINE__, cmd.opcode);
+		return err;
+	}
+	return err;
+}
+
+static int emmc_send_cid(struct mmc_host *mmc)
+{
+	struct mmc_command cmd = {0};
+	u32 err = 0;
+
+	cmd.opcode = MMC_SEND_CID;
+	cmd.arg = (1 << 16);
+	cmd.flags = MMC_RSP_R2 | MMC_CMD_BCR;
+
+	err = mmc_wait_for_cmd(mmc, &cmd, MMC_CMD_RETRIES);
+	if (err) {
+		pr_info("[%s][%d] cmd:0x%x send error\n",
+				__func__, __LINE__, cmd.opcode);
+		return err;
+	}
+	return err;
+}
+
+static int aml_sd_emmc_cmd_v3(struct mmc_host *mmc)
+{
+	int i;
+	emmc_send_status(mmc);
+	emmc_send_deselect(mmc);
+	for (i = 0; i < 2; i++)
+		emmc_send_cid(mmc);
+	emmc_send_select(mmc);
+	return 0;
+}
 static int emmc_eyetest_log(struct mmc_host *mmc, u32 line_x)
 {
 	struct amlsd_platform *pdata = mmc_priv(mmc);
@@ -826,7 +909,7 @@ static int emmc_eyetest_log(struct mmc_host *mmc, u32 line_x)
 	u32 eyetest_out0 = 0, eyetest_out1 = 0;
 	u32 intf3 = sd_emmc_regs->intf3;
 	struct intf3 *gintf3 = (struct intf3 *)&(intf3);
-	u32 vcfg = sd_emmc_regs->gcfg;
+	/*u32 vcfg = sd_emmc_regs->gcfg;*/
 	int retry = 3;
 	u64 tmp = 0;
 	u32 blksz = 512;
@@ -856,9 +939,7 @@ RETRY:
 				MMC_READ_MULTIPLE_BLOCK,
 				blk_test_v3, blksz, 40);
 	else
-		aml_sd_emmc_cali_v3(mmc,
-				MMC_READ_MULTIPLE_BLOCK,
-				blk_test_v3, blksz, 80);
+		aml_sd_emmc_cmd_v3(mmc);
 	udelay(1);
 	eyetest_log = sd_emmc_regs->eyetest_log;
 
@@ -886,13 +967,13 @@ RETRY:
 	sd_emmc_regs->intf3 = intf3;
 	/*emmc_dbg(AMLSD_DBG_V3, "intf3: 0x%x,adjust: 0x%x\n",
 			sd_emmc_regs->intf3, sd_emmc_regs->gadjust);*/
-	if (vcfg & 0x4) {
+	/*if (vcfg & 0x4) {
 		if (pdata->count > 32) {
 			eyetest_out1 <<= (32 - (pdata->count - 32));
 			eyetest_out1 >>= (32 - (pdata->count - 32));
 		} else
 			eyetest_out1 = 0x0;
-	}
+	}*/
 	pdata->align[line_x] = ((tmp | eyetest_out1) << 32) | eyetest_out0;
 	emmc_dbg(AMLSD_DBG_V3, "d1:0x%x,d2:0x%x,u64eyet:0x%llx,l_x:%d\n",
 			sd_emmc_regs->gdelay1, sd_emmc_regs->gdelay2,
@@ -1098,7 +1179,7 @@ static int emmc_ds_core_align(struct mmc_host *mmc)
 	u32 delay1 = sd_emmc_regs->gdelay1;
 	u32 delay2 = sd_emmc_regs->gdelay2;
 	u32 delay2_bak = delay2;
-	u32 count = 0;
+	u32 count = 0, max = 0, data_max = 0;
 	u32 ds_count = 0, cmd_count = 0;
 	ds_count = fbinary(pdata->align[8]);
 	if (ds_count == 0)
@@ -1118,15 +1199,36 @@ static int emmc_ds_core_align(struct mmc_host *mmc)
 	}
 	delay1 = sd_emmc_regs->gdelay1;
 	delay2 = sd_emmc_regs->gdelay2;
-	ds_count = fbinary(pdata->align[8]);
 	count = ((delay2>>18) & 0x3f) - ((delay2_bak>>18) & 0x3f);
+
+	if (is_meson_txhd_cpu()) {
+		emmc_dbg(AMLSD_DBG_V3, "ds_count:%u, count:%u\n",
+			ds_count, count);
+		data_max = emmc_detect_base_line(pdata->align);
+		max = ds_count + count - 1;
+		if ((data_max >= ds_count)
+				&& (data_max < max))
+			count = max - data_max;
+		else
+			count = 0;
+		emmc_dbg(AMLSD_DBG_V3, "data_max:%u, max:%u\n",
+			data_max, max);
+	}
+
 	delay1 += (count<<0)|(count<<6)|(count<<12)|(count<<18)|(count<<24);
 	delay2 += (count<<0)|(count<<6)|(count<<12);
+
 	cmd_count = fbinary(pdata->align[9]);
-	if (cmd_count < (pdata->count / 2)) {
-		cmd_count = (pdata->count / 2) - cmd_count;
-		delay2 += (cmd_count<<24);
-	}
+	if (cmd_count <= (pdata->count/3))
+		cmd_count = (pdata->count/3)-cmd_count;
+	else if (cmd_count <= 2*pdata->count/3)
+		cmd_count = 0;
+	else if (cmd_count <= pdata->count)
+		cmd_count = (pdata->count-cmd_count)+pdata->count/3;
+	else
+		cmd_count = pdata->count/3;
+	delay2 += (cmd_count << 24);
+
 	sd_emmc_regs->gdelay1 = delay1;
 	sd_emmc_regs->gdelay2 = delay2;
 	emmc_dbg(AMLSD_DBG_V3,
