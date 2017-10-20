@@ -110,6 +110,7 @@ static void bt_device_on(struct bt_dev_data *pdata)
 
 static void bt_device_off(struct bt_dev_data *pdata)
 {
+#if 0  /*kuibao.zhang set:bt remote wakeup by bcm*/
 	if (pdata->gpio_reset > 0) {
 		if ((pdata->power_on_pin_OD)
 			&& (pdata->power_low_level)) {
@@ -128,6 +129,7 @@ static void bt_device_off(struct bt_dev_data *pdata)
 		}
 	}
 	msleep(20);
+#endif
 }
 
 static int bt_set_block(void *data, bool blocked)
