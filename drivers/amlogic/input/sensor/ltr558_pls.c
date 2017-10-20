@@ -926,7 +926,7 @@ static long ltr558_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case LTR_IOCTL_GET_PFLAG:
 		LTR558_DEBUG_LIUDJ(" GET_PFLAG ===========\n");
 		buffer = ltr558_ps_read_status();
-		if (&buffer < 0) {
+		if (buffer < 0) {
 			return -EFAULT;
 			break;
 		}

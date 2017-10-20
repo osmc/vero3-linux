@@ -693,15 +693,7 @@ static int mm3a310_get_grange(int *range)
 #if MM3A310_OFFSET_TEMP_SOLUTION
 static void sensor_write_work(struct work_struct *work)
 {
-#if 0
-	int fd = sys_open(OffsetFileName, O_CREAT | O_RDWR, 0600);
-	if (fd < 0)
-		dprintk("sys_open %s error!!.\n", "/data/battery.txt");
-	else{
-		sys_write(fd, m_work_info.buffer, m_work_info.len);
-		sys_close(fd);
-	}
-#else
+
 	unsigned int orgfs;
 	struct file *filep;
 	int ret;
@@ -712,8 +704,7 @@ static void sensor_write_work(struct work_struct *work)
 
 	pWorkInfo = container_of((struct delayed_work *)work,
 		struct work_info, write_work);
-	if (pWorkInfo == NULL)
-		return;
+
 
 	filep = filp_open(OffsetFileName, O_RDWR|O_CREAT, 0600);
 	if (IS_ERR(filep))
@@ -728,22 +719,11 @@ static void sensor_write_work(struct work_struct *work)
 	set_fs(orgfs);
 	pWorkInfo->rst = ret;
 	complete(&pWorkInfo->completion);
-#endif
 }
 
 static void sensor_read_work(struct work_struct *work)
 {
-#if 0
-	int fd = sys_open(OffsetFileName, O_RDONLY, 0600);
-	if (fd < 0)
-		dprintk("sys_open %s error!!.\n", "/data/battery.txt");
-	else{
-		m_work_info.len = sys_read(fd, m_work_info.buffer,
-			sizeof(m_work_info.buffer));
-		sys_close(fd);
-	}
-	complete(&m_work_info.completion);
-#else
+
 	unsigned int orgfs;
 	struct file *filep;
 	int ret;
@@ -754,8 +734,6 @@ static void sensor_read_work(struct work_struct *work)
 
 	pWorkInfo = container_of((struct delayed_work *)work,
 		struct work_info, read_work);
-	if (pWorkInfo == NULL)
-		return;
 
 	filep = filp_open(OffsetFileName, O_RDONLY, 0600);
 	if (IS_ERR(filep)) {
@@ -772,7 +750,6 @@ static void sensor_read_work(struct work_struct *work)
 
 	pWorkInfo->rst = ret;
 	complete(&(pWorkInfo->completion));
-#endif
 }
 
 static int sensor_sync_read(unsigned short *x, unsigned short *y,
