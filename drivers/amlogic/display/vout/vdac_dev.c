@@ -420,7 +420,7 @@ void vdac_enable(bool on, unsigned int module_sel)
 		if (on) {
 			ana_ref_cntl0_bit9(1, VDAC_MODULE_ATV_DEMOD);
 			/*after txlx need reset bandgap after bit9 enabled*/
-			if (get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX) {
+			if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 				vdac_hiu_reg_setb(HHI_VDAC_CNTL0, 1, 13, 1);
 				udelay(5);
 				vdac_hiu_reg_setb(HHI_VDAC_CNTL0, 0, 13, 1);
@@ -451,7 +451,7 @@ void vdac_enable(bool on, unsigned int module_sel)
 			if (is_meson_gxlx_cpu())
 				vdac_out_cntl1_bit3(1, VDAC_MODULE_DTV_DEMOD);
 			ana_ref_cntl0_bit9(1, VDAC_MODULE_DTV_DEMOD);
-			if (get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX) {
+			if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 				vdac_hiu_reg_setb(HHI_VDAC_CNTL0, 1, 13, 1);
 				udelay(5);
 				vdac_hiu_reg_setb(HHI_VDAC_CNTL0, 0, 13, 1);
@@ -468,7 +468,7 @@ void vdac_enable(bool on, unsigned int module_sel)
 		if (on) {
 			ana_ref_cntl0_bit9(1, VDAC_MODULE_TVAFE);
 			/*after txlx need reset bandgap after bit9 enabled*/
-			if (get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX) {
+			if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 				vdac_hiu_reg_setb(HHI_VDAC_CNTL0, 1, 13, 1);
 				udelay(5);
 				vdac_hiu_reg_setb(HHI_VDAC_CNTL0, 0, 13, 1);
@@ -495,7 +495,7 @@ void vdac_enable(bool on, unsigned int module_sel)
 			vdac_out_cntl1_bit3(1, VDAC_MODULE_CVBS_OUT);
 			vdac_out_cntl0_bit0(1, VDAC_MODULE_CVBS_OUT);
 			ana_ref_cntl0_bit9(1, VDAC_MODULE_CVBS_OUT);
-			if (get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX) {
+			if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 				vdac_hiu_reg_setb(HHI_VDAC_CNTL0, 1, 13, 1);
 				udelay(5);
 				vdac_hiu_reg_setb(HHI_VDAC_CNTL0, 0, 13, 1);
@@ -688,7 +688,7 @@ static int __init aml_vdac_init(void)
 
 	mutex_init(&vdac_mutex);
 	/* remap the hiu bus */
-	if (get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX)
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 		vdac_hiu_reg_base = ioremap(0xff63c000, 0x2000);
 	else
 		vdac_hiu_reg_base = ioremap(0xc883c000, 0x2000);

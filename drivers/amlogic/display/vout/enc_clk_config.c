@@ -432,6 +432,11 @@ static void set_hpll_clk_out(unsigned clk)
 		return;
 	}
 
+	if (is_meson_txhd_cpu()) {
+		vout_log_info("not support for current chip\n");
+		return;
+	}
+
 	cpu_type = get_cpu_type();
 	switch (cpu_type) {
 	case MESON_CPU_MAJOR_ID_M6:

@@ -89,6 +89,7 @@ int tv_out_ioremap(void)
 		tvout_map = tv_out_reg_maps_txlx;
 		tvout_map_num = ARRAY_SIZE(tv_out_reg_maps_txlx);
 		break;
+	case MESON_CPU_MAJOR_ID_TXHD:
 	default:
 		pr_err("%s: unsupported chip\n", __func__);
 		break;
