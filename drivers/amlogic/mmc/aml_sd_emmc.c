@@ -2406,7 +2406,8 @@ static irqreturn_t aml_sd_emmc_irq(int irq, void *dev_id)
 			host->xfer_step = XFER_IRQ_TASKLET_BUSY;
 		else
 			host->xfer_step = XFER_IRQ_OCCUR;
-	}
+	} else
+		return IRQ_HANDLED;
 
 	sd_emmc_regs->gstatus &= 0xffff;
 	spin_unlock_irqrestore(&host->mrq_lock, flags);
@@ -2565,15 +2566,14 @@ static irqreturn_t aml_sd_emmc_data_thread(int irq, void *data)
 		sd_emmc_err("%s: !mrq xfer_step %d\n",
 			mmc_hostname(host->mmc), xfer_step);
 		if (xfer_step == XFER_FINISHED ||
-			xfer_step == XFER_TIMER_TIMEOUT){
+			xfer_step == XFER_TIMER_TIMEOUT)
 			spin_unlock_irqrestore(&host->mrq_lock, flags);
+		aml_sd_emmc_print_err(host);
 #ifdef SD_EMMC_DATA_TASKLET
 			return;
 #else
 			return IRQ_HANDLED;
 #endif
-		}
-		aml_sd_emmc_print_err(host);
 	}
 	/* process stop cmd we sent on porpos */
 	if (host->cmd_is_stop) {
