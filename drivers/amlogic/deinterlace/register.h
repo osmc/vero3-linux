@@ -1264,6 +1264,18 @@ the format convert mode about 444 to 422 when data write to line buffer */
 /* // NR2 REG DEFINE END //// */
 /* // DET 3D REG DEFINE BEGIN //// */
 /* //  8'h80~8'h8f */
+/* change from gxlx */
+#define DI_EI_DRT_CTRL_GXLX                  ((0x2028))
+
+#define DI_EI_DRT_PIXTH_GXLX                 ((0x2029))
+
+#define DI_EI_DRT_CORRPIXTH_GXLX             ((0x202a))
+
+#define DI_EI_DRT_RECTG_WAVE_GXLX            ((0x202b))
+
+#define DI_EI_DRT_PIX_DIFFTH_GXLX            ((0x202c))
+
+#define DI_EI_DRT_UNBITREND_TH_GXLX          ((0x202d))
 #define DET3D_RO_SPLT_HB                 ((0x1780)) /* << 2) + 0xd0100000) */
 /* Bit 24,	    RO_Det3D_Split_HB_valid
 U1   horizontal LR split border detected valid signal for top half picture */

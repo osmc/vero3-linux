@@ -292,21 +292,6 @@ static void nr4_config(struct NR4_PARM_s *nr4_parm_p,
 	/* noise meter */
 	DI_Wr(NR4_NM_X_CFG, (val<<16) | (width-val-1));
 	DI_Wr(NR4_NM_Y_CFG, (val<<16) | (height-val-1));
-	/*
-	 * line buffer ctrl such as 5 lines or 3 lines
-	 * yuv444 or yuv422
-	 */
-	if (width <= 1368)
-		val = 3;
-	else if (width <= 2052)
-		val = 1;
-	else if (width <= 2736)
-		val = 2;
-	else
-		val = 0;
-	/* line buffer no gate clock */
-	DI_Wr_reg_bits(LBUF_TOP_CTRL, 0, 20, 6);
-	DI_Wr_reg_bits(LBUF_TOP_CTRL, val, 16, 2);
 	/* enable nr4 */
 	DI_Wr_reg_bits(NR4_TOP_CTRL, 1, 16, 1);
 	DI_Wr_reg_bits(NR4_TOP_CTRL, 1, 18, 1);
@@ -314,6 +299,33 @@ static void nr4_config(struct NR4_PARM_s *nr4_parm_p,
 	DI_Wr_reg_bits(NR4_TOP_CTRL, (val&0x1), 5, 1);
 	nr4_parm_p->width = width - val - val - 1;
 	nr4_parm_p->height = height - val - val - 1;
+}
+/*
+ * line buffer ctrl such as 5 lines or 3 lines
+ * yuv444 or yuv422
+ */
+static void linebuffer_config(unsigned short width)
+{
+	unsigned short val = 0;
+	unsigned short line5_444 = 1368, line5_422 = 2052;
+	unsigned short line3_444 = 2736;
+
+	if (is_meson_txhd_cpu()) {
+		line5_444 = 640;
+		line5_422 = 960;
+		line3_444 = 1280;
+	}
+	if (width <= line5_444)
+		val = 3;
+	else if (width <= line5_422)
+		val = 1;
+	else if (width <= line3_444)
+		val = 2;
+	else
+		val = 0;
+	/* line buffer no gate clock */
+	DI_Wr_reg_bits(LBUF_TOP_CTRL, 0, 20, 6);
+	DI_Wr_reg_bits(LBUF_TOP_CTRL, val, 16, 2);
 }
 
 static void nr2_config(unsigned short width, unsigned short height)
@@ -365,8 +377,12 @@ void nr_all_config(unsigned short width, unsigned short height,
 
 	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXLX))
 		cue_config(nr_param.pcue_parm, field_type);
-	if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXLX))
+	if (is_meson_txlx_cpu()) {
+		linebuffer_config(width);
 		nr4_config(nr_param.pnr4_parm, width, height);
+	}
+	if (is_meson_txhd_cpu())
+		linebuffer_config(width);
 }
 
 static int find_lut16(unsigned int val, int *pLut)
@@ -629,17 +645,19 @@ static void cue_process_irq(void)
 
 	int pre_field_num = 0, cue_invert = 0;
 
-	pre_field_num = Rd_reg_bits(DI_PRE_CTRL, 29, 1);
-	if (invert_cue_phase)
-		cue_invert = (pre_field_num?3:0);
-	else
-		cue_invert = (pre_field_num?0:3);
-	if (cue_pr_cnt > 0) {
-		pr_info("[DI]: chan2 field num %d, cue_invert %d.\n",
+	if (is_meson_gxlx_cpu()) {
+		pre_field_num = Rd_reg_bits(DI_PRE_CTRL, 29, 1);
+		if (invert_cue_phase)
+			cue_invert = (pre_field_num?3:0);
+		else
+			cue_invert = (pre_field_num?0:3);
+		if (cue_pr_cnt > 0) {
+			pr_info("[DI]: chan2 field num %d, cue_invert %d.\n",
 				pre_field_num, cue_invert);
-		cue_pr_cnt--;
+			cue_pr_cnt--;
+		}
+		Wr_reg_bits(NR2_CUE_MODE, cue_invert, 10, 2);
 	}
-	Wr_reg_bits(NR2_CUE_MODE, cue_invert, 10, 2);
 	if (!nr_param.prog_flag) {
 		if (nr_param.frame_count > 1 && cue_glb_mot_check_en)
 			DI_Wr_reg_bits(DI_NR_CTRL0, cue_en?1:0, 26, 1);

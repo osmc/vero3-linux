@@ -115,7 +115,7 @@ PNAME(cts_vpu_clk0_p) = {"fclk_div4", "fclk_div3", "fclk_div5", "fclk_div7",
 PNAME(cts_vpu_clk1_p) = {"fclk_div4", "fclk_div3", "fclk_div5", "fclk_div7",
 	"mpll_clk_out1", "vid_pll", "mpll_clk_out2", "gp1"};
 PNAME(mux_vpu_clk_p) = {"cts_vpu_clk0", "cts_vpu_clk1"};
-PNAME(cts_vpu_clkb_tmp_p) = {"cts_vpu_clk", "fclk_div5", "vid_pll",
+PNAME(cts_vpu_clkb_tmp_p) = {"cts_vpu_clk", "fclk_div3", "vid_pll",
 		"fclk_div4"};
 PNAME(clk_aud_out_p) = {"hdmirx_aud_pll2fs", "hdmirx_aud_pll4fs"};
 /* fixed rate clocks generated outside the soc */

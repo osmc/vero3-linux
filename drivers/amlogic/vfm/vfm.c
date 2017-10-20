@@ -334,7 +334,7 @@ static void vfm_init(void)
 #ifndef CONFIG_MULTI_DEC
 	char def_name_chain[] = "decoder ppmgr deinterlace amvideo";
 #else
-	char def_name_chain[] = "decoder amvideo";
+	char def_name_chain[] = "decoder deinterlace amvideo";
 #endif
 #elif (defined CONFIG_POST_PROCESS_MANAGER)
 	char def_id[] = "default";

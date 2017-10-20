@@ -494,6 +494,8 @@ struct di_dev_s {
 	struct platform_device	*pdev;
 	struct task_struct *task;
 	struct clk	*vpu_clkb;
+	unsigned long clkb_max_rate;
+	unsigned long clkb_min_rate;
 	struct list_head   pq_table_list;
 	struct mutex       pq_lock;
 	unsigned char	   di_event;

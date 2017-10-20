@@ -2720,7 +2720,7 @@ static void viu_set_dcu(struct vpp_frame_par_s *frame_par, struct vframe_s *vf)
 					(bit_mode & 0x3), 8, 2);
 			DI_POST_WR_REG_BITS(DI_IF1_GEN_REG3,
 				(bit_mode&0x3), 8, 2);
-			if (is_meson_txl_cpu() || is_meson_txlx_cpu())
+			if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXL))
 				DI_POST_WR_REG_BITS(DI_IF2_GEN_REG3,
 				(bit_mode&0x3), 8, 2);
 			if ((DI_POST_REG_RD(DI_POST_CTRL) & 0x100) == 0)
