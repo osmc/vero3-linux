@@ -1,3 +1,20 @@
+/*
+ * drivers/amlogic/spicc/spicc.h
+ *
+ * Copyright (C) 2017 Amlogic, Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
 #ifndef __SPICC_H__
 #define __SPICC_H__
 
@@ -22,6 +39,7 @@
 #define SPICC_REG_LD_RADDR (12<<2)
 #define SPICC_REG_LD_WADDR (13<<2)
 #define SPICC_REG_ENHANCE_CNTL (14<<2)
+#define SPICC_REG_ENHANCE_CNTL1 (15<<2)
 
 #define CON_ENABLE bits_desc(SPICC_REG_CON, 0, 1)
 #define CON_MODE bits_desc(SPICC_REG_CON, 1, 1)
@@ -81,6 +99,18 @@
 #define CS_DELAY_EN bits_desc(SPICC_REG_ENHANCE_CNTL, 28, 1)
 #define MAIN_CLK_AO bits_desc(SPICC_REG_ENHANCE_CNTL, 29, 1)
 
+#define MISO_I_CAPTURE_EN     bits_desc(SPICC_REG_ENHANCE_CNTL1, 0, 1)
+#define MISO_I_CAPTURE_DELAY  bits_desc(SPICC_REG_ENHANCE_CNTL1, 1, 9)
+#define MOSI_I_CAPTURE_EN     bits_desc(SPICC_REG_ENHANCE_CNTL1, 14, 1)
+#define FCLK_EN               bits_desc(SPICC_REG_ENHANCE_CNTL1, 15, 1)
+#define MOSI_I_DLYCTL_EN      bits_desc(SPICC_REG_ENHANCE_CNTL1, 16, 1)
+#define MOSI_I_DLYCTL         bits_desc(SPICC_REG_ENHANCE_CNTL1, 17, 3)
+#define MISO_I_DLYCTL_EN      bits_desc(SPICC_REG_ENHANCE_CNTL1, 20, 1)
+#define MISO_I_DLYCTL         bits_desc(SPICC_REG_ENHANCE_CNTL1, 21, 3)
+#define MOSI_O_DLYCTL_EN      bits_desc(SPICC_REG_ENHANCE_CNTL1, 24, 1)
+#define MOSI_O_DLYCTL         bits_desc(SPICC_REG_ENHANCE_CNTL1, 25, 3)
+#define MOSI_OEN_DLYCTL_EN    bits_desc(SPICC_REG_ENHANCE_CNTL1, 28, 1)
+#define MOSI_OEN_DLYCTL       bits_desc(SPICC_REG_ENHANCE_CNTL1, 29, 3)
 
 struct spicc_platform_data {
 	int device_id;

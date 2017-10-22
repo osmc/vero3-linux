@@ -1,3 +1,20 @@
+/*
+ * drivers/amlogic/spicc/spicc.c
+ *
+ * Copyright (C) 2017 Amlogic, Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
@@ -51,6 +68,7 @@ struct spicc {
 	struct class cls;
 
 	int device_id;
+	struct reset_control *rst;
 	struct clk *clk;
 	void __iomem *regs;
 	struct pinctrl *pinctrl;
@@ -73,6 +91,7 @@ struct spicc {
 	u8 test_data;
 	unsigned int delay_control;
 	unsigned int cs_delay;
+	unsigned int enhance_dlyctl;
 	int remain;
 	u8 *txp;
 	u8 *rxp;
@@ -112,7 +131,6 @@ static const char * const log_comment[] = {
 	"pio begin",
 	"pio end"
 };
-
 static void spicc_log_init(struct spicc *spicc)
 {
 	spicc->log = 0;
@@ -215,6 +233,7 @@ EXPORT_SYMBOL(spicc_chip_select);
 static inline bool spicc_get_flag(struct spicc *spicc, unsigned int flag)
 {
 	bool ret;
+
 	ret = (spicc->flags >> flag) & 1;
 	return ret;
 }
@@ -257,8 +276,8 @@ static void spicc_set_mode(struct spicc *spicc, u8 mode)
 
 static void spicc_set_clk(struct spicc *spicc, int speed)
 {
-	unsigned sys_clk_rate;
-	unsigned div, mid_speed;
+	unsigned int sys_clk_rate;
+	unsigned int div, mid_speed;
 
 	if (!speed || (speed == spicc->speed))
 		return;
@@ -519,7 +538,7 @@ static int spicc_hw_xfer(struct spicc *spicc, u8 *txp, u8 *rxp, int len)
 {
 	void __iomem *mem_base = spicc->regs;
 	int bytes_per_word;
-	int ret = 0;
+	int ret;
 
 	setb(mem_base, RX_FIFO_RESET, 1);
 	setb(mem_base, TX_FIFO_RESET, 1);
@@ -587,6 +606,8 @@ static void spicc_hw_init(struct spicc *spicc)
 		setb(mem_base, CS_OEN, 1);
 		setb(mem_base, CS_DELAY, spicc->cs_delay);
 		setb(mem_base, CS_DELAY_EN, 1);
+		writel(spicc->enhance_dlyctl,
+			spicc->regs + SPICC_REG_ENHANCE_CNTL1);
 	}
 	/* spicc_enable(spicc, 0); */
 }
@@ -697,8 +718,10 @@ static void spicc_handle_one_msg(struct spicc *spicc, struct spi_message *m)
 			goto spicc_handle_end;
 		m->actual_length += t->len;
 
-		/* to delay after this transfer before
-		(optionally) changing the chipselect status. */
+		/*
+		 * to delay after this transfer before
+		 * (optionally) changing the chipselect status.
+		 */
 		if (t->delay_usecs & 0x3ff)
 			udelay(t->delay_usecs & 0x3ff);
 		if (spi && t->cs_change) {
@@ -787,10 +810,10 @@ static ssize_t store_setting(
 		struct class_attribute *attr,
 		const char *buf, size_t count)
 {
-	unsigned int value;
+	long value;
 	struct spicc *spicc = container_of(class, struct spicc, cls);
 
-	if (sscanf(buf, "%d", &value) != 1)
+	if (kstrtol(buf, 0, &value))
 		return -EINVAL;
 	if (!strcmp(attr->attr.name, "speed"))
 		spicc_set_clk(spicc, value);
@@ -882,15 +905,15 @@ test_end:
 }
 
 static struct class_attribute spicc_class_attrs[] = {
-		__ATTR(test, S_IWUSR, NULL, store_test),
-		__ATTR(test_data, S_IRUGO|S_IWUSR, show_setting, store_setting),
-		__ATTR(speed, S_IRUGO|S_IWUSR, show_setting, store_setting),
-		__ATTR(mode, S_IRUGO|S_IWUSR, show_setting, store_setting),
-		__ATTR(bit_width, S_IRUGO|S_IWUSR, show_setting, store_setting),
-		__ATTR(flags, S_IRUGO|S_IWUSR, show_setting, store_setting),
-		__ATTR(help, S_IRUGO, show_setting, NULL),
+		__ATTR(test, 0200, NULL, store_test),
+		__ATTR(test_data, 0644, show_setting, store_setting),
+		__ATTR(speed, 0644, show_setting, store_setting),
+		__ATTR(mode, 0644, show_setting, store_setting),
+		__ATTR(bit_width, 0644, show_setting, store_setting),
+		__ATTR(flags, 0644, show_setting, store_setting),
+		__ATTR(help, 0444, show_setting, NULL),
 #ifdef CONFIG_SPICC_LOG
-		__ATTR(log, S_IRUGO, show_setting, NULL),
+		__ATTR(log, 0444, show_setting, NULL),
 #endif
 		__ATTR_NULL
 };
@@ -902,9 +925,9 @@ static int of_spicc_get_data(
 {
 	struct device_node *np = pdev->dev.of_node;
 	struct resource *res;
-	struct reset_control *rst;
 	int err;
 	unsigned int value;
+	struct clk *parent_clk;
 
 	err = of_property_read_u32(np, "device_id", &spicc->device_id);
 	if (err) {
@@ -940,6 +963,7 @@ static int of_spicc_get_data(
 	err = of_property_read_u32(np, "log_size", &value);
 	spicc->log_size = err ? 0 : value;
 #endif
+
 	spicc->pinctrl = devm_pinctrl_get(&pdev->dev);
 	if (IS_ERR_OR_NULL(spicc->pinctrl)) {
 		dev_err(&pdev->dev, "get pinctrl fail\n");
@@ -960,17 +984,36 @@ static int of_spicc_get_data(
 		return PTR_ERR(spicc->regs);
 	}
 
-	rst = devm_reset_control_get(&pdev->dev, "spicc_clk");
-	if (IS_ERR_OR_NULL(rst))
-		dev_err(&pdev->dev, "open spicc clk gate failed\n");
-	else
-		reset_control_deassert(rst);
-
-	spicc->clk = devm_clk_get(&pdev->dev, "clk81");
+	spicc->rst = devm_reset_control_get(&pdev->dev, NULL);
+	if (IS_ERR_OR_NULL(spicc->rst))
+		dev_err(&pdev->dev, "get reset failed\n");
+	else {
+		reset_control_deassert(spicc->rst);
+		dev_info(&pdev->dev, "get reset by default!\n");
+	}
+	spicc->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR_OR_NULL(spicc->clk)) {
 		dev_err(&pdev->dev, "get clk fail\n");
 		return PTR_ERR(spicc->clk);
+	} else {
+		parent_clk = devm_clk_get(&pdev->dev, "parent");
+		if (IS_ERR_OR_NULL(parent_clk)) {
+			dev_err(&pdev->dev, "get parent clk failed\n");
+		} else {
+			clk_set_parent(spicc->clk, parent_clk);
+			clk_prepare_enable(spicc->clk);
+			dev_info(&pdev->dev, "parent clk rate is %d!\n",
+					(unsigned int)clk_get_rate(parent_clk));
+		}
 	}
+
+	if (spicc_get_flag(spicc, FLAG_ENHANCE)) {
+		err = of_property_read_u32(np, "enhance_dlyctl", &value);
+		spicc->enhance_dlyctl = err ? 0 : value;
+		dev_info(&pdev->dev, "enhance_dlyctl=0x%x\n",
+			spicc->enhance_dlyctl);
+	}
+
 	return 0;
 }
 
@@ -980,7 +1023,7 @@ static int spicc_probe(struct platform_device *pdev)
 	struct spicc *spicc;
 	int i, ret;
 
-	BUG_ON(!pdev->dev.of_node);
+	WARN_ON(!pdev->dev.of_node);
 	master = spi_alloc_master(&pdev->dev, sizeof(*spicc));
 	if (IS_ERR_OR_NULL(master)) {
 		dev_err(&pdev->dev, "allocate spi master failed!\n");
@@ -1022,7 +1065,7 @@ static int spicc_probe(struct platform_device *pdev)
 	init_completion(&spicc->completion);
 	if (spicc->irq) {
 		if (request_irq(spicc->irq, spicc_xfer_complete_isr,
-				IRQF_DISABLED, "spicc", spicc)) {
+				IRQF_SHARED, "spicc", spicc)) {
 			dev_err(&pdev->dev, "master %d request irq(%d) failed!\n",
 					master->bus_num, spicc->irq);
 			spicc->irq = 0;
