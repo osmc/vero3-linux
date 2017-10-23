@@ -78,6 +78,14 @@ module_param(eq_dbg_ch1, int, 0664);
 int eq_dbg_ch2;
 MODULE_PARM_DESC(eq_dbg_ch2, "\n eq_dbg_ch2\n");
 module_param(eq_dbg_ch2, int, 0664);
+
+/*
+** select the mode to config eq setting
+** 0: no pddq mode	1: use pddq down and up mode
+*/
+static bool phy_pddq_en;
+MODULE_PARM_DESC(phy_pddq_en, "\n phy_pddq_en\n");
+module_param(phy_pddq_en, bool, 0664);
 /*------------------------variable define end------------------------------*/
 
 bool eq_maxvsmin(int ch0Setting, int ch1Setting, int ch2Setting)
@@ -261,8 +269,19 @@ void eq_cfg(void)
 		hdmirx_wr_phy(PHY_EQCTRL2_CH2, 0x4024 | (avgAcq << 11));
 		hdmirx_wr_phy(PHY_EQCTRL2_CH2, 0x4026 | (avgAcq << 11));
 	}
-	hdmirx_phy_pddq(1);
-	hdmirx_phy_pddq(0);
+
+	/* As for the issue of "Toggling PDDQ after SW EQ sometime effect
+	* HDCP Authentication", SNPS suggestion is to: Skip the PDDQ toggle
+	* after SW EQ, and use below settings instead to update the PHY.
+	* The settings below can move the PHY FSM machine to equalization
+	* again.
+	*/
+	if (phy_pddq_en) {
+		hdmirx_phy_pddq(1);
+		hdmirx_phy_pddq(0);
+	} else
+		hdmi_rx_phy_ConfEqualAutoCalib();
+
 }
 
 uint8_t testType(uint16_t setting, struct st_eq_data *ch_data)
