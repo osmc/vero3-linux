@@ -5631,7 +5631,7 @@ jiffies_to_msecs(jiffies_64 - vframe->ready_jiffies64));
 					->source_type !=
 					di_buf->vframe->source_type) {
 					recycle_keep_buffer();
-					pr_info("%s: source type changed!!!\n",
+					pr_info("%s: source type changed recycle buffer!!!\n",
 						__func__);
 				}
 			}
@@ -9144,14 +9144,19 @@ static void di_vf_put(vframe_t *vf, void *arg)
 	if (di_blocking)
 		return;
 	log_buffer_state("pu_");
-	if (used_post_buf_index != -1) {
-			recycle_keep_buffer();
-	}
 	if (IS_ERR_OR_NULL(di_buf)) {
 		pr_info("%s: get vframe %p without di buf\n",
 			__func__, vf);
 		return;
 	}
+
+	if (used_post_buf_index != -1 &&
+		used_post_buf_index == di_buf->index) {
+		pr_info("[DI]recycle buffer %d, get cnt %d.\n",
+			di_buf->index, disp_frame_count);
+		recycle_keep_buffer();
+	}
+
 	if (di_buf->type == VFRAME_TYPE_POST) {
 		di_lock_irqfiq_save(irq_flag2);
 
