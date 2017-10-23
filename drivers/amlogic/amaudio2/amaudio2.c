@@ -323,7 +323,6 @@ static int amaudio_open(struct inode *inode, struct file *file)
 		playback_data_cache_buf_size = SOFT_BUFFER_SIZE;
 		playback_data_cache_rp = playback_data_cache_start;
 		playback_data_cache_wp = playback_data_cache_start;
-		amaudio2_read_enable = 1;
 		mutex_init(&amaudio2_utils_lock);
 	} else {
 		pr_err("BUG:%s,%d, please check\n", __FILE__, __LINE__);
@@ -549,6 +548,7 @@ static ssize_t amaudio_read(struct file *file, char __user *buf,
 {
 	struct amaudio_t *amaudio = (struct amaudio_t *)file->private_data;
 
+	amaudio2_read_enable = 1;
 	/* just use the software buffer to temp store the output sample data */
 	if (amaudio->type == 3) {
 		if (if_audio_out_enable() == 0 || count == 0 ||
