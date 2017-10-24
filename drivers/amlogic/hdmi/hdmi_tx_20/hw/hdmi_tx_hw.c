@@ -778,7 +778,8 @@ static void hdmi_tvenc1080i_set(struct hdmitx_vidpara *param)
 		vs_bline_odd = 0, vs_eline_odd = 0;
 	unsigned long vso_begin_evn = 0, vso_begin_odd = 0;
 
-	if (param->VIC == HDMI_1080i60) {
+	if ((param->VIC == HDMI_1080i60) ||
+		(param->VIC == HDMI_1080i120)) {
 		INTERLACE_MODE = 1;
 		PIXEL_REPEAT_VENC = 1;
 		PIXEL_REPEAT_HDMI = 0;
@@ -793,7 +794,8 @@ static void hdmi_tvenc1080i_set(struct hdmitx_vidpara *param)
 		VSYNC_LINES = 5;
 		SOF_LINES = 15;
 		TOTAL_FRAMES = 4;
-	} else if (param->VIC == HDMI_1080i50) {
+	} else if ((param->VIC == HDMI_1080i50) ||
+		(param->VIC == HDMI_1080i100)) {
 		INTERLACE_MODE = 1;
 		PIXEL_REPEAT_VENC = 1;
 		PIXEL_REPEAT_HDMI = 0;
@@ -1512,6 +1514,7 @@ static void hdmi_tvenc_set(struct hdmitx_vidpara *param)
 	case HDMI_480p60:
 	case HDMI_480p60_16x9:
 	case HDMI_480p60_16x9_rpt:
+	case HDMI_480p120_16x9:
 		INTERLACE_MODE = 0U;
 		PIXEL_REPEAT_VENC = 1;
 		PIXEL_REPEAT_HDMI = 0;
@@ -1530,6 +1533,7 @@ static void hdmi_tvenc_set(struct hdmitx_vidpara *param)
 	case HDMI_576p50:
 	case HDMI_576p50_16x9:
 	case HDMI_576p50_16x9_rpt:
+	case HDMI_576p100_16x9:
 		INTERLACE_MODE = 0U;
 		PIXEL_REPEAT_VENC = 1;
 		PIXEL_REPEAT_HDMI = 0;
@@ -1546,6 +1550,7 @@ static void hdmi_tvenc_set(struct hdmitx_vidpara *param)
 		TOTAL_FRAMES = 4;
 		break;
 	case HDMI_720p60:
+	case HDMI_720p120:
 		INTERLACE_MODE = 0U;
 		PIXEL_REPEAT_VENC = 1;
 		PIXEL_REPEAT_HDMI = 0;
@@ -1562,6 +1567,7 @@ static void hdmi_tvenc_set(struct hdmitx_vidpara *param)
 		TOTAL_FRAMES = 4;
 		break;
 	case HDMI_720p50:
+	case HDMI_720p100:
 		INTERLACE_MODE = 0U;
 		PIXEL_REPEAT_VENC = 1;
 		PIXEL_REPEAT_HDMI = 0;
@@ -1579,6 +1585,7 @@ static void hdmi_tvenc_set(struct hdmitx_vidpara *param)
 		break;
 	case HDMI_1080p50:
 	case HDMI_1080p25:
+	case HDMI_1080p100:
 		INTERLACE_MODE	= 0U;
 		PIXEL_REPEAT_VENC  = 0;
 		PIXEL_REPEAT_HDMI  = 0;
@@ -1612,6 +1619,7 @@ static void hdmi_tvenc_set(struct hdmitx_vidpara *param)
 		break;
 	case HDMI_1080p60:
 	case HDMI_1080p30:
+	case HDMI_1080p120:
 		INTERLACE_MODE	= 0U;
 		PIXEL_REPEAT_VENC  = 0;
 		PIXEL_REPEAT_HDMI  = 0;
@@ -1714,6 +1722,8 @@ static void hdmi_tvenc_set(struct hdmitx_vidpara *param)
 		break;
 	case HDMI_1080i60:
 	case HDMI_1080i50:
+	case HDMI_1080i100:
+	case HDMI_1080i120:
 		hd_write_reg(P_VPU_HDMI_SETTING, (0 << 0) |
 				(0 << 1) |
 				(HSYNC_POLARITY << 2) |
@@ -1755,8 +1765,10 @@ static void hdmi_tvenc_set(struct hdmitx_vidpara *param)
 	case HDMI_576p50_16x9_rpt:
 	case HDMI_480p60:
 	case HDMI_480p60_16x9:
+	case HDMI_480p120_16x9:
 	case HDMI_576p50:
 	case HDMI_576p50_16x9:
+	case HDMI_576p100_16x9:
 		hd_write_reg(P_VPU_HDMI_SETTING, (0 << 0) |
 				(0 << 1) |
 				(0 << 2) |
@@ -1773,6 +1785,8 @@ static void hdmi_tvenc_set(struct hdmitx_vidpara *param)
 		break;
 	case HDMI_720p60:
 	case HDMI_720p50:
+	case HDMI_720p100:
+	case HDMI_720p120:
 		hd_write_reg(P_VPU_HDMI_SETTING, (0 << 0) |
 				(0 << 1) |
 				(HSYNC_POLARITY << 2) |
@@ -1940,6 +1954,8 @@ do { \
 	case HDMI_4k2k_smpte_24:
 	case HDMI_4096x2160p25_256x135:
 	case HDMI_4096x2160p30_256x135:
+	case HDMI_1080p100:
+	case HDMI_1080p120:
 		if ((hdev->para->cs == COLORSPACE_YUV422)
 			|| (hdev->para->cd == COLORDEPTH_24B))
 			set_phy_by_mode(2);
@@ -1966,6 +1982,10 @@ do { \
 		break;
 	case HDMI_1080p60:
 	case HDMI_1080p50:
+	case HDMI_1080i100:
+	case HDMI_1080i120:
+	case HDMI_720p100:
+	case HDMI_720p120:
 		if (hdev->flag_3dfp)
 			set_phy_by_mode(2);
 		else
@@ -2037,6 +2057,8 @@ static void hdmitx_set_scdc(struct hdmitx_dev *hdev)
 	case HDMI_3840x2160p30_16x9:
 	case HDMI_3840x2160p30_64x27:
 	case HDMI_4096x2160p30_256x135:
+	case HDMI_1920x1080p100_16x9:
+	case HDMI_1920x1080p120_16x9:
 		if ((hdev->para->cs == COLORSPACE_YUV422)
 			|| (hdev->para->cd == COLORDEPTH_24B))
 			hdev->para->tmds_clk_div40 = 0;
@@ -2100,6 +2122,8 @@ static int hdmitx_set_dispmode(struct hdmitx_dev *hdev)
 		break;
 	case HDMI_1080i60:
 	case HDMI_1080i50:
+	case HDMI_1080i100:
+	case HDMI_1080i120:
 		hdmi_tvenc1080i_set(hdev->cur_video_param);
 		break;
 	case HDMI_4k2k_30:

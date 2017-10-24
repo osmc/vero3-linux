@@ -518,6 +518,7 @@ static struct tvregs_set_t tvregsTab[] = {
 	{TVMODE_NTSC_M, tvregs_480cvbs_clk, tvregs_480cvbs_enc},
 	{TVMODE_480P, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_480P_RPT, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
+	{TVMODE_480P_120HZ, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_576I, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_576I_RPT, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_576CVBS, tvregs_576cvbs_clk, tvregs_576cvbs_enc},
@@ -525,15 +526,22 @@ static struct tvregs_set_t tvregsTab[] = {
 	{TVMODE_PAL_N, tvregs_576cvbs_clk, tvregs_pal_n_enc},
 	{TVMODE_576P, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_576P_RPT, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
+	{TVMODE_576P_100HZ, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_720P, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_1080I, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_1080P, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_720P_50HZ, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
+	{TVMODE_720P_100HZ, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
+	{TVMODE_720P_120HZ, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_1080I_50HZ, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
+	{TVMODE_1080I_100HZ, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
+	{TVMODE_1080I_120HZ, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_1080P_30HZ, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_1080P_50HZ, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_1080P_25HZ, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_1080P_24HZ, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
+	{TVMODE_1080P_100HZ, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
+	{TVMODE_1080P_120HZ, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_4K2K_30HZ, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_4K2K_25HZ, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
 	{TVMODE_4K2K_24HZ, tvregs_clk_DUMMY, tvregs_enc_DUMMY},
@@ -619,6 +627,12 @@ static const struct tvinfo_s tvinfoTab[] = {
 		.id = "480p_rpt"
 	},
 	{
+		.tvmode = TVMODE_480P_120HZ,
+		.xres =  720,
+		.yres =  480,
+		.id = "480p120hz"
+	},
+	{
 		.tvmode = TVMODE_576I,
 		.xres = 720,
 		.yres = 576,
@@ -654,6 +668,12 @@ static const struct tvinfo_s tvinfoTab[] = {
 		.id = "576p_prt"
 	},
 	{
+		.tvmode = TVMODE_576P_100HZ,
+		.xres = 720,
+		.yres = 576,
+		.id = "576p100hz"
+	},
+	{
 		.tvmode = TVMODE_720P,
 		.xres = 1280,
 		.yres = 720,
@@ -678,6 +698,18 @@ static const struct tvinfo_s tvinfoTab[] = {
 		.id = "720p50hz"
 	},
 	{
+		.tvmode = TVMODE_720P_100HZ,
+		.xres = 1280,
+		.yres = 720,
+		.id = "720p100hz"
+	},
+	{
+		.tvmode = TVMODE_720P_120HZ,
+		.xres = 1280,
+		.yres = 720,
+		.id = "720p120hz"
+	},
+	{
 		.tvmode = TVMODE_1080I_50HZ,
 		.xres = 1920,
 		.yres = 1080,
@@ -688,6 +720,30 @@ static const struct tvinfo_s tvinfoTab[] = {
 		.xres = 1920,
 		.yres = 1080,
 		.id = "1080p50hz"
+	},
+	{
+		.tvmode = TVMODE_1080I_100HZ,
+		.xres = 1920,
+		.yres = 1080,
+		.id = "1080i100hz"
+	},
+	{
+		.tvmode = TVMODE_1080P_100HZ,
+		.xres = 1920,
+		.yres = 1080,
+		.id = "1080p100hz"
+	},
+	{
+		.tvmode = TVMODE_1080I_120HZ,
+		.xres = 1920,
+		.yres = 1080,
+		.id = "1080i120hz"
+	},
+	{
+		.tvmode = TVMODE_1080P_120HZ,
+		.xres = 1920,
+		.yres = 1080,
+		.id = "1080p120hz"
 	},
 	{
 		.tvmode = TVMODE_1080P_30HZ,

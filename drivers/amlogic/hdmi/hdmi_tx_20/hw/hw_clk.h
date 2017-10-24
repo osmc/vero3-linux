@@ -22,7 +22,7 @@
 #define VID_PLL_DIV_15     13
 #define VID_PLL_DIV_2p5    14
 
-#define GROUP_MAX	8
+#define GROUP_MAX	10
 struct hw_enc_clk_val_group {
 	enum hdmi_vic group[GROUP_MAX];
 	unsigned hpll_clk_out; /* Unit: kHz */
