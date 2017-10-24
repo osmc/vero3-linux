@@ -4078,13 +4078,29 @@ void  osd_suspend_hw(void)
 
 void osd_resume_hw(void)
 {
-	if (osd_hw.reg_status_save &
-		(VPP_OSD1_POSTBLEND | VPP_OSD2_POSTBLEND))
+	if (osd_hw.reg_status_save & VPP_OSD1_POSTBLEND)
 		osd_hw.reg_status_save |= VPP_POSTBLEND_EN;
 	osd_vpp_misc = osd_hw.reg_status_save & OSD_RELATIVE_BITS;
-	notify_to_amvideo();
 	osd_reg_set_mask(VPP_MISC, osd_hw.reg_status_save);
 	/* VSYNCOSD_SET_MPEG_REG_MASK(VPP_MISC, osd_hw.reg_status_save); */
+	if (osd_hw.enable[OSD2] == ENABLE) {
+		osd_vpp_misc |= VPP_OSD2_POSTBLEND;
+		osd_reg_set_mask(
+			VIU_OSD2_CTRL_STAT,
+			1 << 0);
+		osd_reg_set_mask(
+			VPP_MISC,
+			VPP_OSD2_POSTBLEND
+			| VPP_POSTBLEND_EN);
+	} else {
+		osd_vpp_misc &= ~VPP_OSD2_POSTBLEND;
+		osd_reg_clr_mask(VPP_MISC,
+			VPP_OSD2_POSTBLEND);
+		osd_reg_clr_mask(
+			VIU_OSD2_CTRL_STAT,
+			1 << 0);
+	}
+	notify_to_amvideo();
 	osd_log_info("osd_resumed\n");
 	return;
 }
