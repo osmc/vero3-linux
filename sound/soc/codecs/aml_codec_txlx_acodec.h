@@ -16,6 +16,7 @@
 #define ACODEC_TOP_ADDR(x) (x)
 
 #define AUDIO_CONFIG_BLOCK_ENABLE   ACODEC_TOP_ADDR(0x00)
+
 #define MCLK_FREQ                   31
 #define I2S_MODE                    30
 #define ADC_HPF_EN                  29
@@ -76,20 +77,22 @@
 #define REG_MICBIAS_EN				31
 #define REG_MICBIAS_SEL				29 /* bit 29, 30 */
 #define REG_ANA_RESERVED			16 /* bit 16 ~ 28 */
-#define LO1L_SEL_DACL				14
-#define LO1L_SEL_AIL				13
-#define LO1L_SEL_AIL_INV			12
+
+#define LO1L_SEL_DACR_INV			14
+#define LO1L_SEL_DACL				13
+#define LO1L_SEL_AIL				12
+
 #define LO1R_SEL_DACL_INV			10
-#define LO1R_SEL_DACL				9
-#define LO1R_SEL_AIL				8
-#define LO2L_SEL_DACR				6
-#define LO2L_SEL_AIR				5
-#define LO2L_SEL_AIR_INV			4
-#define LO2R_SEL_DACR_INV			2
-#define LO2R_SEL_DACR				1
+#define LO1R_SEL_DACR				9
+#define LO1R_SEL_AIR				8
+
+#define LO2L_SEL_DAC2R_INV			6
+#define LO2L_SEL_DAC2L				5
+#define LO2L_SEL_AIL				4
+
+#define LO2R_SEL_DAC2L_INV			2
+#define LO2R_SEL_DAC2R				1
 #define LO2R_SEL_AIR				0
-
-
 
 #define POWER_CONFIG                ACODEC_TOP_ADDR(0x10)
 #define MUTE_DAC_WHEN_POWER_DOWN    31

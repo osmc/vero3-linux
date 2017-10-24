@@ -29,7 +29,7 @@ struct aml_T9015S_audio_priv {
 };
 
 static const struct reg_default t9015s_init_list[] = {
-	{AUDIO_CONFIG_BLOCK_ENABLE, 0x3400BCFF},
+	{AUDIO_CONFIG_BLOCK_ENABLE, 0x1403BCFF},
 	{ADC_VOL_CTR_PGA_IN_CONFIG, 0x50502929},
 	{DAC_VOL_CTR_DAC_SOFT_MUTE, 0xFBFB0000},
 	{LINE_OUT_CONFIG, 0x00004444},

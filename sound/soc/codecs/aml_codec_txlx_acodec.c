@@ -49,12 +49,12 @@ struct txlx_acodec_priv {
 };
 
 static const struct reg_default txlx_acodec_init_list[] = {
-	/* {AUDIO_CONFIG_BLOCK_ENABLE, 0x3400BCFF}, */
+	{AUDIO_CONFIG_BLOCK_ENABLE, 0x1403BF0F},
 	{ADC_VOL_CTR_PGA_IN_CONFIG, 0x50502929},
 	{DAC_VOL_CTR_DAC_SOFT_MUTE, 0xFBFB0000},
-	{LINE_OUT_CONFIG, 0x00004444},
+	{LINE_OUT_CONFIG, 0x00002222},
 	{POWER_CONFIG, 0x00010000},
-	/* {ACODEC_DAC2_CONFIG, 0xFBFB0030}, */
+	{ACODEC_DAC2_CONFIG, 0xFBFB0000},
 	{ACODEC_DAC2_CONFIG2, 0x0},
 	{ACODEC_7, 0x0}
 };
@@ -66,10 +66,6 @@ static int txlx_acodec_reg_init(struct snd_soc_codec *codec)
 	for (i = 0; i < ARRAY_SIZE(txlx_acodec_init_list); i++)
 		snd_soc_write(codec, txlx_acodec_init_list[i].reg,
 				txlx_acodec_init_list[i].def);
-
-	/*DAC 1 and DAC 2 be enable in the same time */
-	snd_soc_write(codec, AUDIO_CONFIG_BLOCK_ENABLE, 0x3400BCFF);
-	snd_soc_write(codec, ACODEC_DAC2_CONFIG, 0xFBFB0030);
 
 	return 0;
 }
@@ -190,40 +186,42 @@ SOC_DAPM_ENUM("ROUTE_R", linein_right_enum);
 
 /*line out 1 Left mux */
 static const char * const out_l1l_txt[] = {
-	"None", "LO1L_SEL_AIL_INV", "LO1L_SEL_AIL", "Reserved", "LO1L_SEL_DACL"
+	"None", "LO1L_SEL_AIL", "LO1L_SEL_DACL", "Reserved", "LO1L_SEL_DACR_INV"
 };
 
 static const SOC_ENUM_SINGLE_DECL(out_lo1l_enum, LINE_OUT_CONFIG,
-				  LO1L_SEL_AIL_INV, out_l1l_txt);
+				  LO1L_SEL_AIL, out_l1l_txt);
 
 static const struct snd_kcontrol_new lo1l_mux =
 SOC_DAPM_ENUM("LO1L_MUX", out_lo1l_enum);
 
 /*line out 1 right mux */
 static const char * const out_l1r_txt[] = {
-	"None", "LO1R_SEL_AIL", "LO1R_SEL_DACL", "Reserved", "LO1R_SEL_DACL_INV"
+	"None", "LO1R_SEL_AIR", "LO1R_SEL_DACR", "Reserved", "LO1R_SEL_DACL_INV"
 };
 
 static const SOC_ENUM_SINGLE_DECL(out_lo1r_enum, LINE_OUT_CONFIG,
-				  LO1R_SEL_AIL, out_l1r_txt);
+				  LO1R_SEL_AIR, out_l1r_txt);
 
 static const struct snd_kcontrol_new lo1r_mux =
 SOC_DAPM_ENUM("LO1R_MUX", out_lo1r_enum);
 
 /*line out 2 left mux */
 static const char * const out_l2ol_txt[] = {
-	"None", "LO2L_SEL_AIR_INV", "LO2L_SEL_AIR", "Reserved", "LO2L_SEL_DACR"
+	"None", "LO2L_SEL_AIL", "LO2L_SEL_DAC2L", "Reserved",
+	"LO2L_SEL_DAC2R_INV"
 };
 
 static const SOC_ENUM_SINGLE_DECL(out_lo2l_enum, LINE_OUT_CONFIG,
-				  LO2L_SEL_AIR_INV, out_l2ol_txt);
+				  LO2L_SEL_AIL, out_l2ol_txt);
 
 static const struct snd_kcontrol_new lo2l_mux =
 SOC_DAPM_ENUM("LO2L_MUX", out_lo2l_enum);
 
 /*line out 2 Right mux */
 static const char * const out_lo2r_txt[] = {
-	"None", "LO2R_SEL_AIR", "LO2R_SEL_DACR", "Reserved", "LO2R_SEL_DACR_INV"
+	"None", "LO2R_SEL_AIR", "LO2R_SEL_DAC2R", "Reserved",
+	"LO2R_SEL_DAC2L_INV"
 };
 
 static const SOC_ENUM_SINGLE_DECL(out_lo2r_enum, LINE_OUT_CONFIG,
@@ -245,10 +243,10 @@ static const struct snd_soc_dapm_widget txlx_acodec_dapm_widgets[] = {
 	SND_SOC_DAPM_INPUT("Linein right 3"),
 
 	/*PGA input */
-	SND_SOC_DAPM_PGA("PGAL_IN_EN", AUDIO_CONFIG_BLOCK_ENABLE,
-			 PGAL_IN_EN, 0, NULL, 0),
-	SND_SOC_DAPM_PGA("PGAR_IN_EN", AUDIO_CONFIG_BLOCK_ENABLE,
-			 PGAR_IN_EN, 0, NULL, 0),
+	SND_SOC_DAPM_PGA("PGAL_IN_EN", SND_SOC_NOPM,
+			 0, 0, NULL, 0),
+	SND_SOC_DAPM_PGA("PGAR_IN_EN", SND_SOC_NOPM,
+			 0, 0, NULL, 0),
 
 	/*PGA input source select */
 	SND_SOC_DAPM_MUX("Linein left switch", SND_SOC_NOPM,
@@ -257,9 +255,9 @@ static const struct snd_soc_dapm_widget txlx_acodec_dapm_widgets[] = {
 			 0, 0, &lir_mux),
 
 	/*ADC capture stream */
-	SND_SOC_DAPM_ADC("Left ADC", "HIFI Capture", AUDIO_CONFIG_BLOCK_ENABLE,
+	SND_SOC_DAPM_ADC("Left ADC", "Capture", AUDIO_CONFIG_BLOCK_ENABLE,
 			 ADCL_EN, 0),
-	SND_SOC_DAPM_ADC("Right ADC", "HIFI Capture", AUDIO_CONFIG_BLOCK_ENABLE,
+	SND_SOC_DAPM_ADC("Right ADC", "Capture", AUDIO_CONFIG_BLOCK_ENABLE,
 			 ADCR_EN, 0),
 
 	/*Output */
@@ -269,30 +267,30 @@ static const struct snd_soc_dapm_widget txlx_acodec_dapm_widgets[] = {
 	SND_SOC_DAPM_OUTPUT("Lineout 2 right"),
 
 	/*DAC playback stream */
-	SND_SOC_DAPM_DAC("Left DAC", "HIFI Playback",
-			 AUDIO_CONFIG_BLOCK_ENABLE,
-			 DACL_EN, 0),
-	SND_SOC_DAPM_DAC("Right DAC", "HIFI Playback",
-			 AUDIO_CONFIG_BLOCK_ENABLE,
-			 DACR_EN, 0),
+	SND_SOC_DAPM_DAC("Left DAC", "Playback",
+			AUDIO_CONFIG_BLOCK_ENABLE,
+			DACL_EN, 0),
+	SND_SOC_DAPM_DAC("Right DAC", "Playback",
+			AUDIO_CONFIG_BLOCK_ENABLE,
+			DACR_EN, 0),
 
 	/*DAC 2 playback stream */
-	SND_SOC_DAPM_DAC("Left DAC2", "HIFI Playback 2",
-			 ACODEC_DAC2_CONFIG,
-			 DAC2L_EN, 0),
-	SND_SOC_DAPM_DAC("Right DAC2", "HIFI Playback 2",
-			 ACODEC_DAC2_CONFIG,
-			 DAC2R_EN, 0),
+	SND_SOC_DAPM_DAC("Left DAC2", "Playback",
+			ACODEC_DAC2_CONFIG,
+			DAC2L_EN, 0),
+	SND_SOC_DAPM_DAC("Right DAC2", "Playback",
+			ACODEC_DAC2_CONFIG,
+			DAC2R_EN, 0),
 
 	/*DRV output */
 	SND_SOC_DAPM_OUT_DRV("LO1L_OUT_EN", SND_SOC_NOPM,
-			     0, 0, NULL, 0),
+			     LO1L_EN, 0, NULL, 0),
 	SND_SOC_DAPM_OUT_DRV("LO1R_OUT_EN", SND_SOC_NOPM,
-			     0, 0, NULL, 0),
+			     LO1R_EN, 0, NULL, 0),
 	SND_SOC_DAPM_OUT_DRV("LO2L_OUT_EN", SND_SOC_NOPM,
-			     0, 0, NULL, 0),
+			     LO2L_EN, 0, NULL, 0),
 	SND_SOC_DAPM_OUT_DRV("LO2R_OUT_EN", SND_SOC_NOPM,
-			     0, 0, NULL, 0),
+			     LO2R_EN, 0, NULL, 0),
 
 	/*MUX output source select */
 	SND_SOC_DAPM_MUX("Lineout 1 left switch", SND_SOC_NOPM,
@@ -323,21 +321,21 @@ static const struct snd_soc_dapm_route txlx_acodec_dapm_routes[] = {
 	{"Right ADC", NULL, "PGAR_IN_EN"},
 
 /*Output path*/
-	{"Lineout 1 left switch", "LO1L_SEL_DACL", "Left DAC"},
-	{"Lineout 1 left switch", "LO1L_SEL_AIL", "PGAL_IN_EN"},
-	{"Lineout 1 left switch", "LO1L_SEL_AIL_INV", "PGAL_IN_EN"},
+	{"Lineout 1 left switch", NULL, "Left DAC"},
+	{"Lineout 1 left switch", NULL, "Right DAC"},
+	{"Lineout 1 left switch", NULL, "PGAL_IN_EN"},
 
-	{"Lineout 1 right switch", "LO1R_SEL_AIL", "PGAL_IN_EN"},
-	{"Lineout 1 right switch", "LO1R_SEL_DACL", "Left DAC"},
-	{"Lineout 1 right switch", "LO1R_SEL_DACL_INV", "Left DAC"},
+	{"Lineout 1 right switch", NULL, "Right DAC"},
+	{"Lineout 1 right switch", NULL, "Left DAC"},
+	{"Lineout 1 right switch", NULL, "PGAR_IN_EN"},
 
-	{"Lineout 2 left switch", "LO2L_SEL_DACR", "Right DAC2"},
-	{"Lineout 2 left switch", "LO2L_SEL_AIR", "PGAR_IN_EN"},
-	{"Lineout 2 left switch", "LO2L_SEL_AIR_INV", "PGAR_IN_EN"},
+	{"Lineout 2 left switch", NULL, "Left DAC2"},
+	{"Lineout 2 left switch", NULL, "Right DAC2"},
+	{"Lineout 2 left switch", NULL, "PGAL_IN_EN"},
 
-	{"Lineout 2 right switch", "LO2R_SEL_AIR", "PGAR_IN_EN"},
-	{"Lineout 2 right switch", "LO2R_SEL_DACR", "Right DAC2"},
-	{"Lineout 2 right switch", "LO2R_SEL_DACR_INV", "Right DAC"},
+	{"Lineout 2 right switch", NULL, "Right DAC2"},
+	{"Lineout 2 right switch", NULL, "Left DAC2"},
+	{"Lineout 2 right switch", NULL, "PGAR_IN_EN"},
 
 	{"LO1L_OUT_EN", NULL, "Lineout 1 left switch"},
 	{"LO1R_OUT_EN", NULL, "Lineout 1 right switch"},
@@ -352,25 +350,23 @@ static const struct snd_soc_dapm_route txlx_acodec_dapm_routes[] = {
 
 static int txlx_acodec_dai_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
-	struct txlx_acodec_priv *aml_acodec =
-		snd_soc_codec_get_drvdata(dai->codec);
-	uint32_t val;
+	struct snd_soc_codec *codec = dai->codec;
+	u32 val = snd_soc_read(codec, AUDIO_CONFIG_BLOCK_ENABLE);
 
-	pr_info("%s, format:%x\n", __func__, fmt);
+	pr_debug("%s, format:%x, codec = %p\n", __func__, fmt, codec);
 
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBM_CFM:
-		val = 1;
+		val |= (0x1 << I2S_MODE);
 		break;
 	case SND_SOC_DAIFMT_CBS_CFS:
-		val = 0;
+		val &= ~(0x1 << I2S_MODE);
 		break;
 	default:
 		return -EINVAL;
 	}
 
-	regmap_update_bits(aml_acodec->regmap, AUDIO_CONFIG_BLOCK_ENABLE,
-				I2S_MODE, val);
+	snd_soc_write(codec, AUDIO_CONFIG_BLOCK_ENABLE, val);
 
 	return 0;
 }
@@ -390,7 +386,7 @@ static int txlx_acodec_dai_hw_params(struct snd_pcm_substream *substream,
 	struct txlx_acodec_priv *aml_acodec =
 	    snd_soc_codec_get_drvdata(codec);
 
-	pr_info("%s!\n", __func__);
+	pr_debug("%s!\n", __func__);
 
 	aml_acodec->params = params;
 
@@ -432,13 +428,7 @@ static int txlx_acodec_dai_set_bias_level(struct snd_soc_codec *codec,
 static int txlx_acodec_dai_prepare(struct snd_pcm_substream *substream,
 			    struct snd_soc_dai *dai)
 {
-	/*struct snd_soc_codec *codec = dai->codec;*/
-	txlx_acodec_reg_init(dai->codec);
-
-	pr_debug("%s!\n", __func__);
-
 	return 0;
-
 }
 
 static int txlx_acodec_reset(struct snd_soc_codec *codec)
