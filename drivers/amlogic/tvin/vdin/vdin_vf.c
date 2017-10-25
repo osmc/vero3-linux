@@ -403,13 +403,13 @@ int vf_pool_init(struct vf_pool *p, int size)
 		slave->status = VF_STATUS_SL;
 	}
 	atomic_set(&p->buffer_cnt, 0);
-	for (i = 0; i < VFRAME_DISP_MAX_NUM; i++)
-		p->disp_mode[i] = VFRAME_DISP_MODE_NULL;
-	p->disp_index = 0;
-	if (p->skip_vf_num == 2)
-		p->disp_index_last2 = 0;
-	p->disp_index_last = 0;
-	p->disp_index_cur = 0;
+	for (i = 0; i < VFRAME_DISP_MAX_NUM; i++) {
+		if (p->skip_vf_num == 0)
+			p->disp_mode[i] = VFRAME_DISP_MODE_NULL;
+		else
+			p->disp_mode[i] = VFRAME_DISP_MODE_UNKNOWN;
+		p->disp_index[i] = 0;
+	}
 #ifdef VF_LOG_EN
 	spin_lock_irqsave(&p->log_lock, flags);
 	vf_log_init(p);
@@ -926,53 +926,17 @@ void vdin_dump_vf_state(struct vf_pool *p)
 */
 void vdin_vf_disp_mode_update(struct vf_entry *vfe, struct vf_pool *p)
 {
-	if (p->skip_vf_num == 2)
-		p->disp_index_last2 = p->disp_index_last;
-	p->disp_index_last = p->disp_index_cur;
-	p->disp_index++;
-	if (p->disp_index >= VFRAME_DISP_MAX_NUM)
-		p->disp_index = 0;
-	p->disp_index_cur = p->disp_index;
-	vfe->vf.index_disp = p->disp_index_cur;
-	if (((p->disp_index_last == 0) &&
-		(p->disp_mode[p->disp_index_last] == VFRAME_DISP_MODE_NULL)) ||
-		(p->disp_mode[p->disp_index_last] == VFRAME_DISP_MODE_SKIP)) {
-		if (p->skip_vf_num == 2)
-			p->disp_mode[p->disp_index_last2] =
-				VFRAME_DISP_MODE_UNKNOWN;
-		if (p->skip_vf_num == 1)
-			p->disp_mode[p->disp_index_last] =
-				VFRAME_DISP_MODE_UNKNOWN;
-		if (p->skip_vf_num == 0)
-			p->disp_mode[p->disp_index_cur] = VFRAME_DISP_MODE_OK;
-		else
-			p->disp_mode[p->disp_index_cur] =
-				VFRAME_DISP_MODE_UNKNOWN;
-	} else {
-		if (p->skip_vf_num == 2) {
-			/*last last vframe*/
-			p->disp_mode[p->disp_index_last2] = VFRAME_DISP_MODE_OK;
-			/*last vframe*/
-			p->disp_mode[p->disp_index_last] =
-				VFRAME_DISP_MODE_UNKNOWN;
-			/*current vframe*/
-			p->disp_mode[p->disp_index_cur] =
-				VFRAME_DISP_MODE_UNKNOWN;
-		} else if (p->skip_vf_num == 1) {
-			/*last vframe*/
-			p->disp_mode[p->disp_index_last] = VFRAME_DISP_MODE_OK;
-			/*current vframe*/
-			p->disp_mode[p->disp_index_cur] =
-				VFRAME_DISP_MODE_UNKNOWN;
-		} else if (p->skip_vf_num == 0) {
-			/*current vframe*/
-			p->disp_mode[p->disp_index_cur] = VFRAME_DISP_MODE_OK;
-		} else {
-			/*current vframe*/
-			p->disp_mode[p->disp_index_cur] = VFRAME_DISP_MODE_OK;
-		}
-	}
+	unsigned int i;
+	for (i = p->skip_vf_num; (i > 0) && (i < VFRAME_DISP_MAX_NUM); i--)
+		p->disp_index[i] = p->disp_index[i - 1];
+	p->disp_index[0]++;
+	if (p->disp_index[0] >= VFRAME_DISP_MAX_NUM)
+		p->disp_index[0] = 0;
+	vfe->vf.index_disp = p->disp_index[0];
 
+	p->disp_mode[p->disp_index[p->skip_vf_num]] = VFRAME_DISP_MODE_OK;
+	for (i = p->skip_vf_num - 1; (i >= 0) && (i < VFRAME_DISP_MAX_NUM); i--)
+		p->disp_mode[p->disp_index[i]] = VFRAME_DISP_MODE_UNKNOWN;
 }
 /*disp mode skip
 *skip_vf_num
@@ -981,21 +945,8 @@ void vdin_vf_disp_mode_update(struct vf_entry *vfe, struct vf_pool *p)
 */
 void vdin_vf_disp_mode_skip(struct vf_pool *p)
 {
-	if ((p->disp_index == 0) &&
-		(p->disp_mode[p->disp_index] == VFRAME_DISP_MODE_NULL))
-		return;
-	else {
-		/*last last vframe*/
-		if (p->skip_vf_num == 2)
-			p->disp_mode[p->disp_index_last2] =
-				VFRAME_DISP_MODE_SKIP;
-		/*last vframe*/
-		if (p->skip_vf_num == 1)
-			p->disp_mode[p->disp_index_last] =
-				VFRAME_DISP_MODE_SKIP;
-		/*current vframe*/
-		if (p->skip_vf_num == 0)
-			p->disp_mode[p->disp_index_cur] = VFRAME_DISP_MODE_SKIP;
-	}
+	unsigned int i;
+	for (i = p->skip_vf_num - 1; (i >= 0) && (i < VFRAME_DISP_MAX_NUM); i--)
+		p->disp_mode[i] = VFRAME_DISP_MODE_SKIP;
 }
 

@@ -29,11 +29,8 @@
 #include "vdin_canvas.h"
 #include "vdin_ctl.h"
 /*the value depending on dts config mem limit
-when vdin output YUV444/RGB444,Di will bypass dynamic;
-4 frame buffer may not enough,result in frame loss;
-After test on gxtvbb(input 1080p60,output 4k42210bit),6 frame is enough?
-(input 4k,output 4k42210bit 5 frame is enough).*/
-static unsigned int max_buf_num = 6;
+for skip two vframe case,need +2*/
+static unsigned int max_buf_num = VDIN_CANVAS_MAX_CNT;
 static unsigned int min_buf_num = 4;
 static unsigned int max_buf_width = VDIN_CANVAS_MAX_WIDTH_HD;
 static unsigned int max_buf_height = VDIN_CANVAS_MAX_HEIGH;
@@ -318,9 +315,11 @@ unsigned int vdin_cma_alloc(struct vdin_dev_s *devp)
 		max_buffer_num++;
 	/*todo: need update if vf_skip_cnt used by other port*/
 	if (devp->vfp->skip_vf_num &&
-		((devp->parm.port >= TVIN_PORT_HDMI0) &&
-			(devp->parm.port <= TVIN_PORT_HDMI7)))
-		max_buffer_num++;
+		(((devp->parm.port >= TVIN_PORT_HDMI0) &&
+			(devp->parm.port <= TVIN_PORT_HDMI7)) ||
+			((devp->parm.port >= TVIN_PORT_CVBS0) &&
+			(devp->parm.port <= TVIN_PORT_CVBS7))))
+		max_buffer_num += devp->vfp->skip_vf_num;
 	if (max_buffer_num > max_buf_num)
 		max_buffer_num = max_buf_num;
 

@@ -146,12 +146,9 @@ struct vf_pool {
 	unsigned int dv_buf_size[VDIN_DV_MAX_NUM];
 	char *dv_buf[VDIN_DV_MAX_NUM];
 	char *dv_buf_ori[VDIN_DV_MAX_NUM];
+	unsigned int disp_index[VFRAME_DISP_MAX_NUM];
+	unsigned int skip_vf_num;/*skip pre vframe num*/
 	enum vframe_disp_mode_e	disp_mode[VFRAME_DISP_MAX_NUM];
-	unsigned int disp_index_cur;
-	unsigned int disp_index_last2;
-	unsigned int disp_index_last;
-	unsigned int disp_index;
-	unsigned int skip_vf_num;/*skip hdmi pre vframe num*/
 };
 extern unsigned int dolby_size_byte;
 extern unsigned int dv_dbg_mask;

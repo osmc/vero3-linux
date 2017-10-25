@@ -249,7 +249,7 @@ static int ignore_443_358;
 module_param(ignore_443_358, int, 0644);
 MODULE_PARM_DESC(ignore_443_358, "ignore_443_358\n");
 
-static int pga_default_vale = 0x10;
+static int pga_default_vale = 0x20;
 module_param(pga_default_vale, int, 0644);
 MODULE_PARM_DESC(pga_default_vale, "pga_default_vale\n");
 
@@ -257,6 +257,7 @@ static int pga_delta_val = 0x10;
 module_param(pga_delta_val, int, 0644);
 MODULE_PARM_DESC(pga_delta_val, "pga delta val\n");
 static int dg_ave_last = 0x200;
+static int pga_step_last = 1;
 
 /*for force fmt*/
 /* static enum tvin_sig_fmt_e line525fmt = TVIN_SIG_FMT_NULL; */
@@ -269,10 +270,11 @@ static unsigned int acd_h_config = 0x8e035e;
 module_param(acd_h_config, uint, 0664);
 MODULE_PARM_DESC(acd_h_config, "acd_h_config");
 
-static unsigned int acd_h = 0X880358;
+/*0x890359 is default setting for pal*/
+static unsigned int acd_h = 0X890359;
 module_param(acd_h, uint, 0664);
 MODULE_PARM_DESC(acd_h, "acd_h");
-static unsigned int acd_h_back = 0X880358;
+static unsigned int acd_h_back = 0X890359;
 
 /*0:NORMAL  1:a little sharper 2:sharper 3:even sharper*/
 static unsigned int cvd2_filter_config_level;
@@ -801,6 +803,9 @@ inline void tvafe_cvd2_reset_pga(void)
 				__func__);
 		}
 	}
+	/*reset pga parameter*/
+	pga_step_last = 1;
+	dg_ave_last = 0x200;
 }
 
 #ifdef TVAFE_SET_CVBS_CDTO_EN
@@ -912,7 +917,7 @@ inline void tvafe_cvd2_try_format(struct tvafe_cvd2_s *cvd2,
 /*
  * tvafe cvd2 get signal status from Reg
  */
-static void tvafe_cvd2_get_signal_status(struct tvafe_cvd2_s *cvd2)
+void tvafe_cvd2_get_signal_status(struct tvafe_cvd2_s *cvd2)
 {
 	int data = 0;
 
@@ -2310,7 +2315,7 @@ inline void tvafe_cvd2_adj_pga(struct tvafe_cvd2_s *cvd2)
 {
 	unsigned short dg_max = 0, dg_min = 0xffff, dg_ave = 0, i = 0, pga = 0;
 	unsigned int tmp = 0;
-	unsigned char step = 0;
+	unsigned int step = 0;
 	unsigned int delta_dg = 0;
 
 	if ((cvd_isr_en & 0x100) == 0)
@@ -2332,83 +2337,71 @@ inline void tvafe_cvd2_adj_pga(struct tvafe_cvd2_s *cvd2)
 		dg_ave += cvd2->info.dgain[i];
 	}
 	if (++cvd2->info.dgain_cnt >=
-		TVAFE_SET_CVBS_PGA_START + TVAFE_SET_CVBS_PGA_STEP){
-
+		(TVAFE_SET_CVBS_PGA_START + pga_step_last))
 		cvd2->info.dgain_cnt = TVAFE_SET_CVBS_PGA_START;
-	}
-	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXTVBB) {
-		if (cvd2->info.dgain_cnt == TVAFE_SET_CVBS_PGA_START) {
-
-			cvd2->info.dgain_cnt = 0;
-			dg_ave = (dg_ave - dg_max - dg_min + 1) >> 1;
-			pga = R_APB_BIT(TVFE_VAFE_CTRL1, VAFE_PGA_GAIN_BIT,
-							VAFE_PGA_GAIN_WID);
-
-			delta_dg = abs((signed short)dg_ave -
-				(signed short)dg_ave_last);
-			if (((dg_ave >= CVD2_DGAIN_LIMITL) &&
-				(dg_ave <= CVD2_DGAIN_LIMITH)) &&
-				(delta_dg < CVD2_DGAIN_WINDOW*2)) {
-				return;
-
-			} else if ((dg_ave < CVD2_DGAIN_LIMITL) && (pga == 0)) {
-				return;
-
-			} else if ((dg_ave > CVD2_DGAIN_LIMITH) &&
-				(pga >= (255+97))) {
-				return;
-
-			} else{
-				if (cvd_dbg_en)
-					pr_info("%s: dg_ave_last:0x%x dg_ave:0x%x. pga 0x%x.\n",
-					__func__, dg_ave_last, dg_ave, pga);
-				dg_ave_last = dg_ave;
-			}
-			tmp = abs((signed short)dg_ave -
-				(signed short)CVD2_DGAIN_MIDDLE);
-
-			if (tmp > CVD2_DGAIN_MIDDLE)
-				step = 16;
-			else if (tmp > (CVD2_DGAIN_MIDDLE >> 1))
-				step = 5;
-			else if (tmp > (CVD2_DGAIN_MIDDLE >> 2))
-				step = 2;
-			else
-				step = 1;
-			if ((delta_dg > CVD2_DGAIN_MIDDLE) ||
-				((delta_dg == 0) &&
-				(tmp > (CVD2_DGAIN_MIDDLE >> 2))))
-				step = pga_delta_val;
-			if (dg_ave > CVD2_DGAIN_LIMITH) {
-
-				pga += step;
-				if (pga >= 255)  /* set max value */
-					pga = 255;
-
-			} else{
-
-				if (pga < step)  /* set min value */
-					pga = 0;
-				else
-					pga -= step;
-			}
-			if (pga < 2)
-				pga = 2;
-
-			if (pga != R_APB_BIT(TVFE_VAFE_CTRL1,
-				VAFE_PGA_GAIN_BIT, VAFE_PGA_GAIN_WID)){
-
-					if (cvd_dbg_en)
-						pr_info("%s: set pag:0x%x. current dgain 0x%x.\n",
-					__func__, pga, cvd2->info.dgain[3]);
-					W_APB_BIT(TVFE_VAFE_CTRL1, pga,
-				VAFE_PGA_GAIN_BIT, VAFE_PGA_GAIN_WID);
-			}
-		}
-
+	else
 		return;
-
-	} else{
+	if ((get_cpu_type() >= MESON_CPU_MAJOR_ID_GXTVBB) &&
+		(cvd2->info.dgain_cnt == TVAFE_SET_CVBS_PGA_START)) {
+		cvd2->info.dgain_cnt = 0;
+		dg_ave = (dg_ave - dg_max - dg_min + 1) >> 1;
+		pga = R_APB_BIT(TVFE_VAFE_CTRL1, VAFE_PGA_GAIN_BIT,
+			VAFE_PGA_GAIN_WID);
+		delta_dg = abs(dg_ave - (signed short)dg_ave_last);
+		if (((dg_ave >= CVD2_DGAIN_LIMITL) &&
+			(dg_ave <= CVD2_DGAIN_LIMITH)) &&
+			(delta_dg < CVD2_DGAIN_WINDOW*2)) {
+			return;
+		} else if ((dg_ave < CVD2_DGAIN_LIMITL) && (pga == 0)) {
+			return;
+		} else if ((dg_ave > CVD2_DGAIN_LIMITH) &&
+			(pga >= (255+97))) {
+			return;
+		} else{
+			if (cvd_dbg_en)
+				pr_info("%s: dg_ave_last:0x%x dg_ave:0x%x. pga 0x%x.\n",
+				__func__, dg_ave_last, dg_ave, pga);
+			dg_ave_last = dg_ave;
+		}
+		tmp = abs(dg_ave - (signed short)CVD2_DGAIN_MIDDLE);
+		if (tmp > CVD2_DGAIN_MIDDLE)
+			step = 16;
+		else if (tmp > (CVD2_DGAIN_MIDDLE >> 1))
+			step = 5;
+		else if (tmp > (CVD2_DGAIN_MIDDLE >> 2))
+			step = 2;
+		else
+			step = 1;
+		if ((delta_dg > CVD2_DGAIN_MIDDLE) ||
+			((delta_dg == 0) &&
+			(tmp > (CVD2_DGAIN_MIDDLE >> 2))))
+			step = pga_delta_val;
+		if (dg_ave > CVD2_DGAIN_LIMITH) {
+			pga += step;
+			if (pga >= 255)  /* set max value */
+				pga = 255;
+		} else{
+			if (pga < step)  /* set min value */
+				pga = 0;
+			else
+				pga -= step;
+		}
+		if (pga < 2)
+			pga = 2;
+		if (pga != R_APB_BIT(TVFE_VAFE_CTRL1,
+			VAFE_PGA_GAIN_BIT, VAFE_PGA_GAIN_WID)){
+			if (cvd_dbg_en)
+				pr_info("%s: set pag:0x%x. current dgain 0x%x.\n",
+					__func__, pga, cvd2->info.dgain[3]);
+			W_APB_BIT(TVFE_VAFE_CTRL1, pga,
+			VAFE_PGA_GAIN_BIT, VAFE_PGA_GAIN_WID);
+			if (cvd_dbg_en)
+				pr_info("%s: pga_step_last:0x%x step:0x%x.\n",
+					__func__, pga_step_last, step);
+		}
+		pga_step_last = step;
+		return;
+	} else {
 
 		if (cvd2->info.dgain_cnt == TVAFE_SET_CVBS_PGA_START) {
 

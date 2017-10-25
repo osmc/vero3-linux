@@ -139,10 +139,6 @@ static bool game_mode;
 module_param(game_mode, bool, 0664);
 MODULE_PARM_DESC(game_mode, "game_mode");
 
-static unsigned int vf_skip_cnt = 1;
-module_param(vf_skip_cnt, uint, 0664);
-MODULE_PARM_DESC(vf_skip_cnt, "skip frame cnt for hdmi");
-
 static int irq_max_count;
 
 static void vdin_backup_histgram(struct vframe_s *vf, struct vdin_dev_s *devp);
@@ -613,9 +609,6 @@ static void vdin_set_display_ratio(struct vdin_dev_s *devp,
 		vf->ratio_control = 0x90 << DISP_RATIO_ASPECT_RATIO_BIT;
 	else
 		vf->ratio_control = 0x0 << DISP_RATIO_ASPECT_RATIO_BIT;
-	if (vdin_dbg_en)
-		pr_info("current aspect_ratio:%d,ratio_control:0x%x\n",
-			aspect_ratio, vf->ratio_control);
 }
 
 /*function:set source bitdepth
@@ -835,7 +828,9 @@ void vdin_start_dec(struct vdin_dev_s *devp)
 	if (game_mode)
 		devp->vfp->skip_vf_num = 1;
 	else
-		devp->vfp->skip_vf_num = vf_skip_cnt;
+		devp->vfp->skip_vf_num = devp->prop.skip_vf_num;
+	if (devp->vfp->skip_vf_num >= VDIN_CANVAS_MAX_CNT)
+		devp->vfp->skip_vf_num = 0;
 	devp->canvas_config_mode = canvas_config_mode;
 	/* h_active/v_active will be recalculated by bellow calling */
 	vdin_set_decimation(devp);
@@ -1636,9 +1631,8 @@ irqreturn_t vdin_isr(int irq, void *dev_id)
 			vdin_drop_cnt++;
 			goto irq_handled;
 		}
-		/*hdmi skip policy process*/
-		if ((devp->parm.port >= TVIN_PORT_HDMI0) &&
-			(devp->parm.port <= TVIN_PORT_HDMI7))
+		/*skip policy process*/
+		if (devp->vfp->skip_vf_num > 0)
 			vdin_vf_disp_mode_update(devp->last_wr_vfe, devp->vfp);
 
 		devp->last_wr_vfe = NULL;
@@ -1866,9 +1860,8 @@ irqreturn_t vdin_isr(int irq, void *dev_id)
 			vdin_drop_cnt++;
 			goto irq_handled;
 		}
-		/*hdmi skip policy process*/
-		if ((devp->parm.port >= TVIN_PORT_HDMI0) &&
-			(devp->parm.port <= TVIN_PORT_HDMI7))
+		/*skip policy process*/
+		if (devp->vfp->skip_vf_num > 0)
 			vdin_vf_disp_mode_update(curr_wr_vfe, devp->vfp);
 	}
 	/* prepare for next input data */
@@ -1899,8 +1892,7 @@ irqreturn_t vdin_isr(int irq, void *dev_id)
 
 irq_handled:
 	/*hdmi skip policy should adapt to all drop vframe case*/
-	if ((devp->parm.port >= TVIN_PORT_HDMI0) &&
-		(devp->parm.port <= TVIN_PORT_HDMI7) &&
+	if ((devp->vfp->skip_vf_num > 0) &&
 		(vf_drop_cnt < vdin_drop_cnt))
 		vdin_vf_disp_mode_skip(devp->vfp);
 

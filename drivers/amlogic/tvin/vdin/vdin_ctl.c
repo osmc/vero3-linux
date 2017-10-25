@@ -3555,7 +3555,7 @@ int vdin_event_cb(int type, void *data, void *op_arg)
 			return -1;
 		}
 		req->disp_mode = p->disp_mode[index_disp];
-		if (req->req_mode == 1)
+		if ((req->req_mode == 1) && (p->skip_vf_num))
 			p->disp_mode[index_disp] = VFRAME_DISP_MODE_UNKNOWN;
 		if (vdin_ctl_dbg)
 			pr_info("%s(type 0x%x vf index 0x%x)=>disp_mode %d,req_mode:%d\n",

@@ -110,8 +110,8 @@ MODULE_PARM_DESC(tvafe_ratio_cnt, "tvafe aspect ratio valid cnt");
 static struct tvafe_info_s *g_tvafe_info;
 
 /***********the  version of changing log************************/
-static const char last_version_s[] = "2013-11-29||11-28";
-static const char version_s[] = "2016-12-27||17-23";
+static const char last_version_s[] = "2016-12-27";
+static const char version_s[] = "2017-02-09";
 /***************************************************************************/
 void get_afe_version(const char **ver, const char **last_ver)
 {
@@ -136,6 +136,8 @@ static void tvafe_state(struct tvafe_dev_s *devp)
 		devp->cma_config_en);
 	pr_info("[tvafe..]tvafe_dev_s->cma_config_flag:0x%x\n",
 		devp->cma_config_flag);
+	pr_info("[tvafe..]tvafe_dev_s->frame_skip_enable:%d\n",
+		devp->frame_skip_enable);
 	#ifdef CONFIG_CMA
 	pr_info("[tvafe..]devp->cma_mem_size:0x%x\n", devp->cma_mem_size);
 	pr_info("[tvafe..]devp->cma_mem_alloc:%d\n", devp->cma_mem_alloc);
@@ -257,6 +259,24 @@ static void tvafe_state(struct tvafe_dev_s *devp)
 	pr_info("[tvafe..]tvafe_cvd2_hw_data_s->fsc_443:%d\n", hw->fsc_443);
 }
 
+static void tvafe_parse_param(char *buf_orig, char **parm)
+{
+	char *ps, *token;
+	char delim1[2] = " ";
+	char delim2[2] = "\n";
+	unsigned int n = 0;
+	ps = buf_orig;
+	strcat(delim1, delim2);
+	while (1) {
+		token = strsep(&ps, delim1);
+		if (token == NULL)
+			break;
+		if (*token == '\0')
+			continue;
+		parm[n++] = token;
+	}
+}
+
 /*default only one tvafe ,echo cvdfmt pali/palm/ntsc/secam >dir*/
 static ssize_t tvafe_store(struct device *dev,
 		struct device_attribute *attr, const char *buff, size_t count)
@@ -265,10 +285,16 @@ static ssize_t tvafe_store(struct device *dev,
 
 	struct tvafe_dev_s *devp;
 	unsigned long tmp = 0;
+	char *buf_orig, *parm[47] = {NULL};
+	long val;
+
 	devp = dev_get_drvdata(dev);
+	if (!buff)
+		return count;
+	buf_orig = kstrdup(buff, GFP_KERNEL);
+	tvafe_parse_param(buf_orig, (char **)&parm);
 
 	if (!strncmp(buff, "cvdfmt", strlen("cvdfmt"))) {
-
 		fmt_index = strlen("cvdfmt") + 1;
 		if (!strncmp(buff+fmt_index, "ntscm", strlen("ntscm")))
 			devp->tvafe.cvd2.manual_fmt = TVIN_SIG_FMT_CVBS_NTSC_M;
@@ -290,7 +316,6 @@ static ssize_t tvafe_store(struct device *dev,
 			devp->tvafe.cvd2.manual_fmt = TVIN_SIG_FMT_NULL;
 		else
 			pr_info("%s:invaild command.", buff);
-
 	} else if (!strncmp(buff, "disableapi", strlen("disableapi"))) {
 		if (kstrtoul(buff+strlen("disableapi")+1, 10, &tmp) == 0)
 			disableapi = tmp;
@@ -304,11 +329,6 @@ static ssize_t tvafe_store(struct device *dev,
 	} else if (!strncmp(buff, "vdin_bbld", strlen("vdin_bbld"))) {
 		tvin_vdin_bbar_init(devp->tvafe.parm.info.fmt);
 		devp->tvafe.adc.vga_auto.phase_state = VGA_VDIN_BORDER_DET;
-#endif
-	} else if (!strncmp(buff, "pdown", strlen("pdown"))) {
-		devp->flags |= TVAFE_POWERDOWN_IN_IDLE;
-		tvafe_enable_module(false);
-#if 0
 	} else if (!strncmp(buff, "vga_edid", strlen("vga_edid"))) {
 		struct tvafe_vga_edid_s edid;
 		int i = 0;
@@ -372,13 +392,19 @@ static ssize_t tvafe_store(struct device *dev,
 		tvafe_vga_set_edid(&edid);
 #endif
 	} else if (!strncmp(buff, "tvafe_enable", strlen("tvafe_enable"))) {
-		tvafe_enable_module(true);
-		devp->flags &= (~TVAFE_POWERDOWN_IN_IDLE);
-		pr_info("[tvafe..]%s:tvafe enable\n", __func__);
-	} else if (!strncmp(buff, "tvafe_down", strlen("tvafe_down"))) {
-		devp->flags |= TVAFE_POWERDOWN_IN_IDLE;
-		tvafe_enable_module(false);
-		pr_info("[tvafe..]%s:tvafe down\n", __func__);
+		if (kstrtoul(parm[1], 10, &val) < 0) {
+			kfree(buf_orig);
+			return -EINVAL;
+		}
+		if (val) {
+			tvafe_enable_module(true);
+			devp->flags &= (~TVAFE_POWERDOWN_IN_IDLE);
+			pr_info("[tvafe..]%s:tvafe enable\n", __func__);
+		} else {
+			devp->flags |= TVAFE_POWERDOWN_IN_IDLE;
+			tvafe_enable_module(false);
+			pr_info("[tvafe..]%s:tvafe down\n", __func__);
+		}
 	} else if (!strncmp(buff, "afe_ver", strlen("afe_ver"))) {
 		const char *afe_version = NULL, *last_afe_version = NULL;
 		const char *adc_version = NULL, *last_adc_version = NULL;
@@ -392,20 +418,34 @@ static ssize_t tvafe_store(struct device *dev,
 		pr_info("LAST VERSION:[tvafe version]:%s\t[cvd2 version]:%s\t[adc version]:%s\t[format table version]:NUll\n",
 		last_afe_version, last_cvd_version, last_adc_version);
 	} else if (!strncmp(buff, "snowon", strlen("snowon"))) {
-		tvafe_snow_config(1);
-		tvafe_snow_config_clamp(1);
-		devp->flags |= TVAFE_FLAG_DEV_SNOW_FLAG;
-		tvafe_snow_function_flag = true;
-		pr_info("[tvafe..]%s:tvafe snowon\n", __func__);
-	} else if (!strncmp(buff, "snowoff", strlen("snowoff"))) {
-		tvafe_snow_config(0);
-		tvafe_snow_config_clamp(0);
-		devp->flags &= (~TVAFE_FLAG_DEV_SNOW_FLAG);
-		pr_info("[tvafe..]%s:tvafe snowoff\n", __func__);
+		if (kstrtoul(parm[1], 10, &val) < 0) {
+			kfree(buf_orig);
+			return -EINVAL;
+		}
+		if (val) {
+			tvafe_snow_config(1);
+			tvafe_snow_config_clamp(1);
+			devp->flags |= TVAFE_FLAG_DEV_SNOW_FLAG;
+			tvafe_snow_function_flag = true;
+			pr_info("[tvafe..]%s:tvafe snowon\n", __func__);
+		} else {
+			tvafe_snow_config(0);
+			tvafe_snow_config_clamp(0);
+			devp->flags &= (~TVAFE_FLAG_DEV_SNOW_FLAG);
+			pr_info("[tvafe..]%s:tvafe snowoff\n", __func__);
+		}
+	} else if (!strcmp(parm[0], "frame_skip_enable")) {
+		if (kstrtoul(parm[1], 10, &val) < 0) {
+			kfree(buf_orig);
+			return -EINVAL;
+		}
+		devp->frame_skip_enable = val;
+		pr_info("frame_skip_enable:%d\n", devp->frame_skip_enable);
 	} else if (!strncmp(buff, "state", strlen("state"))) {
 		tvafe_state(devp);
 	} else
 		pr_info("[%s]:invaild command.\n", __func__);
+	kfree(buf_orig);
 	return count;
 }
 
@@ -459,6 +499,7 @@ static ssize_t dumpmem_store(struct device *dev,
 			if (IS_ERR(filp)) {
 				pr_err(KERN_ERR"create %s error.\n",
 					parm[1]);
+				kfree(buf_orig);
 				return len;
 			}
 			if (devp->cma_config_flag == 1)
@@ -475,50 +516,32 @@ static ssize_t dumpmem_store(struct device *dev,
 			set_fs(old_fs);
 		}
 	}
+	kfree(buf_orig);
 	return len;
 
 }
 
 
 static ssize_t tvafe_show(struct device *dev,
-		struct device_attribute *attr, char *buff)
+		struct device_attribute *attr, char *buf)
 {
 	ssize_t len = 0;
-
-	struct tvafe_dev_s *devp;
-	devp = dev_get_drvdata(dev);
-		switch (devp->tvafe.cvd2.manual_fmt) {
-
-		case TVIN_SIG_FMT_CVBS_NTSC_M:
-			len = sprintf(buff, "cvdfmt:%s.\n", "ntscm");
-			break;
-		case TVIN_SIG_FMT_CVBS_NTSC_443:
-			len = sprintf(buff, "cvdfmt:%s.\n", "ntsc443");
-			break;
-		case TVIN_SIG_FMT_CVBS_PAL_I:
-			len = sprintf(buff, "cvdfmt:%s.\n", "pali");
-			break;
-		case TVIN_SIG_FMT_CVBS_PAL_M:
-			len = sprintf(buff, "cvdfmt:%s.\n", "palm");
-			break;
-		case TVIN_SIG_FMT_CVBS_PAL_60:
-			len = sprintf(buff, "cvdfmt:%s.\n", "pal60");
-			break;
-		case TVIN_SIG_FMT_CVBS_PAL_CN:
-			len = sprintf(buff, "cvdfmt:%s.\n", "palcn");
-			break;
-		case TVIN_SIG_FMT_CVBS_SECAM:
-			len = sprintf(buff, "cvdfmt:%s.\n", "secam");
-			break;
-		case TVIN_SIG_FMT_NULL:
-			len = sprintf(buff, "cvdfmt:%s.\n", "auto");
-		default:
-			len = sprintf(buff, "cvdfmt:%s.\n", "invaild command");
-			break;
-
-	}
-	if (disableapi)
-		pr_info("[%s]:diableapi!!!.\n", __func__);
+	len += sprintf(buf+len,
+		"echo cvdfmt ntsc/ntsc443/pali/palm/palcn/pal60/secam/null > /sys/class/tvafe/tvafe0/debug;conifg manual fmt\n");
+	len += sprintf(buf+len,
+		"echo disableapi val(d) > /sys/class/tvafe/tvafe0/debug;enable/ignore api cmd\n");
+	len += sprintf(buf+len,
+		"echo force_stable val(d) > /sys/class/tvafe/tvafe0/debug;force stable or not force\n");
+	len += sprintf(buf+len,
+		"echo tvafe_enable val(d) > /sys/class/tvafe/tvafe0/debug;tvafe enable/disable\n");
+	len += sprintf(buf+len,
+		"echo afe_ver > /sys/class/tvafe/tvafe0/debug;show tvafe version\n");
+	len += sprintf(buf+len,
+		"echo snow val(d) > /sys/class/tvafe/tvafe0/debug;snow on/off\n");
+	len += sprintf(buf+len,
+		"echo frame_skip_enable val(d) > /sys/class/tvafe/tvafe0/debug;frame skip enable/disable\n");
+	len += sprintf(buf+len,
+		"echo state > /sys/class/tvafe/tvafe0/debug;show tvafe status\n");
 	return len;
 }
 static DEVICE_ATTR(debug, 0644, tvafe_show, tvafe_store);
@@ -570,8 +593,10 @@ static ssize_t reg_store(struct device *dev,
 		argv[argn] = para;
 	}
 
-	if (argn < 1 || argn > 3)
+	if (argn < 1 || argn > 3) {
+		kfree(buf_work);
 		return count;
+	}
 
 	cmd = argv[0][0];
 
@@ -660,6 +685,7 @@ static ssize_t reg_store(struct device *dev,
 			pr_err("not support.\n");
 			break;
 	}
+	kfree(buf_work);
 	return count;
 }
 
@@ -1122,6 +1148,7 @@ void tvafe_dec_close(struct tvin_frontend_s *fe)
 	/* init variable */
 	memset(tvafe, 0, sizeof(struct tvafe_info_s));
 
+	devp->flags &= (~TVAFE_FLAG_DEV_STARTED);
 	devp->flags &= (~TVAFE_FLAG_DEV_OPENED);
 
 	pr_info("[tvafe..] %s close afe ok.\n", __func__);
@@ -1143,15 +1170,20 @@ int tvafe_dec_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 	if (!(devp->flags & TVAFE_FLAG_DEV_OPENED) ||
 		(devp->flags & TVAFE_POWERDOWN_IN_IDLE)) {
 		pr_err("[tvafe..] tvafe havn't opened, isr error!!!\n");
-		return true;
+		return TVIN_BUF_SKIP;
 	}
 
 	if (force_stable)
-		return 0;
+		return TVIN_BUF_NULL;
+
 	/* if there is any error or overflow, do some reset, then rerurn -1;*/
 	if ((tvafe->parm.info.status != TVIN_SIG_STATUS_STABLE) ||
-		(tvafe->parm.info.fmt == TVIN_SIG_FMT_NULL))
-		return -1;
+		(tvafe->parm.info.fmt == TVIN_SIG_FMT_NULL)) {
+		if (devp->flags & TVAFE_FLAG_DEV_SNOW_FLAG)
+			return TVIN_BUF_NULL;
+		else
+			return TVIN_BUF_SKIP;
+	}
 
 	/* TVAFE CVD2 3D works abnormally => reset cvd2 */
 	if ((port >= TVIN_PORT_CVBS0) && (port <= TVIN_PORT_CVBS7))
@@ -1188,9 +1220,6 @@ int tvafe_dec_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 #endif
 	if ((port >= TVIN_PORT_CVBS0) && (port <= TVIN_PORT_CVBS7)) {
 		aspect_ratio = tvafe_cvd2_get_wss();
-		if (tvafe_dbg_enable)
-			pr_info("current aspect_ratio:%d,aspect_ratio_last:%d\n",
-				aspect_ratio, tvafe->aspect_ratio_last);
 		if (aspect_ratio != tvafe->aspect_ratio_last) {
 			tvafe->aspect_ratio_last = aspect_ratio;
 			tvafe->aspect_ratio_cnt = 0;
@@ -1201,7 +1230,7 @@ int tvafe_dec_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 		}
 	}
 
-	return 0;
+	return TVIN_BUF_NULL;
 }
 
 static struct tvin_decoder_ops_s tvafe_dec_ops = {
@@ -1426,6 +1455,8 @@ void tvafe_get_sig_property(struct tvin_frontend_s *fe,
 	prop->aspect_ratio = tvafe->aspect_ratio;
 	prop->decimation_ratio = 0;
 	prop->dvi_info = 0;
+	/*4 is the test result@20171101 on fluke-54200 and DVD*/
+	prop->skip_vf_num = 4;
 }
 /*
  *get cvbs secam source's phase
@@ -1442,6 +1473,30 @@ static bool tvafe_cvbs_get_secam_phase(struct tvin_frontend_s *fe)
 		return 0;
 
 }
+/*
+*check frame skip,only for av input
+*/
+static bool tvafe_cvbs_check_frame_skip(struct tvin_frontend_s *fe)
+{
+	struct tvafe_dev_s *devp = container_of(fe, struct tvafe_dev_s,
+		frontend);
+	struct tvafe_info_s *tvafe = &devp->tvafe;
+	struct tvafe_cvd2_s *cvd2 = &tvafe->cvd2;
+	enum tvin_port_e port = tvafe->parm.port;
+	bool ret = false;
+
+	if (!devp->frame_skip_enable ||
+		(devp->flags&TVAFE_FLAG_DEV_SNOW_FLAG)) {
+		ret = false;
+	} else if ((cvd2->hw.no_sig || !cvd2->hw.h_lock || !cvd2->hw.v_lock) &&
+		((port >= TVIN_PORT_CVBS1) && (port <= TVIN_PORT_CVBS2))) {
+		if (tvafe_dbg_enable)
+			pr_err("[tvafe..] cvbs signal unstable, skip frame!!!\n");
+		ret = true;
+	}
+	return ret;
+}
+
 #if 0
 /*
  * tvafe set vga parameters: h/v position, phase, clock
@@ -1573,7 +1628,7 @@ static struct tvin_state_machine_ops_s tvafe_sm_ops = {
 	.get_sig_propery  = tvafe_get_sig_property,
 	.vga_set_param    = NULL,
 	.vga_get_param    = NULL,
-	.check_frame_skip = NULL,
+	.check_frame_skip = tvafe_cvbs_check_frame_skip,
 	.get_secam_phase = tvafe_cvbs_get_secam_phase,
 };
 
@@ -2519,6 +2574,9 @@ static int tvafe_drv_probe(struct platform_device *pdev)
 	/**disable tvafe clock**/
 	tdevp->flags |= TVAFE_POWERDOWN_IN_IDLE;
 	tvafe_enable_module(false);
+
+	/*init tvafe param*/
+	tdevp->frame_skip_enable = 1;
 
 	pr_info("tvafe: driver probe ok\n");
 	return 0;

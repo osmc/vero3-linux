@@ -444,6 +444,7 @@ struct tvin_sig_property_s {
 	struct tvin_hdr_info_s hdr_info;
 	bool dolby_vision;/*is signal dolby version*/
 	uint8_t fps;
+	unsigned int skip_vf_num;/*skip pre vframe num*/
 };
 
 #define TVAFE_VF_POOL_SIZE			6 /* 8 */

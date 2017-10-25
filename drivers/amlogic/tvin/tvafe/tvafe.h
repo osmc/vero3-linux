@@ -89,7 +89,7 @@ struct tvafe_dev_s {
 	unsigned int			cma_mem_size;/* BYTE */
 	unsigned int			cma_mem_alloc;
 #endif
-
+	unsigned int			frame_skip_enable;
 };
 
 typedef int (*hook_func_t)(void);

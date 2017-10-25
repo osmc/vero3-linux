@@ -857,6 +857,7 @@ void hdmirx_get_sig_property(struct tvin_frontend_s *fe,
 	hdmirx_set_timing_info(prop);
 	hdmirx_get_hdr_info(prop);
 	hdmirx_get_vsi_info(prop);
+	prop->skip_vf_num = 1;
 }
 
 bool hdmirx_check_frame_skip(struct tvin_frontend_s *fe)

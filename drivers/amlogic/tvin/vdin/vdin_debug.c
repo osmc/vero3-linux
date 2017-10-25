@@ -256,6 +256,8 @@ static ssize_t vdin_attr_show(struct device *dev,
 		"echo irq_cnt >/sys/class/vdin/vdinx/attr.\n");
 	len += sprintf(buf+len,
 		"echo rdma_irq_cnt >/sys/class/vdin/vdinx/attr.\n");
+	len += sprintf(buf+len,
+		"echo skip_vf_num 0/1/2 /sys/class/vdin/vdinx/attr.\n");
 	return len;
 }
 static void vdin_dump_one_buf_mem(char *path, struct vdin_dev_s *devp,
@@ -466,13 +468,15 @@ static void vdin_dump_state(struct vdin_dev_s *devp)
 			vf->left_eye.height);
 	}
 	if (vfp) {
-		pr_info("disp_index:%d,disp_index_cur:%d,disp_index_last:%d,disp_index_last2:%d\n",
-			vfp->disp_index, vfp->disp_index_cur,
-			vfp->disp_index_last, vfp->disp_index_last2);
+		pr_info("skip_vf_num:%d\n", vfp->skip_vf_num);
+		pr_info("**************disp_mode**************\n");
 		for (i = 0; i < VFRAME_DISP_MAX_NUM; i++)
-			pr_info("disp_mode[%d]:%d\n", i, vfp->disp_mode[i]);
+			pr_info("[%d]:%-5d", i, vfp->disp_mode[i]);
+		pr_info("\n**************disp_index**************\n");
+		for (i = 0; i < VFRAME_DISP_MAX_NUM; i++)
+			pr_info("[%d]:%-5d", i, vfp->disp_index[i]);
 	}
-	pr_info("current parameters:\n");
+	pr_info("\n current parameters:\n");
 	pr_info("\t frontend of vdin index :  %d, 3d flag : 0x%x\n",
 		curparm->index,  curparm->flag);
 	pr_info("\t reserved 0x%x, devp->flags:0x%x\n",
@@ -1472,6 +1476,27 @@ start_chk:
 	} else if (!strcmp(parm[0], "rdma_irq_cnt")) {
 		pr_info("vdin(%d) rdma_irq_cnt: %d\n", devp->index,
 						devp->rdma_irq_cnt);
+	} else if (!strcmp(parm[0], "skip_vf_num")) {
+		if (!parm[1]) {
+			kfree(buf_orig);
+			pr_err("miss parameters .\n");
+			pr_err("usage: echo skip_vf_num 0/1/2 /sys/class/vdin/vdinx/attr.\n");
+			return len;
+		} else {
+			if (kstrtoul(parm[1], 10, &val) < 0) {
+				kfree(buf_orig);
+				return -EINVAL;
+			}
+			if (devp->vfp) {
+				devp->vfp->skip_vf_num = val;
+				if (val == 0)
+					memset(devp->vfp->disp_mode, 0,
+					(sizeof(enum vframe_disp_mode_e) *
+					VFRAME_DISP_MAX_NUM));
+				pr_info("vframe_skip(%d):%d\n\n", devp->index,
+					devp->vfp->skip_vf_num);
+			}
+		}
 	} else {
 		pr_info("unknow command\n");
 	}
