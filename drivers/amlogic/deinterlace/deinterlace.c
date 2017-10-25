@@ -3016,14 +3016,9 @@ static void di_uninit_buf(void)
 #else
 	queue_init(0);
 #endif
-	for (i = 0; i < MAX_IN_BUF_NUM; i++) {
-		if (vframe_in[i]) {
-			vf_put(vframe_in[i], VFM_NAME);
-			vf_notify_provider(
-				VFM_NAME, VFRAME_EVENT_RECEIVER_PUT, NULL);
-			vframe_in[i] = NULL;
-		}
-	}
+	/* decoder'buffer had been releae no need put */
+	for (i = 0; i < MAX_IN_BUF_NUM; i++)
+		vframe_in[i] = NULL;
 	di_pre_stru.pre_de_process_done = 0;
 	di_pre_stru.pre_de_busy = 0;
 	if (post_wr_en && post_wr_surpport) {
