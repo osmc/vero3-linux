@@ -763,9 +763,9 @@ static void tvafe_cvd2_non_std_config(struct tvafe_cvd2_s *cvd2)
 #endif
 
 	} else{
-
-	if (cvd_nonstd_dbg_en)
-		pr_info("[tvafe..] %s: out of non-std signal.\n", __func__);
+		if (cvd_nonstd_dbg_en)
+			pr_info("[tvafe..] %s: out of non-std signal.\n",
+				__func__);
 		W_APB_REG(CVD2_HSYNC_RISING_EDGE_START, 0x6d);
 		W_APB_REG(TVFE_CLAMP_INTF, 0x8666);
 		W_APB_BIT(CVD2_H_LOOP_MAXSTATE, 5,
@@ -1395,21 +1395,11 @@ static void tvafe_cvd2_non_std_signal_det(
 
 		nonstd_cnt = nonstd_cnt + CVD2_NONSTD_CNT_INC_STEP;
 
-	} else if ((cvd2->hw.h_nonstd |
-		(cvd2->hw.v_nonstd && scene_colorful)) &&
-			(nonstd_cnt >= CVD2_NONSTD_CNT_INC_LIMIT)) {
-
-		nonstd_cnt = nonstd_cnt;
-
 	} else if ((!cvd2->hw.h_nonstd) && (!cvd2->hw.v_nonstd) &&
 			(nonstd_cnt >= CVD2_NONSTD_CNT_DEC_LIMIT)) {
 
 		nonstd_cnt = nonstd_cnt - CVD2_NONSTD_CNT_DEC_STEP;
 
-	} else if ((!cvd2->hw.h_nonstd) && (!cvd2->hw.v_nonstd) &&
-			(nonstd_cnt < CVD2_NONSTD_CNT_DEC_LIMIT)) {
-
-		nonstd_cnt = nonstd_cnt;
 	}
 
 	if (nonstd_cnt <= CVD2_NONSTD_FLAG_OFF_TH)
