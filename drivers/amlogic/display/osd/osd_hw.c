@@ -1230,7 +1230,7 @@ void osd_setpal_hw(u32 index,
 {
 	int do_lut;
 	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXBB) {
-		if ((get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX)
+		if ((is_meson_txlx_cpu() || is_meson_txhd_cpu())
 			&& (index == OSD2))
 			do_lut = 1;
 		 else
@@ -3784,7 +3784,8 @@ void osd_init_hw(u32 logo_loaded)
 	osd_hw.osd_fifo[OSD2] = 32;
 
 	if ((get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX)
-		|| (get_cpu_type() == MESON_CPU_MAJOR_ID_TXL))
+		|| (get_cpu_type() == MESON_CPU_MAJOR_ID_TXL)
+		|| (get_cpu_type() == MESON_CPU_MAJOR_ID_TXHD))
 		osd_hw.osd_fifo[OSD1] = 64;
 
 	osd_hdr_on = false;

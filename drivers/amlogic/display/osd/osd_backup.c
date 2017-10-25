@@ -262,7 +262,8 @@ void recovery_regs_init(void)
 		(struct reg_item *)&osd1_recovery_table[0];
 
 	if ((get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX)
-		|| (get_cpu_type() == MESON_CPU_MAJOR_ID_TXL)) {
+		|| (get_cpu_type() == MESON_CPU_MAJOR_ID_TXL)
+		|| (get_cpu_type() == MESON_CPU_MAJOR_ID_TXHD)) {
 		for (j = 0; j < gRecovery[i].size; j++) {
 			if (gRecovery[i].table[j].addr ==
 				VIU_OSD1_FIFO_CTRL_STAT) {
