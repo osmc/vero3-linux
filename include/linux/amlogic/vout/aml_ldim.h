@@ -64,7 +64,6 @@ struct aml_ldim_driver_s {
 	unsigned short *ldim_matrix_buf;
 	unsigned int *hist_matrix;
 	unsigned int *max_rgb;
-	unsigned int *global_ldim_max;
 	unsigned short *ldim_test_matrix;
 	unsigned short *local_ldim_matrix;
 	int (*init)(void);

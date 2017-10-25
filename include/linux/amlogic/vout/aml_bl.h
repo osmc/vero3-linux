@@ -126,6 +126,7 @@ struct bl_config_s {
 	unsigned int level_max;
 	unsigned int level_mid;
 	unsigned int level_mid_mapping;
+	unsigned int ldim_flag;
 
 	enum bl_ctrl_method_e method;
 	unsigned int en_gpio;

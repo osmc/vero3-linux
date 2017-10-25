@@ -766,16 +766,18 @@ static int ldim_dev_probe(struct platform_device *pdev)
 	struct aml_ldim_driver_s *ldim_drv = aml_ldim_get_driver();
 	int ret = 0;
 
-	/* get configs */
-	ldim_drv->dev = &pdev->dev;
-	ldim_drv->ldev_conf = &ldim_dev_config;
-	ldim_drv->pinmux_ctrl = ldim_pwm_pinmux_ctrl;
-	ldim_drv->pwm_vs_update = ldim_pwm_vs_update;
-	ldim_drv->config_print = ldim_config_print,
-	ldim_dev_get_config_from_dts(pdev->dev.of_node, ldim_drv->dev_index);
+	if (ldim_drv->dev_index != 0xff) {
+		/* get configs */
+		ldim_drv->dev = &pdev->dev;
+		ldim_drv->ldev_conf = &ldim_dev_config;
+		ldim_drv->pinmux_ctrl = ldim_pwm_pinmux_ctrl;
+		ldim_drv->pwm_vs_update = ldim_pwm_vs_update;
+		ldim_drv->config_print = ldim_config_print,
+		ldim_dev_get_config_from_dts(pdev->dev.of_node,
+			ldim_drv->dev_index);
 
-	ldim_dev_add_driver(ldim_drv->ldev_conf, ldim_drv->dev_index);
-
+		ldim_dev_add_driver(ldim_drv->ldev_conf, ldim_drv->dev_index);
+	}
 	/* init ldim function */
 	if (ldim_drv->valid_flag)
 		ldim_drv->init();
@@ -789,8 +791,10 @@ static int __exit ldim_dev_remove(struct platform_device *pdev)
 	int ret = 0;
 	struct aml_ldim_driver_s *ldim_drv = aml_ldim_get_driver();
 
-	ldim_dev_remove_driver(ldim_drv->ldev_conf, ldim_drv->dev_index);
-
+	if (ldim_drv->dev_index != 0xff) {
+		ldim_dev_remove_driver(ldim_drv->ldev_conf,
+			ldim_drv->dev_index);
+	}
 	LDIMPR("%s OK\n", __func__);
 	return ret;
 }

@@ -95,6 +95,7 @@ static struct bl_config_s bl_config = {
 	.power_on_delay = 100,
 	.power_off_delay = 30,
 	.method = BL_CTRL_MAX,
+	.ldim_flag = 0,
 
 	.bl_pwm = NULL,
 	.bl_pwm_combo0 = NULL,
@@ -1731,6 +1732,9 @@ static int aml_bl_config_load_from_dts(struct bl_config_s *bconf,
 		bconf->power_on_delay = bl_para[3];
 		bconf->power_off_delay = bl_para[4];
 	}
+	ret = of_property_read_u32(child, "bl_ldim_mode", &bl_para[0]);
+	if (ret == 0)
+		bconf->ldim_flag = 1;
 
 	switch (bconf->method) {
 	case BL_CTRL_PWM:
@@ -1964,6 +1968,7 @@ static int aml_bl_config_load_from_dts(struct bl_config_s *bconf,
 		break;
 #ifdef CONFIG_AML_LOCAL_DIMMING
 	case BL_CTRL_LOCAL_DIMING:
+		bconf->ldim_flag = 1;
 		break;
 #endif
 	case BL_CTRL_EXTERN:
@@ -2290,15 +2295,11 @@ static int aml_bl_config_load(struct bl_config_s *bconf,
 	}
 	aml_bl_config_print(bconf);
 
-	switch (bconf->method) {
 #ifdef CONFIG_AML_LOCAL_DIMMING
-	case BL_CTRL_LOCAL_DIMING:
+	if (bconf->ldim_flag)
 		aml_ldim_probe(pdev);
-		break;
 #endif
-	default:
-		break;
-	}
+
 	return ret;
 }
 
@@ -3338,6 +3339,11 @@ static int __exit aml_bl_remove(struct platform_device *pdev)
 	aml_lcd_notifier_unregister(&aml_bl_on_nb);
 	aml_lcd_notifier_unregister(&aml_bl_off_nb);
 #endif
+#ifdef CONFIG_AML_LOCAL_DIMMING
+	if (bl_drv->bconf->ldim_flag)
+		aml_ldim_remove();
+#endif
+
 	/* platform_set_drvdata(pdev, NULL); */
 	switch (bl_drv->bconf->method) {
 	case BL_CTRL_PWM:
@@ -3347,11 +3353,6 @@ static int __exit aml_bl_remove(struct platform_device *pdev)
 		kfree(bl_drv->bconf->bl_pwm_combo0);
 		kfree(bl_drv->bconf->bl_pwm_combo1);
 		break;
-#ifdef CONFIG_AML_LOCAL_DIMMING
-	case BL_CTRL_LOCAL_DIMING:
-		aml_ldim_remove();
-		break;
-#endif
 	default:
 		break;
 	}
