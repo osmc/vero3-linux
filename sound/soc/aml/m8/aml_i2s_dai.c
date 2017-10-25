@@ -248,9 +248,10 @@ static int aml_dai_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
 			}
 		} else {
 			dev_info(substream->pcm->card->dev, "I2S capture disable!\n");
-			if (is_meson_txlx_cpu())
-				audio_in_i2s2_enable(0);
-			else
+			if (is_meson_txlx_cpu()) {
+				/*TODO: i2s2 deocder must always enable*/
+				/*audio_in_i2s2_enable(0);*/
+			} else
 				audio_in_i2s_enable(0);
 		}
 		break;

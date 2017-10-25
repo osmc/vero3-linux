@@ -281,7 +281,7 @@ static void i2sin_fifo2_set_buf(u32 addr, u32 size, u32 src, u32 ch)
 			   |(1 << AUDIN_FIFO_UG)	/* Urgent request. */
 	);
 
-	aml_audin_write(AUDIN_FIFO2_CTRL1, 0x08);
+	aml_audin_write(AUDIN_FIFO2_CTRL1, 0x0c);
 	/* HDMI I2S-in module */
 	aml_audin_write(AUDIN_DECODE_FORMAT,
 				(0 << 24) /*spdif enable*/

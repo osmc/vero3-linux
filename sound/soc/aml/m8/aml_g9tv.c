@@ -148,10 +148,7 @@ static int aml_audio_set_in_source(struct snd_kcontrol *kcontrol,
 		External_Mute(0);
 	} else if (ucontrol->value.enumerated.item[0] == 1) {
 		/* select ATV output as I2S source */
-		if (is_meson_txlx_cpu())
-			aml_audin_update_bits(AUDIN_SOURCE_SEL, 0x3 << 16,
-						1 << 16);
-		else
+		if (!is_meson_txlx_cpu())
 			aml_audin_update_bits(AUDIN_SOURCE_SEL, 3, 1);
 
 		if (is_meson_txl_cpu() || is_meson_txlx_cpu())
@@ -166,10 +163,7 @@ static int aml_audio_set_in_source(struct snd_kcontrol *kcontrol,
 		/* 1=Select HDMIRX SPDIF output as AUDIN source */
 		/* [1:0] i2sin_src_sel: */
 		/* 2=Select HDMIRX I2S output as AUDIN source */
-		if (is_meson_txlx_cpu())
-			aml_audin_update_bits(AUDIN_SOURCE_SEL, 0x3 << 16,
-						2 << 16);
-		else
+		if (!is_meson_txlx_cpu())
 			aml_audin_update_bits(AUDIN_SOURCE_SEL, 0x3, 2);
 
 		aml_audin_update_bits(AUDIN_SOURCE_SEL, 0x3 << 4,

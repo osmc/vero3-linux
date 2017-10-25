@@ -44,6 +44,7 @@
 #include "aml_audio_hw.h"
 #include <linux/amlogic/sound/aiu_regs.h>
 #include <linux/amlogic/sound/aml_snd_iomap.h>
+#include <linux/amlogic/cpu_version.h>
 
 #define USE_HW_TIMER
 #ifdef USE_HW_TIMER
@@ -232,7 +233,7 @@ static int aml_i2s_preallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 		buf->bytes = size;
 		/* malloc tmp buffer */
 		size = aml_i2s_capture.period_bytes_max;
-		tmp_buf->buffer_start = kzalloc(size, GFP_KERNEL);
+		tmp_buf->buffer_start = kzalloc(size + 64, GFP_KERNEL);
 		if (tmp_buf->buffer_start == NULL) {
 			dev_err(pcm->card->dev, "alloc capture tmp buffer error\n");
 			kfree(tmp_buf);
@@ -312,7 +313,12 @@ static int aml_i2s_prepare(struct snd_pcm_substream *substream)
 		else if (runtime->format == SNDRV_PCM_FORMAT_S24_LE)
 			aml_i2s_playback_format = 24;
 	}
+#ifndef CONFIG_SND_AML_SPLIT_MODE
 	tmp_buf->cached_len = 0;
+#endif
+	tmp_buf->find_start = 0;
+	tmp_buf->invert_flag = 0;
+	tmp_buf->cached_sample = 0;
 	return 0;
 }
 
@@ -852,6 +858,29 @@ static int aml_i2s_copy_playback(struct snd_pcm_runtime *runtime, int channel,
 	return res;
 }
 
+static int find_start_position(void *ubuf, int bytes, int *find_start)
+{
+	uint32_t *ptr = (uint32_t *)ubuf;
+	int i = 0, revert = 0, pos = 0;
+	uint32_t sample2 = *ptr++;
+	uint32_t sample1 = 0;
+	for (i = 0; i < (bytes - 4); i += 4) {
+		sample1 = sample2;
+		sample2 = *ptr++;
+		if (((sample1 >> 28) & 0xf) == 0xf &&
+				((sample2 >> 28) & 0xf) == 0x3) {
+			if (pos % 2 == 1)
+				revert = 1;
+			*find_start = 1;
+			pr_info("first start position = %d, revert = %d\n",
+					pos, revert);
+			break;
+		}
+		pos++;
+	}
+	return revert;
+}
+
 static int aml_i2s_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 				snd_pcm_uframes_t pos,
 				void __user *buf, snd_pcm_uframes_t count,
@@ -872,6 +901,26 @@ static int aml_i2s_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 			if (pos % 8)
 				dev_err(dev, "audio data unligned\n");
 
+			if (is_meson_txlx_cpu() && audio_in_source == 0
+					&& tmp_buf->find_start == 0) {
+				char *hwbuf = runtime->dma_area + offset * 2;
+				int32_t *tfrom = (int32_t *)hwbuf;
+				int32_t *to = (int32_t *)ubuf;
+				int32_t *left = tfrom;
+				int32_t *right = tfrom + 8;
+				for (j = 0; j < n * 2; j += 64) {
+					for (i = 0; i < 8; i++) {
+						*to++ = (int32_t)(*left++);
+						*to++ = (int32_t)(*right++);
+					}
+					left += 8;
+					right += 8;
+				}
+				tmp_buf->invert_flag =
+						find_start_position(ubuf, n,
+						&(tmp_buf->find_start));
+			}
+
 			if (runtime->format == SNDRV_PCM_FORMAT_S16_LE) {
 				char *hwbuf = runtime->dma_area + offset * 2;
 				int32_t *tfrom = (int32_t *)hwbuf;
@@ -881,6 +930,10 @@ static int aml_i2s_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 
 				if ((n * 2) % 64)
 					dev_err(dev, "audio data unaligned 64 bytes\n");
+
+				if (tmp_buf->invert_flag == 1)
+					*to++ = (int16_t)
+						(tmp_buf->cached_sample);
 
 				for (j = 0; j < n * 2; j += 64) {
 					for (i = 0; i < 8; i++) {
@@ -892,6 +945,10 @@ static int aml_i2s_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 					left += 8;
 					right += 8;
 				}
+
+				if (tmp_buf->invert_flag == 1)
+					tmp_buf->cached_sample = *(to - 1);
+
 				/* clean hw buffer */
 				memset(hwbuf, 0, n * 2);
 			} else {
@@ -903,6 +960,10 @@ static int aml_i2s_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 
 				if (n % 64)
 					dev_err(dev, "audio data unaligned 64 bytes\n");
+
+				if (tmp_buf->invert_flag == 1)
+					*to++ = (int32_t)
+						(tmp_buf->cached_sample);
 
 				if (runtime->format == SNDRV_PCM_FORMAT_S24_LE)
 					r_shift = 0;
@@ -917,6 +978,10 @@ static int aml_i2s_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 					left += 8;
 					right += 8;
 				}
+
+				if (tmp_buf->invert_flag == 1)
+					tmp_buf->cached_sample = *(to - 1);
+
 				memset(hwbuf, 0, n);
 			}
 		} else if (runtime->channels == 8) {
@@ -939,7 +1004,7 @@ static int aml_i2s_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 					r_shift = 0;
 				for (j = 0; j < n; j += 4) {
 					*to++ = (int32_t)((*tfrom++)
-						       << r_shift);
+								<< r_shift);
 				}
 				memset(hwbuf, 0, n);
 			}
