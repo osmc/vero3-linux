@@ -56,6 +56,8 @@ static int dvb_afc_debug;
 static int disable_set_frotend_param;
 static int dvb_dtv_debug;
 static int dvb_atsc_timeout = 2000;
+static int dvb_j83b_count = 10;
+
 
 
 module_param_named(frontend_debug, dvb_frontend_debug, int, 0644);
@@ -78,6 +80,9 @@ module_param(dvb_dtv_debug, int, 0644);
 MODULE_PARM_DESC(dvb_dtv_debug, "vb_afc_debug");
 module_param(dvb_atsc_timeout, int, 0644);
 MODULE_PARM_DESC(dvb_atsc_timeout, "dvb_atsc_timeout");
+module_param(dvb_j83b_count, int, 0644);
+MODULE_PARM_DESC(dvb_atsc_count, "dvb_j83b_count");
+
 
 
 #define dprintk(a...)\
@@ -595,13 +600,13 @@ static int j83b_speedup_func(fe_status_t s, struct dvb_frontend *fe)
 	if (s != 0x1f) {
 		/*msleep(200);*/
 		dprintk("[j.83b] 1\n");
-		for (i = 0; i < 80; i++) {
+		for (i = 0; i < dvb_j83b_count; i++) {
 			msleep(25);
 			if (fe->ops.read_ber)
 				fe->ops.read_ber
 			(fe, &j83b_status);
 			/*J.83 status >=0x38,has signal*/
-			if (j83b_status >= 0x38)
+			if (j83b_status >= 0x3)
 				break;
 		}
 		dprintk
@@ -609,7 +614,7 @@ static int j83b_speedup_func(fe_status_t s, struct dvb_frontend *fe)
 		j83b_status,
 		fe->dtv_property_cache.modulation);
 	}
-	if (j83b_status < 0x38) {
+	if (j83b_status < 0x3) {
 		s = FE_TIMEDOUT;
 		dprintk(
 		"event s=%d,fepriv->status is %d\n",
@@ -924,7 +929,7 @@ static void dvb_frontend_swzigzag(struct dvb_frontend *fe)
 		} else if (fe->dtv_property_cache.modulation <= QAM_AUTO
 		&& fe->dtv_property_cache.modulation != QPSK) {
 			if (is_meson_txlx_cpu()) {
-				LOCK_TIMEOUT = 4000;
+				LOCK_TIMEOUT = 2000;
 				if (j83b_speedup_func(s, fe))
 					return;
 			}

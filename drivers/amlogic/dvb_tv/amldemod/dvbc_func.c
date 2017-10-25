@@ -1069,7 +1069,8 @@ void qam_auto_scan(int auto_qam_enable)
 {
 	if (auto_qam_enable) {
 		qam_write_reg(0xc, 0x235cf45d);
-		qam_write_reg(0xe, 0x2d82d);
+		/*qam_write_reg(0xe, 0x2d82d);*/
+		qam_write_reg(0xe, 0x50e7);/*reduce range to 0.05m*/
 		qam_write_reg(0x4e, 0x12010012);
 	} else
 		qam_write_reg(0x4e, 0x12000012);
@@ -1295,31 +1296,37 @@ static void dvbc_reg_initial(struct aml_demod_sta *demod_sta)
 
 	/* enable irq */
 	qam_write_reg(0x34, 0x7fff << 3);
-#if 0
-/*my_tool setting j83b mode*/
-	qam_write_reg(0x7, 0x10f33);
-	/*j83b filter para*/
-	qam_write_reg(0x40, 0x3f010201);
-	qam_write_reg(0x41, 0x0a003a3b);
-	qam_write_reg(0x42, 0xe1ee030e);
-	qam_write_reg(0x43, 0x002601f2);
-	qam_write_reg(0x44, 0x009b006b);
-	qam_write_reg(0x45, 0xb3a1905);
-	qam_write_reg(0x46, 0x1c396e07);
-	qam_write_reg(0x47, 0x3801cc08);
-	qam_write_reg(0x48, 0x10800a2);
-	qam_write_reg(0x12, 0x50e1000);
-	qam_write_reg(0x30, 0x41f2f69);
-	/*j83b_symbolrate(please see register doc)*/
-	qam_write_reg(0x4d, 0x23d125f7);
-	/*for phase noise case 256qam*/
-	qam_write_reg(0x9c, 0x2a232100);
-	qam_write_reg(0x57, 0x606040d);
-	/*for phase noise case 64qam*/
-	qam_write_reg(0x54, 0x606050d);
-	qam_write_reg(0x52, 0x346dc);
-	qam_auto_scan(1);
+#if 1
+	if (is_meson_txlx_cpu()) {
+		/*my_tool setting j83b mode*/
+		qam_write_reg(0x7, 0x10f33);
+		/*j83b filter para*/
+		qam_write_reg(0x40, 0x3f010201);
+		qam_write_reg(0x41, 0x0a003a3b);
+		qam_write_reg(0x42, 0xe1ee030e);
+		qam_write_reg(0x43, 0x002601f2);
+		qam_write_reg(0x44, 0x009b006b);
+		qam_write_reg(0x45, 0xb3a1905);
+		qam_write_reg(0x46, 0x1c396e07);
+		qam_write_reg(0x47, 0x3801cc08);
+		qam_write_reg(0x48, 0x10800a2);
+		qam_write_reg(0x12, 0x50e1000);
+		qam_write_reg(0x30, 0x41f2f69);
+		/*j83b_symbolrate(please see register doc)*/
+		qam_write_reg(0x4d, 0x23d125f7);
+		/*for phase noise case 256qam*/
+		qam_write_reg(0x9c, 0x2a232100);
+		qam_write_reg(0x57, 0x606040d);
+		/*for phase noise case 64qam*/
+		qam_write_reg(0x54, 0x606050d);
+		qam_write_reg(0x52, 0x346dc);
+		qam_auto_scan(1);
+	}
 #endif
+	qam_write_reg(0x7, 0x10f23);
+	qam_write_reg(0x3a, 0x0);
+	qam_write_reg(0x7, 0x10f33);
+	qam_write_reg(0x3a, 0x4);
 /*auto track*/
 	/*      dvbc_set_auto_symtrack(); */
 }

@@ -26,7 +26,7 @@ static int ar_enable;
 module_param(ar_enable, int, 0644);
 
 MODULE_PARM_DESC(cci_enable, "\n\t\t Enable ar");
-static int cci_enable;
+static int cci_enable = 1;
 module_param(cci_enable, int, 0644);
 
 MODULE_PARM_DESC(cfo_count, "\n\t\t Enable ar");
@@ -534,15 +534,15 @@ void set_cr_ck_rate(void)
 	atsc_write_reg(0x735,  0x00);
 
 	/*r2,2 case*/
-	atsc_write_reg(0x912, 0x50);
 	atsc_write_reg(0x505, 0x19);
 	atsc_write_reg(0x506, 0x15);
 	atsc_write_reg(0xf6f, 0xc0);
 	atsc_write_reg(0xf6e, 0x09);
-	atsc_write_reg(0x5bc, 0x08);
 	atsc_write_reg(0x562, 0x08);
-	if (awgn_flag == 1)
-		atsc_write_reg(0x5bc, 0x01);
+	if (awgn_flag == TASK4_TASK5_AWGN)
+		atsc_set_performance_register(TASK4_TASK5_AWGN);
+	else
+		atsc_set_performance_register(TASK8_R22);
 	ar_flag = 0;
 }
 
@@ -961,7 +961,7 @@ int atsc_check_fsm_status_oneshot(void)
 	return atsc_snr;
 }
 
-void atsc_set_r22_register(int flag)
+int snr_avg_100_times(void)
 {
 	int i;
 	int snr_table[100], snr_all = 0;
@@ -977,16 +977,36 @@ void atsc_set_r22_register(int flag)
 	}
 	snr_all /= 100;
 	pr_dbg("snr_all is %d\n", snr_all);
-	if ((flag == 1) && (snr_all  < 160) && (awgn_flag == 0)) {
+	return snr_all/10;
+
+}
+
+void atsc_set_r22_register(int flag)
+{
+	if ((flag == 1) && (awgn_flag == 0)) {
 		atsc_write_reg(0x5bc, 0x01);
 		awgn_flag = 1;
-		pr_dbg("open r22 setting\n");
+		pr_dbg("open awgn setting\n");
 		msleep(50);
 	} else {
 		awgn_flag = 0;
 		/*atsc_write_reg(0x5bc, 0x08);*/
-		pr_dbg("close r22 setting\n");
+		pr_dbg("close awgn setting\n");
 	}
+}
+
+void atsc_set_performance_register(int flag)
+{
+	if (flag == TASK4_TASK5_AWGN) {
+		atsc_write_reg(0x912, 0x00);
+		atsc_write_reg(0x5bc, 0x01);
+		awgn_flag = TASK4_TASK5_AWGN;
+	} else {
+		atsc_write_reg(0x912, 0x50);
+		atsc_write_reg(0x5bc, 0x08);
+		awgn_flag = TASK8_R22;
+	}
+
 }
 
 void atsc_thread(void)
@@ -996,7 +1016,9 @@ void atsc_thread(void)
 	int time[10];
 	int ret;
 	int ser_thresholds;
+	static int register_set_flag;
 	static int fsm_status;
+	int snr_now;
 	fsm_status = Idle;
 	ser_thresholds = 200;
 	time[4] = jiffies_to_msecs(jiffies);
@@ -1015,6 +1037,7 @@ void atsc_thread(void)
 		/*step2:run cci*/
 		set_cr_ck_rate();
 		atsc_reset();
+		register_set_flag = 0;
 		/*step:check AR*/
 		if (ar_enable)
 			AR_run();
@@ -1041,7 +1064,7 @@ void atsc_thread(void)
 			read_atsc_fsm(), time_table[1]);
 		if (ret == Cfo_Fail)
 			return;
-		for (i = 0; i < 35; i++) {
+		for (i = 0; i < 80; i++) {
 			fsm_status = read_atsc_fsm();
 			if (fsm_status >= Atsc_Lock) {
 				time[3] = jiffies_to_msecs(jiffies);
@@ -1058,7 +1081,7 @@ void atsc_thread(void)
 				pr_dbg("atsc idle,retune, and reset\n");
 				set_cr_ck_rate();
 				atsc_reset();
-				awgn_flag = 0;
+				awgn_flag = TASK8_R22;
 				break;
 			}
 			msleep(20);
@@ -1071,10 +1094,33 @@ void atsc_thread(void)
 		fsm_status = read_atsc_fsm();
 		pr_dbg("lock\n");
 		msleep(100);
-		if (atsc_read_snr() <= 16)
-			atsc_set_r22_register(1);
-		else
-			awgn_flag = 0;
+		if (register_set_flag == 0) {
+			snr_now = snr_avg_100_times();
+			pr_dbg("snr_now is %d\n", snr_now);
+			if ((snr_now <= 16) && snr_now >= 10) {
+				atsc_set_performance_register
+				(TASK4_TASK5_AWGN);
+			} else if (snr_now < 10) {
+				atsc_set_performance_register
+				(TASK4_TASK5_AWGN);
+			} else {
+				if (snr_now > 25) {
+					atsc_set_performance_register
+					(TASK4_TASK5_AWGN);
+					pr_dbg("snr(25)\n");
+				} else if ((snr_now > 16) && (snr_now <= 25)) {
+					atsc_set_performance_register
+					(TASK8_R22);
+					pr_dbg("snr(16,25)\n");
+				} else {
+					awgn_flag = TASK8_R22;
+				}
+			}
+			register_set_flag = 1;
+			msleep(200);
+			pr_dbg("912 is %lx,5bc is %lx\n",
+				atsc_read_reg(0x912), atsc_read_reg(0x5bc));
+		}
 		/*step5:close dagc*/
 		/*if (dagc_switch == Dagc_Open) {
 			atsc_write_reg(0x716, 0x2);

@@ -62,6 +62,8 @@ static int freq_dvbc;
 static struct aml_demod_sta demod_status;
 static fe_modulation_t atsc_mode = VSB_8;
 static struct aml_demod_para para_demod;
+static int atsc_flag;
+
 
 long *mem_buf;
 
@@ -905,10 +907,13 @@ static int gxtv_demod_atsc_read_status
 	}
 	if (!get_dtvpll_init_flag())
 		return 0;
-	if ((c->modulation <= QAM_AUTO) && (c->modulation != QPSK)) {
+	pr_dbg("status:atsc_flag is %d\n", atsc_flag);
+	if ((c->modulation <= QAM_AUTO) && (c->modulation != QPSK)
+		&& (atsc_flag == QAM_AUTO)) {
 		s = amdemod_dvbc_stat_islock(dev);
 		dvbc_status(&demod_sta, &demod_i2c, &demod_sts);
-	} else if (c->modulation > QAM_AUTO) {
+	} else if ((c->modulation > QAM_AUTO)
+		&& (atsc_flag == VSB_8)) {
 		atsc_thread();
 		s = amdemod_atsc_stat_islock(dev);
 	}
@@ -935,11 +940,14 @@ static int gxtv_demod_atsc_read_ber(struct dvb_frontend *fe, u32 *ber)
 	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
 	if (!get_dtvpll_init_flag())
 		return 0;
-	if (c->modulation > QAM_AUTO)
+	pr_dbg("ber:atsc_flag is %d\n", atsc_flag);
+	if ((c->modulation > QAM_AUTO)
+		&& (atsc_flag == VSB_8))
 		*ber = atsc_read_reg(0x980)&0xffff;
-	else if ((c->modulation == QAM_256)
+	else if (((c->modulation == QAM_256)
 		|| (c->modulation == QAM_64))
-		*ber = qam_read_reg(0x6)&0xff;
+		&& (atsc_flag == QAM_AUTO))
+		*ber = qam_read_reg(0x31)&0xf;
 	return 0;
 }
 
@@ -970,10 +978,14 @@ static int gxtv_demod_atsc_read_snr(struct dvb_frontend *fe, u16 *snr)
 	struct aml_demod_sts demod_sts;
 	struct aml_demod_i2c demod_i2c;
 	struct aml_demod_sta demod_sta;
-	if ((c->modulation <= QAM_AUTO) && (c->modulation != QPSK)) {
+	pr_dbg("snr:atsc_flag is %d\n", atsc_flag);
+	if ((c->modulation <= QAM_AUTO)
+		&& (c->modulation != QPSK)
+		&& (atsc_flag == QAM_AUTO)) {
 		dvbc_status(&demod_sta, &demod_i2c, &demod_sts);
 		*snr = demod_sts.ch_snr / 100;
-	} else if (c->modulation > QAM_AUTO)
+	} else if ((c->modulation > QAM_AUTO)
+		&& (atsc_flag == VSB_8))
 		*snr = atsc_read_snr();
 	return 0;
 }
@@ -995,7 +1007,6 @@ static int gxtv_demod_atsc_set_frontend(struct dvb_frontend *fe)
 	struct aml_demod_i2c demod_i2c;
 	struct aml_fe *afe = fe->demodulator_priv;
 	struct aml_fe_dev *dev = afe->dtv_demod;
-	static int atsc_flag;
 
 	demod_i2c.tuner = dev->drv->id;
 	demod_i2c.addr = dev->i2c_addr;
@@ -1005,7 +1016,8 @@ static int gxtv_demod_atsc_set_frontend(struct dvb_frontend *fe)
 	if (!demod_thread)
 		return 0;
 	freq_p = c->frequency / 1000;
-	pr_dbg("c->modulation is %d,freq_p is %d\n", c->modulation, freq_p);
+	pr_dbg("c->modulation is %d,freq_p is %d, atsc_flag is %d\n",
+		c->modulation, freq_p, atsc_flag);
 	last_lock = -1;
 	atsc_mode = c->modulation;
 	/* param.mode = amdemod_qam(p->u.vsb.modulation);*/
@@ -1332,7 +1344,7 @@ static int gxtv_demod_fe_get_ops(struct aml_fe_dev *dev, int mode, void *ops)
 		fe_ops->read_ucblocks = gxtv_demod_atsc_read_ucblocks;
 		fe_ops->set_qam_mode = gxtv_demod_atsc_set_qam_mode;
 		fe_ops->read_dtmb_fsm = NULL;
-		Gxtv_Demod_Atsc_Init(dev);
+		/*Gxtv_Demod_Atsc_Init(dev);*/
 	} else if (mode == AM_FE_DTMB) {
 		fe_ops->info.frequency_min = 51000000;
 		fe_ops->info.frequency_max = 900000000;
@@ -1423,7 +1435,6 @@ static int gxtv_demod_fe_enter_mode(struct aml_fe *fe, int mode)
 {
 	struct aml_fe_dev *dev = fe->dtv_demod;
 	int memstart_dtmb;
-
 	/* must enable the adc ref signal for demod, */
 	vdac_enable(1, 0x2);
 

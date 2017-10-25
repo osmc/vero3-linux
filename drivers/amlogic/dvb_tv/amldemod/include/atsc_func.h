@@ -12,6 +12,11 @@ enum atsc_state_machine {
 	Atsc_Lock = 0x79
 };
 
+enum atsc_performance {
+	TASK4_TASK5_AWGN = 1,
+	TASK8_R22
+};
+
 #define Lock	1
 #define UnLock	0
 #define Cfo_Ok	1
@@ -49,5 +54,8 @@ int atsc_read_ser(void);
 
 void atsc_thread(void);
 
+void atsc_set_performance_register(int flag);
+
+int snr_avg_100_times(void);
 
 #endif
