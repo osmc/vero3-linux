@@ -89,6 +89,8 @@
 #define HHI_DADC_CNTL3				0x102a
 #define HHI_DADC_CNTL4				0x102b
 
+#define HHI_DEMOD_CLK_CNTL			0x1074
+
 #define HHI_ADC_PLL_CNTL			0x10aa
 #define P_HHI_ADC_PLL_CNTL			CBUS_REG_ADDR(HHI_ADC_PLL_CNTL)
 #define HHI_ADC_PLL_CNTL2			0x10ab
@@ -110,6 +112,8 @@
 */
 #define ADC_EN_ATV_DEMOD	0x1
 #define ADC_EN_TVAFE		0x2
+#define ADC_EN_DTV_DEMOD	0x4
+#define ADC_EN_DTV_DEMODPLL	0xC
 
 #define LOG_ADC_CAL
 /* #define LOG_VGA_EDID */

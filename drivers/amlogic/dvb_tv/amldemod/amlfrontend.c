@@ -40,6 +40,8 @@
 #include "../aml_dvb.h"
 #include "amlfrontend.h"
 
+#include <linux/amlogic/tvin/tvin.h> /*for adc_set_pll_cntl*/
+
 MODULE_PARM_DESC(debug_aml, "\n\t\t Enable frontend debug information");
 static int debug_aml = 1;
 module_param(debug_aml, int, 0644);
@@ -494,9 +496,10 @@ static int amdemod_stat_islock(struct aml_fe_dev *dev, int mode)
 	} else if (mode == 4) {
 		/*DTMB*/
 	/*	pr_dbg("DTMB lock status is %u\n",
-		       ((dtmb_read_reg(DTMB_BASE + (0x0e3 << 2)) >> 14) &
+		       ((dtmb_read_reg(DTMB_TOP_FEC_LOCK_SNR) >> 14) &
 			0x1));*/
-		return (dtmb_read_reg(DTMB_BASE + (0x0e3 << 2)) >> 14) & 0x1;
+
+		return (dtmb_read_reg(DTMB_TOP_FEC_LOCK_SNR) >> 14) & 0x1;
 	}
 	return 0;
 }
@@ -1010,7 +1013,8 @@ static int gxtv_demod_atsc_set_frontend(struct dvb_frontend *fe)
 	if ((c->modulation <= QAM_AUTO) && (c->modulation != QPSK)) {
 		if (atsc_flag != QAM_AUTO)
 			atsc_flag = QAM_AUTO;
-		demod_set_demod_reg(0x502, TXLX_ADC_REG6);
+		/* demod_set_demod_reg(0x502, TXLX_ADC_REG6);*/
+		dd_tvafe_hiu_reg_write(D_HHI_DEMOD_CLK_CNTL, 0x502);
 		demod_set_mode_ts(Gxtv_Dvbc);
 		param_j83b.ch_freq = c->frequency / 1000;
 		param_j83b.mode = amdemod_qam(c->modulation);
@@ -1024,7 +1028,8 @@ static int gxtv_demod_atsc_set_frontend(struct dvb_frontend *fe)
 	} else if (c->modulation > QAM_AUTO) {
 		if (atsc_flag != VSB_8)
 			atsc_flag = VSB_8;
-		demod_set_demod_reg(0x507, TXLX_ADC_REG6);
+		/*demod_set_demod_reg(0x507, TXLX_ADC_REG6);*/
+		dd_tvafe_hiu_reg_write(D_HHI_DEMOD_CLK_CNTL, 0x507);
 		demod_set_mode_ts(Gxtv_Atsc);
 		param_atsc.ch_freq = c->frequency / 1000;
 		param_atsc.mode = c->modulation;
@@ -1091,7 +1096,7 @@ static int gxtv_demod_dtmb_read_status
 
 /*      s = amdemod_dtmb_stat_islock(dev);*/
 /*      if(s==1)*/
-	if (is_meson_txl_cpu())
+	if (is_meson_txl_cpu() || is_meson_txhd_cpu())
 		s = dtmb_check_status_txl(fe);
 	else
 		s = dtmb_check_status_gxtv(fe);
@@ -1168,7 +1173,7 @@ static int gxtv_demod_dtmb_read_fsm(struct dvb_frontend *fe, u32 *fsm_status)
 	int tmp;
 	tmp = dtmb_read_reg(DTMB_TOP_CTRL_FSM_STATE0);
 	*fsm_status =  tmp&0xffffffff;
-	pr_dbg("[rsj] fsm_status is %x\n", *fsm_status);
+	pr_dbg("FE:fsm_status is %x\n", *fsm_status);
 	return 0;
 }
 
@@ -1224,7 +1229,7 @@ int Gxtv_Demod_Dtmb_Init(struct aml_fe_dev *dev)
 	memset(&demod_status, 0, sizeof(demod_status));
 	/* 0 -DVBC, 1-DVBT, ISDBT, 2-ATSC*/
 	demod_status.dvb_mode = Gxtv_Dtmb;
-	if (is_meson_txl_cpu()) {
+	if (is_meson_txl_cpu() || is_meson_txhd_cpu()) {
 		sys.adc_clk = Adc_Clk_25M;      /*Adc_Clk_26M;*/
 		sys.demod_clk = Demod_Clk_225M;
 	} else {
@@ -1245,6 +1250,8 @@ static int gxtv_demod_fe_get_ops(struct aml_fe_dev *dev, int mode, void *ops)
 
 	if ((is_meson_txlx_cpu() || is_meson_gxlx_cpu())
 		&& (mode == AM_FE_DTMB))
+		return -1;
+	if (is_meson_txhd_cpu() && (mode != AM_FE_DTMB))
 		return -1;
 	if (!is_meson_txlx_cpu() && (mode == AM_FE_ATSC))
 		return -1;
@@ -1440,21 +1447,30 @@ static int gxtv_demod_fe_enter_mode(struct aml_fe *fe, int mode)
 		pr_dbg("[dtmb]mem_buf is 0x%x\n",
 			dtmb_read_reg(DTMB_FRONT_MEM_ADDR));
 		/* open arbit */
-		demod_set_demod_reg(0x8, DEMOD_REG4);
+		if (is_meson_txhd_cpu()) {
+			/* demod_set_demod_reg(0x8, TXLX_DEMOD_REG4); */
+			demod_set_reg_rlt(TXLX_DEMOD_REG4, 0x8);
+
+		} else {
+			/* demod_set_demod_reg(0x8, DEMOD_REG4); */
+			demod_set_reg_rlt(GXBB_DEMOD_REG4, 0x8);
+		}
+
 	} else if (mode == AM_FE_QAM) {
 		Gxtv_Demod_Dvbc_Init(dev, Adc_mode);
 	} else if (mode == AM_FE_ATSC) {
 		Gxtv_Demod_Atsc_Init(dev);
 	} else if (mode == AM_FE_OFDM) {
-		Gxtv_Demod_Dvbt_Init(dev);
-	if (fe->dtv_demod->cma_flag == 1) {
-		pr_dbg("CMA MODE, cma flag is %d,mem size is %d",
-			fe->dtv_demod->cma_flag, fe->dtv_demod->cma_mem_size);
-		dtmb_cma_alloc(dev);
-		memstart_dtmb = dev->mem_start;
-	} else {
-		memstart_dtmb = fe->dtv_demod->mem_start;
-	}
+			Gxtv_Demod_Dvbt_Init(dev);
+		if (fe->dtv_demod->cma_flag == 1) {
+			pr_dbg("CMA MODE, cma flag is %d,mem size is %d",
+				fe->dtv_demod->cma_flag,
+				fe->dtv_demod->cma_mem_size);
+			dtmb_cma_alloc(dev);
+			memstart_dtmb = dev->mem_start;
+		} else {
+			memstart_dtmb = fe->dtv_demod->mem_start;
+		}
 		pr_dbg("[im]memstart is %x\n", memstart_dtmb);
 		apb_write_reg(DVBT_BASE + (0x10 << 2), memstart_dtmb);
 	}
@@ -1471,11 +1487,19 @@ static int gxtv_demod_fe_leave_mode(struct aml_fe *fe, int mode)
 		dvbc_kill_cci_task();
 	if (mode == AM_FE_DTMB) {
 		/* close arbit */
-		demod_set_demod_reg(0x0, DEMOD_REG4);
+		if (is_meson_txhd_cpu()) {
+			/* demod_set_demod_reg(0x0, TXLX_DEMOD_REG4); */
+			demod_set_reg_rlt(TXLX_DEMOD_REG4, 0x0);
+		} else {
+			/* demod_set_demod_reg(0x0, DEMOD_REG4); */
+			demod_set_reg_rlt(GXBB_DEMOD_REG4, 0x0);
+		}
+
 		if (fe->dtv_demod->cma_flag == 1)
 			dtmb_cma_release(dev);
 	}
 
+	adc_set_pll_cntl(0, 0x04, NULL);
 	/* should disable the adc ref signal for demod */
 	vdac_enable(0, 0x2);
 	msleep(200);
@@ -1506,6 +1530,8 @@ static int __init gxtvdemodfrontend_init(void)
 	ret = 0;
 
 	dtvpll_lock_init();
+	/* init */
+	dtvdemod_base_add_init();
 	mutex_init(&aml_lock);
 
 	gxtv_clsp = class_create(THIS_MODULE, DEMOD_DEVICE_NAME);

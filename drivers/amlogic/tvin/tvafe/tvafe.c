@@ -1095,10 +1095,10 @@ void tvafe_dec_close(struct tvin_frontend_s *fe)
 	devp->flags |= TVAFE_POWERDOWN_IN_IDLE;
 	tvafe_enable_module(false);
 	if (tvafe->parm.port == TVIN_PORT_CVBS3)
-		adc_set_pll_cntl(0, ADC_EN_ATV_DEMOD);
+		adc_set_pll_cntl(0, ADC_EN_ATV_DEMOD, NULL);
 	else if ((tvafe->parm.port >= TVIN_PORT_CVBS0) &&
 		(tvafe->parm.port <= TVIN_PORT_CVBS2))
-		adc_set_pll_cntl(0, ADC_EN_TVAFE);
+		adc_set_pll_cntl(0, ADC_EN_TVAFE, NULL);
 #endif
 
 #ifdef CONFIG_CMA

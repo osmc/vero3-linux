@@ -74,7 +74,7 @@ int sdio_write_ddr(unsigned long sdio_addr, unsigned long byte_count,
 
 int read_reg(int addr)
 {
-	addr = addr + DEMOD_BASE;
+	addr = addr + ddemod_reg_base;	/* DEMOD_BASE;*/
 	return apb_read_reg(addr);
 }
 

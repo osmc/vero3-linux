@@ -113,7 +113,7 @@ static ssize_t aml_atvdemod_store(struct class *cls,
 		update_btsc_mode(1, &stereo_flag, &sap_flag);
 		pr_info("[tuner..] get signal_audmode done ....\n");
 	} else if (!strncmp(parm[0], "clk", 3)) {
-		adc_set_pll_cntl(1, 0x1);
+		adc_set_pll_cntl(1, 0x1, NULL);
 		atvdemod_clk_init();
 		if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 			aud_demod_clk_gate(1);
@@ -284,7 +284,7 @@ static int aml_atvdemod_enter_mode(struct aml_fe *fe, int mode)
 			devm_pinctrl_get_select(amlatvdemod_devp->dev,
 				amlatvdemod_devp->pin_name);
 	/* printk("\n%s: set atvdemod pll...\n",__func__); */
-	adc_set_pll_cntl(1, 0x1);
+	adc_set_pll_cntl(1, 0x1, NULL);
 	usleep_range(2000, 2100);
 	atvdemod_clk_init();
 	err_code = atvdemod_init();
@@ -313,7 +313,7 @@ static int aml_atvdemod_leave_mode(struct aml_fe *fe, int mode)
 	}
 	/* reset adc pll flag */
 	/* printk("\n%s: init atvdemod flag...\n",__func__); */
-	adc_set_pll_cntl(0, 0x1);
+	adc_set_pll_cntl(0, 0x1, NULL);
 	if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 		aud_demod_clk_gate(0);
 	atvdemod_state = ATVDEMOD_STATE_IDEL;

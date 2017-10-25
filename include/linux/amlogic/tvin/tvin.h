@@ -863,6 +863,14 @@ struct tvafe_pin_mux_s {
 /* adc pll ctl, atv demod & tvafe use the same adc module
  * module index: atv demod:0x01; tvafe:0x2
 */
-extern void adc_set_pll_cntl(bool on, unsigned int module_sel);
+/* extern void adc_set_pll_cntl(bool on, unsigned int module_sel);*/
+
+struct dfe_adcpll_para {
+	unsigned int adcpllctl;
+	unsigned int demodctl;
+	unsigned int atsc;
+};
+extern int adc_set_pll_cntl(bool on, unsigned int module_sel, void *pDtvPara);
+extern void tvafe_set_ddemod_default(void);/* add for dtv demod*/
 
 #endif

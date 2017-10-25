@@ -30,6 +30,93 @@
 
 /* void __iomem *meson_reg_demod_map[1024]; */
 
+/* base address define */
+/* gxtvbb txl */
+#define IO_DEMOD_BASE			(0xc8844000)
+#define IO_AOBUS_BASE			(0xc8100000)
+#define IO_HIU_BASE			(0xc883c000)
+
+/* txlx */
+#define TXLX_DEMOD_BASE			(0xff644000)
+#define TXLX_IO_AOBUS_BASE		(0xff800000)
+#define TXLX_IO_HIU_BASE		(0xff63c000)
+
+/* gxlx  only support dvbc */
+#define GXLX_DEMOD_BASE			(0xc8840000)
+
+/* txhd */
+#define TXHD_DEMOD_BASE			(0xff644000)
+#define TXHD_TVFE_BASE			(0xff642000)
+
+
+/* register define */
+#define TXLX_RESET0_LEVEL		(0xffd01080)
+#define TXLX_HHI_DEMOD_MEM_PD_REG	(0xff63c000 + (0x43 << 2))
+
+
+/* txhd */
+#define TXHD_TOP_BASE_ADD		0x300
+#define TXHD_TVFE_VAFE_CTRL0	((TXHD_TOP_BASE_ADD+0xB0)<<2)
+#define TXHD_TVFE_VAFE_CTRL1	((TXHD_TOP_BASE_ADD+0xB1)<<2)
+#define TXHD_TVFE_VAFE_CTRL2	((TXHD_TOP_BASE_ADD+0xB2)<<2)
+
+/* offset define */
+#define DEMOD_REG_ADDR_OFFSET(reg)	(reg & 0xfffff)
+#define QAM_BASE			(0x400)	/* is offset */
+#define DEMOD_CFG_BASE			(0xC00)	/* is offset */
+
+/* adc */
+#define D_HHI_DADC_CNTL				(0x27 << 2)
+#define D_HHI_DADC_CNTL2			(0x28 << 2)
+#define D_HHI_DADC_RDBK0_I			(0x29 << 2)
+#define D_HHI_DADC_CNTL3			(0x2a << 2)
+#define D_HHI_DADC_CNTL4			(0x2b << 2)
+
+#define D_HHI_VDAC_CNTL0			(0xbd << 2)
+
+/* PLL */
+#define D_HHI_ADC_PLL_CNTL5			(0x9e << 2)
+#define D_HHI_ADC_PLL_CNTL6			(0x9f << 2)
+#define D_HHI_ADC_PLL_CNTL			(0xaa << 2)
+#define D_HHI_ADC_PLL_CNTL2			(0xab << 2)
+#define D_HHI_ADC_PLL_CNTL3			(0xac << 2)
+#define D_HHI_ADC_PLL_CNTL4			(0xad << 2)
+#define D_HHI_ADC_PLL_CNTL1			(0xaf << 2)
+
+/**/
+#define D_HHI_HDMI_CLK_CNTL			(0x73 << 2)
+#define D_HHI_DEMOD_CLK_CNTL			(0x74 << 2)
+
+/* demod register: */
+#define GXBB_DEMOD_REG1               (0xc00)
+#define GXBB_DEMOD_REG2               (0xc04)
+#define GXBB_DEMOD_REG3               (0xc08)
+#define GXBB_DEMOD_REG4               (0xc0c)
+
+
+#define TXLX_DEMOD_REG1               (0xF00)
+#define TXLX_DEMOD_REG2               (0xF04)
+#define TXLX_DEMOD_REG3               (0xF08)
+#define TXLX_DEMOD_REG4               (0xF0c)
+
+
+
+
+/* old define */
+#define DVBT_BASE	(TXLX_DEMOD_BASE+0x400)
+#define TXLX_ATSC_BASE  (TXLX_DEMOD_BASE+0x800)
+#define TXLX_QAM_BASE   (TXLX_DEMOD_BASE+0xC00)
+
+
+#define GXLX_QAM_BASE   (GXLX_DEMOD_BASE+0xC00)
+#define GXLX_HHI_DEMOD_MEM_PD_REG	(0xc883c000 + (0x43 << 2))
+
+#define RESET0_LEVEL		0xc1104480
+#define HHI_DEMOD_MEM_PD_REG         (0xc883c000 + (0x43 << 2))
+
+#define IO_CBUS_PHY_BASE        (0xc0800000)
+
+#if 0
 #define TXLX_IO_AOBUS_BASE           (0xff800000)
 #define TXLX_IO_HIU_BASE             (0xff63c000)
 #define TXLX_IO_CBUS_PHY_BASE        (0xc0800000)
@@ -122,7 +209,7 @@
 #define DEMOD_REG2               (DEMOD_BASE + 0xc04)
 #define DEMOD_REG3               (DEMOD_BASE + 0xc08)
 #define DEMOD_REG4               (DEMOD_BASE + 0xc0c)
-
+#endif
 /* #ifdef TXL_TV */
 /*txl and txlx is the same*/
 #define TXLX_ADC_RESET_VALUE          0xca6a2110	/* 0xce7a2110 */
@@ -141,7 +228,7 @@
 #define TXLX_ADC_REGD_VALUE           0x00005000
 #define TXLX_ADC_REGE_VALUE           0x00000200
 
-
+#if 0
 /* DADC DPLL */
 /*HHI_ADC_PLL_CNTL   HHI_ADC_PLL_CNTL2
 HHI_ADC_PLL_CNTL3 HHI_ADC_PLL_CNTL4*/
@@ -205,7 +292,7 @@ HHI_ADC_PLL_CNTL6*/
 /*HHI_VDAC_CNTL0*/
 #define TXLX_ADC_REGE		 (TXLX_IO_HIU_BASE + (0xbd << 2))
 
-
+#endif
 
 /* #ifdef GX_TV */
 
@@ -238,7 +325,8 @@ HHI_ADC_PLL_CNTL6*/
 #endif
 /* #endif */
 
-#ifdef G9_TV
+#if 0
+/* #ifdef G9_TV */
 
 #define ADC_RESET_VALUE          0x8a2a2110	/* 0xce7a2110 */
 #define ADC_REG1_VALUE           0x00100228
@@ -268,7 +356,8 @@ HHI_ADC_PLL_CNTL6*/
 #define ADC_REGA         0x102b
 #endif
 
-#ifdef M6_TV
+#if 0
+/* #ifdef M6_TV */
 #define ADC_REG1_VALUE           0x003b0232
 #define ADC_REG2_VALUE           0x814d3928
 #define ADC_REG3_VALUE           0x6b425012
@@ -288,6 +377,9 @@ HHI_ADC_PLL_CNTL6*/
 #define DEMOD_REG1_VALUE                 0x0000d007
 #define DEMOD_REG2_VALUE                 0x2e805400
 #define DEMOD_REG3_VALUE                 0x201
+
+/* for table end */
+#define TABLE_FLG_END		0xffffffff
 
 
 /* #define Wr(addr, data)   WRITE_CBUS_REG(addr, data)*/
@@ -348,6 +440,12 @@ enum {
 	DTMB_FEC_READY = 10
 };
 
+enum {
+	REG_M_DEMOD = 0,
+	REG_M_TVAFE,
+	REG_M_HIU,
+	REG_M_NONE
+};
 /* i2c functions */
 /* int aml_i2c_sw_test_bus(struct aml_demod_i2c *adap, char *name); */
 int am_demod_i2c_xfer(struct aml_demod_i2c *adap, struct i2c_msg *msgs,
@@ -703,5 +801,20 @@ void qam_write_reg(int reg_addr, int reg_data);
 unsigned long qam_read_reg(int reg_addr);
 /*bool is_meson_txlx_cpu(void);*/
 
+/* add new function */
+extern void dtvdemod_base_add_init(void);
+extern unsigned ddemod_reg_base;
+extern void demod_set_reg_rlt(unsigned int addr, unsigned int data);
+extern unsigned int demod_read_reg_rlt(unsigned int addr);
+extern void dvbc_write_reg(unsigned int addr, unsigned int data);
+extern unsigned int dvbc_read_reg(unsigned int addr);
+extern int dd_tvafe_hiu_reg_write(unsigned int reg, unsigned int val);
+extern unsigned int dd_tvafe_hiu_reg_read(unsigned int addr);
+
+extern void clocks_set_sys_defaults(unsigned char dvb_mode);
+extern void demod_set_demod_default(void);
+
+extern void debug_adc_pll(void);
+extern void debug_check_reg_val(unsigned int reg_mode, unsigned int reg);
 
 #endif
