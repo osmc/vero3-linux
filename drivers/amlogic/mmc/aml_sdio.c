@@ -519,7 +519,6 @@ static void aml_sdio_timeout(struct work_struct *work)
 		|| (host->xfer_step == XFER_IRQ_OCCUR)) {
 		/* isr have been run */
 		spin_unlock_irqrestore(&host->mrq_lock, flags);
-		/* mod_timer(&host->timeout_tlist, jiffies + 10); */
 		schedule_delayed_work(&host->timeout, msecs_to_jiffies(500));
 		host->time_req_sta = aml_read_cbus(ISA_TIMERE);
 

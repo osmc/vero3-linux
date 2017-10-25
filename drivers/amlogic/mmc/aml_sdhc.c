@@ -381,7 +381,8 @@ void aml_sdhc_timeout(unsigned long data)
 	if ((host->xfer_step == XFER_IRQ_TASKLET_DATA)
 		|| (host->xfer_step == XFER_IRQ_TASKLET_CMD)
 		|| (host->xfer_step == XFER_IRQ_TASKLET_BUSY)) { /*  */
-		mod_timer(&host->timeout_tlist, jiffies + 10);
+		mod_timer(&host->timeout_tlist,
+			jiffies + msecs_to_jiffies(100));
 		sdhc_err("%s: host->xfer_step=%d,
 			irq have been occured and transfer is normal.\n",
 			mmc_hostname(host->mmc), host->xfer_step);
@@ -584,10 +585,11 @@ void aml_sdhc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	writel(vista, host->base+SDHC_ISTA); /* clear irqs */
 
 	if (!mrq->data)
-		mod_timer(&host->timeout_tlist, jiffies + 100);
+		mod_timer(&host->timeout_tlist,
+			jiffies + msecs_to_jiffies(1000));
 	else
 		mod_timer(&host->timeout_tlist,
-				jiffies + 500);
+				jiffies + msecs_to_jiffies(5000));
 
 	spin_lock_irqsave(&host->mrq_lock, flags);
 	if (host->xfer_step != XFER_FINISHED && host->xfer_step != XFER_INIT)

@@ -1404,17 +1404,16 @@ void aml_sdhc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 #endif
 
 	if (!mrq->data)
-		timeout = 100; /* mod_timer(&host->timeout_tlist,
-		jiffies + 100); // 1s */
+		timeout = msecs_to_jiffies(1000);
 	else
-		timeout = 500;
+		timeout = msecs_to_jiffies(5000);
 
 	if (mrq->cmd->opcode == MMC_SEND_STATUS)
-		timeout = 300;
+		timeout = msecs_to_jiffies(3000);
 
 	/* about 30S for erase cmd. */
 	if (mrq->cmd->opcode == MMC_ERASE)
-		timeout = 3000;
+		timeout = msecs_to_jiffies(30000);
 		schedule_delayed_work(&host->timeout, timeout);
 
 		spin_lock_irqsave(&host->mrq_lock, flags);
