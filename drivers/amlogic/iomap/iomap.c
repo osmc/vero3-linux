@@ -71,7 +71,7 @@ int aml_reg_read(u32 bus_type, unsigned int reg, unsigned int *val)
 	else
 		return -1;
 #endif
-	if ((bus_type >= IO_CBUS_BASE) && (bus_type < IO_BUS_MAX)) {
+	if (bus_type < IO_BUS_MAX) {
 		*val = readl((meson_reg_map[bus_type]+reg));
 		return 0;
 	} else
@@ -87,7 +87,7 @@ int aml_reg_write(u32 bus_type, unsigned int reg, unsigned int val)
 	else
 		return -1;
 #endif
-	if ((bus_type >= IO_CBUS_BASE) && (bus_type < IO_BUS_MAX)) {
+	if (bus_type < IO_BUS_MAX) {
 		writel(val, (meson_reg_map[bus_type]+reg));
 		return 0;
 	} else
@@ -106,7 +106,7 @@ int aml_regmap_update_bits(u32 bus_type,
 	else
 		return -1;
 #endif
-	if ((bus_type >= IO_CBUS_BASE) && (bus_type < IO_BUS_MAX)) {
+	if (bus_type < IO_BUS_MAX) {
 		unsigned int tmp, orig;
 		aml_reg_read(bus_type, reg, &orig);
 		tmp = orig & ~mask;
