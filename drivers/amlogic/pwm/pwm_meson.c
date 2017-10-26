@@ -83,7 +83,7 @@ struct aml_pwm_channel *pwm_aml_calc(struct aml_pwm_chip *chip,
 	unsigned int pwm_freq;
 	unsigned long freq_div;
 
-	if ((duty_ns < 0) || (duty_ns > period_ns)) {
+	if (duty_ns > period_ns) {
 		dev_err(chip->chip.dev, "Not available duty error!\n");
 		return NULL;
 	}
