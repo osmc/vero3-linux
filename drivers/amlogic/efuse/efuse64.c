@@ -315,6 +315,7 @@ ssize_t efuse_user_attr_store(char *name, const char *buf, size_t count)
 	const char *c, *s;
 	struct efusekey_info info;
 	unsigned uint_val;
+	loff_t pos;
 
 	if (efuse_getinfo(name, &info) < 0) {
 		pr_err("%s is not found\n", name);
@@ -344,7 +345,8 @@ ssize_t efuse_user_attr_store(char *name, const char *buf, size_t count)
 			}
 	}
 
-	ret = efuse_write_usr(local_buf, info.size, (loff_t *)&(info.offset));
+	pos = ((loff_t)(info.offset)) & 0xffffffff;
+	ret = efuse_write_usr(local_buf, info.size, &pos);
 	if (ret == -1) {
 		pr_err("ERROR: efuse write user data fail!\n");
 		goto error_exit;
@@ -370,6 +372,7 @@ ssize_t efuse_user_attr_show(char *name, char *buf)
 	ssize_t ret;
 	int i;
 	struct efusekey_info info;
+	loff_t pos;
 
 	if (efuse_getinfo(name, &info) < 0) {
 		pr_err("%s is not found\n", name);
@@ -379,7 +382,8 @@ ssize_t efuse_user_attr_show(char *name, char *buf)
 	local_buf = kzalloc(sizeof(char)*(info.size), GFP_KERNEL);
 	memset(local_buf, 0, info.size);
 
-	ret = efuse_read_usr(local_buf, info.size, (loff_t *)&(info.offset));
+	pos = ((loff_t)(info.offset)) & 0xffffffff;
+	ret = efuse_read_usr(local_buf, info.size, &pos);
 	if (ret == -1) {
 		pr_err("ERROR: efuse read user data fail!\n");
 		goto error_exit;
@@ -405,7 +409,12 @@ static ssize_t userdata_show(struct class *cla,
 	loff_t offset;
 	unsigned int max_size;
 
-	max_size = efuse_get_max();
+	ret = efuse_get_max();
+	if (ret < 0) {
+		pr_err("efuse: failed to get max size\n");
+		return -1;
+	}
+	max_size = (unsigned int)ret;
 
 	op = kmalloc(sizeof(char)*max_size, GFP_KERNEL);
 	if (!op) {
@@ -448,7 +457,13 @@ static ssize_t userdata_write(struct class *cla,
 	char *op = NULL;
 	unsigned int max_size;
 
-	max_size = efuse_get_max();
+	ret = efuse_get_max();
+	if (ret < 0) {
+		pr_err("efuse: failed to get max size\n");
+		return -1;
+	}
+	max_size = (unsigned int)ret;
+
 	op = kzalloc((sizeof(char)*max_size), GFP_KERNEL);
 	if (!op) {
 		pr_err("efuse: failed to allocate memory\n");
