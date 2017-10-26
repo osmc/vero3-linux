@@ -1790,6 +1790,78 @@ static ssize_t amvecm_cm_reg_store(struct class *cls,
 	return count;
 }
 
+static ssize_t amvecm_write_reg_show(struct class *cla,
+		struct class_attribute *attr, char *buf)
+{
+	pr_info("Usage: echo w addr value > /sys/class/amvecm/pq_reg_rw\n");
+	pr_info("Usage: echo bw addr value start length > /...\n");
+	pr_info("Usage: echo r addr > /sys/class/amvecm/pq_reg_rw\n");
+	pr_info("addr and value must be hex\n");
+	return 0;
+}
+
+static ssize_t amvecm_write_reg_store(struct class *cls,
+		 struct class_attribute *attr,
+		 const char *buffer, size_t count)
+{
+
+	unsigned int addr, value, bitstart, bitlength;
+	long val = 0;
+	char *buf_orig, *parm[5] = {NULL};
+
+	if (!buffer)
+		return count;
+	buf_orig = kstrdup(buffer, GFP_KERNEL);
+	parse_param_amvecm(buf_orig, (char **)&parm);
+
+	if (!strncmp(parm[0], "r", 1)) {
+		if (kstrtoul(parm[1], 16, &val) < 0) {
+			kfree(buf_orig);
+			return -EINVAL;
+		}
+		addr = val;
+		value = READ_VPP_REG(addr);
+		pr_info("0x%x=0x%x\n", addr, value);
+	} else if (!strncmp(parm[0], "w", 1)) {
+		if (kstrtoul(parm[1], 16, &val) < 0) {
+			kfree(buf_orig);
+			return -EINVAL;
+		}
+		addr = val;
+		if (kstrtoul(parm[2], 16, &val) < 0) {
+			kfree(buf_orig);
+			return -EINVAL;
+		}
+		value = val;
+		WRITE_VPP_REG(addr, value);
+	} else if (!strncmp(parm[0], "bw", 2)) {
+		if (kstrtoul(parm[1], 16, &val) < 0) {
+			kfree(buf_orig);
+			return -EINVAL;
+		}
+		addr = val;
+		if (kstrtoul(parm[2], 16, &val) < 0) {
+			kfree(buf_orig);
+			return -EINVAL;
+		}
+		value = val;
+		if (kstrtoul(parm[3], 16, &val) < 0) {
+			kfree(buf_orig);
+			return -EINVAL;
+		}
+		bitstart = val;
+		if (kstrtoul(parm[4], 16, &val) < 0) {
+			kfree(buf_orig);
+			return -EINVAL;
+		}
+		bitlength = val;
+		WRITE_VPP_REG_BITS(addr, value, bitstart, bitlength);
+	}
+
+	kfree(buf_orig);
+	return count;
+}
+
 static ssize_t amvecm_gamma_show(struct class *cls,
 			struct class_attribute *attr,
 			char *buf)
@@ -4044,6 +4116,8 @@ static struct class_attribute amvecm_class_attrs[] = {
 		amvecm_reg_show, amvecm_reg_store),
 	__ATTR(pq_user_set, S_IRUGO | S_IWUSR,
 		amvecm_pq_user_show, amvecm_pq_user_store),
+	__ATTR(pq_reg_rw, S_IRUGO | S_IWUSR,
+		amvecm_write_reg_show, amvecm_write_reg_store),
 	__ATTR_NULL
 };
 
