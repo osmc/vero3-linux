@@ -52,6 +52,7 @@
 #define MESON_CPU_MAJOR_ID_TXL		0x23
 #define MESON_CPU_MAJOR_ID_TXLX		0x24
 #define MESON_CPU_MAJOR_ID_GXLX		0x26
+#define MESON_CPU_MAJOR_ID_TXHD		0x27
 
 #define MESON_CPU_VERSION_LVL_MAJOR	0
 #define MESON_CPU_VERSION_LVL_MINOR	1
@@ -92,6 +93,11 @@ static inline u32 get_cpu_package(void)
 static inline bool package_id_is(unsigned int id)
 {
 	return get_cpu_package() == id;
+}
+
+static inline bool cpu_after_eq(unsigned int id)
+{
+	return get_cpu_type() >= id;
 }
 
 static inline bool is_meson_m8_cpu(void)
@@ -185,11 +191,6 @@ static inline bool is_meson_txlx_cpu(void)
 	return get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX;
 }
 
-static inline bool cpu_after_eq(unsigned int id)
-{
-	return get_cpu_type() >= id;
-}
-
 static inline bool is_meson_txlx_package_962X(void)
 {
 	return is_meson_txlx_cpu() && package_id_is(0x10);
@@ -214,4 +215,10 @@ static inline bool is_meson_gxlx_package_905C(void)
 {
 	return is_meson_gxlx_cpu() && package_id_is(0xd0);
 }
+
+static inline bool is_meson_txhd_cpu(void)
+{
+	return get_cpu_type() == MESON_CPU_MAJOR_ID_TXHD;
+}
+
 #endif
