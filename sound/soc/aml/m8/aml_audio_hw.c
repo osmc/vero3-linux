@@ -281,7 +281,6 @@ static void i2sin_fifo2_set_buf(u32 addr, u32 size, u32 src, u32 ch)
 			   |(1 << AUDIN_FIFO_UG)	/* Urgent request. */
 	);
 
-	aml_audin_write(AUDIN_FIFO2_CTRL1, 0x0c);
 	/* HDMI I2S-in module */
 	aml_audin_write(AUDIN_DECODE_FORMAT,
 				(0 << 24) /*spdif enable*/
@@ -302,14 +301,21 @@ static void i2sin_fifo2_set_buf(u32 addr, u32 size, u32 src, u32 ch)
 		aml_audin_update_bits(AUDIN_FIFO2_CTRL,
 				 (0x7 << AUDIN_FIFO_DIN_SEL),
 				 (ATV_ADEC << AUDIN_FIFO_DIN_SEL));
-		aml_audin_update_bits(AUDIN_FIFO2_CTRL1, 0x3,
-							(0x1 << 0));
+		aml_audin_write(AUDIN_FIFO2_CTRL1, 0x09);
 	} else if (audio_in_source == 2) {
 		/* HDMI from PAO */
 		aml_audin_update_bits(AUDIN_FIFO2_CTRL,
 				 (0x7 << AUDIN_FIFO_DIN_SEL),
 				 (PAO_IN << AUDIN_FIFO_DIN_SEL));
+		aml_audin_write(AUDIN_FIFO2_CTRL1, 0x08);
+	} else if (audio_in_source == 3) {
+		/* spdif-in from spdif-pad */
+		aml_audin_write(AUDIN_FIFO2_CTRL1, 0x88);
+	} else {
+		/* AV from acodec */
+		aml_audin_write(AUDIN_FIFO2_CTRL1, 0x0c);
 	}
+
 }
 
 static void spdifin_reg_set(void)
