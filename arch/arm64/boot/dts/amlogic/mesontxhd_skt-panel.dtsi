@@ -1,0 +1,190 @@
+/*
+ * arch/arm64/boot/dts/amlogic/mesontxhd_skt-panel.dtsi
+ *
+ * Copyright (C) 2017 Amlogic, Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+*/
+
+/ {
+	lcd {
+		compatible = "amlogic, lcd";
+		dev_name = "lcd";
+		mode = "tv";
+		status = "okay";
+		fr_auto_policy = <1>; /* 0=disable, 1=60/50hz, 2=60/50/48hz */
+		key_valid = <0>;
+		memory-region = <&lcd_tcon_reserved>;
+		tcon_fb_addr = <0x07400000>;
+		clocks = <&clock CLK_FPLL_DIV5>,
+			<&clock CLK_TCON>;
+		clock-names = "fclk_div5",
+			"clk_tcon";
+		resets = <&clock GCLK_IDX_VCLK2_ENCL
+			&clock GCLK_IDX_VCLK2_VENCL>;
+		reset-names = "encl","vencl";
+		interrupts = <0 3 1>;
+		interrupt-names = "lcd_vsync";
+		pinctrl-names = "minilvds_pins";
+		pinctrl-0 = <&lcd_minilvds_pins>;
+		pinctrl_version = <2>;
+
+		/* power type:(0=cpu_gpio, 1=pmu_gpio, 2=signal, 3=extern, 0xff=ending) */
+		/* power index:(point gpios_index, or extern_index, 0xff=invalid) */
+		/* power value:(0=output low, 1=output high, 2=input) */
+		/* power delay:(unit in ms) */
+
+		lvds_0{
+			model_name = "1080p-vfreq";
+			interface = "lvds"; /* interface(lvds, mlvds) */
+			basic_setting = <1920 1080 /* h_active, v_active */
+				2200 1125  /* h_period, v_period */
+				8 16 9>;   /* lcd_bits, screen_widht, screen_height */
+			range_setting = <2060 2650  /* h_period min,max */
+				1100 1480   /* v_period min,max */
+				120000000 160000000>; /* pclk min,max */
+			lcd_timing = <44 148 0  /* hs_width, hs_bp, hs_pol */
+				5 30 0>; /* vs_width, vs_bp, vs_pol */
+			clk_attr = <2 /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range) */
+				3 /* clk_ss_level */
+				1 /* clk_auto_generate */
+				0>; /* pixel_clk(unit in Hz) */
+			lvds_attr = <1 /* lvds_repack */
+				1 /* dual_port */
+				0 /* pn_swap */
+				0 /* port_swap */
+				0>; /* lane_reverse */
+			phy_attr = <3 0  /* data_vswing_level, data_preem_level */
+				0 0>;  /* clk_vswing_level, clk_preem_level */
+			power_on_step = <2 0 0 0   /* signal enable */
+				0xff 0 0 0>; /* type, index, value, delay */
+			power_off_step = <2 0 0 0 /* signal disable */
+				0xff 0 0 0>; /* type, index, value, delay */
+			backlight_index = <0xff>;
+		};
+		lvds_1{
+			model_name = "1080p-hfreq_hdmi";
+			interface = "lvds"; /* interface(lvds, mlvds) */
+			basic_setting = <1920 1080 /* h_active, v_active */
+				2200 1125  /* h_period, v_period */
+				8 16 9>; /* lcd_bits, screen_widht, screen_height */
+			range_setting = <2080 2720  /* h_period min,max */
+				1100 1380   /* v_period min,max */
+				133940000 156000000>; /* pclk min,max */
+			lcd_timing = <44 148 0  /* hs_width, hs_bp, hs_pol */
+				5 30 0>; /* vs_width, vs_bp, vs_pol */
+			clk_attr = <1 /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range) */
+				0 /* clk_ss_level */
+				1 /* clk_auto_generate */
+				0>; /* pixel_clk(unit in Hz) */
+			lvds_attr = <1 /* lvds_repack */
+				1 /* dual_port */
+				0 /* pn_swap */
+				0 /* port_swap */
+				0>; /* lane_reverse */
+			phy_attr = <3 0  /* data_vswing_level, data_preem_level */
+				0 0>;  /* clk_vswing_level, clk_preem_level */
+			power_on_step = <2 0 0 0   /* signal enable */
+				0xff 0 0 0>; /* type, index, value, delay */
+			power_off_step = <2 0 0 0 /* signal disable */
+				0xff 0 0 0>; /* type, index, value, delay */
+			backlight_index = <0xff>;
+		};
+		lvds_2{
+			model_name = "768p-vfreq";
+			interface = "lvds"; /* interface(lvds, mlvds) */
+			basic_setting = <1366 768 /* h_active, v_active */
+				1560 806 /* h_period, v_period */
+				8 16 9>; /* lcd_bits, screen_widht, screen_height */
+			range_setting = <1460 2000 /* h_period min,max */
+				784 1015 /* v period_min,max */
+				50000000 85000000>; /* pclk min,max */
+			lcd_timing = <56 64 0 /* hs_width, hs_bp, hs_pol */
+				3 28 0>; /* vs_width, vs_bp, vs_pol */
+			clk_attr = <2 /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range) */
+				3 /* clk_ss_level */
+				1 /* clk_auto_generate */
+				0>; /* pixel_clk(unit in Hz) */
+			lvds_attr = <1 /* lvds_repack */
+				0 /* dual_port */
+				0 /* pn_swap */
+				0 /* port_swap */
+				0>; /* lane_reverse */
+			phy_attr = <3 0 /* data_vswing_level, data_preemphasis_level */
+				0 0>; /* clk_vswing_level, clk_preem_level */
+			power_on_step = <2 0 0 0   /* signal enable */
+				0xff 0 0 0>; /* type, index, value, delay */
+			power_off_step = <2 0 0 0 /* signal disable */
+				0xff 0 0 0>; /* type, index, value, delay */
+			backlight_index = <0xff>;
+		};
+
+		mlvds_0{
+			model_name = "1080p-tcon";
+			interface = "minilvds"; /* interface(lvds, minilvds) */
+			basic_setting = <1920 1080 /* h_active, v_active */
+				2200 1125  /* h_period, v_period */
+				8 16 9>; /* lcd_bits, screen_widht, screen_height */
+			range_setting = <2080 2720  /* h_period min,max */
+				1100 1380   /* v_period min,max */
+				133940000 156000000>; /* pclk min,max */
+			lcd_timing = <44 148 0  /* hs_width, hs_bp, hs_pol */
+				5 30 0>; /* vs_width, vs_bp, vs_pol */
+			clk_attr = <1 /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range) */
+				0 /* clk_ss_level */
+				1 /* clk_auto_generate */
+				0>; /* pixel_clk(unit in Hz) */
+			minilvds_attr = <6 /* channel_num */
+				0x12304567 /* channel_sel0 */
+				0x0   /* channel_sel1 */
+				0xaa0 /* clk_phase */
+				0   /* pn_swap */
+				0>; /* bit_swap */
+			phy_attr = <3 0>; /* vswing_level, preemphasis_level */
+			power_on_step = <2 0 0 0   /* signal enable */
+				0xff 0 0 0>; /* type, index, value, delay */
+			power_off_step = <2 0 0 0 /* signal disable */
+				0xff 0 0 0>; /* type, index, value, delay */
+			backlight_index = <0xff>;
+		};
+		mlvds_1{
+			model_name = "768p-tcon";
+			interface = "minilvds"; /* interface(lvds, minilvds) */
+			basic_setting = <1366 768 /* h_active, v_active */
+				1560 806 /* h_period, v_period */
+				8 16 9>; /* lcd_bits, screen_widht, screen_height */
+			range_setting = <1460 2000 /* h_period min,max */
+				784 1015 /* v period_min,max */
+				50000000 85000000>; /* pclk min,max */
+			lcd_timing = <56 64 0 /* hs_width, hs_bp, hs_pol */
+				3 28 0>; /* vs_width, vs_bp, vs_pol */
+			clk_attr = <2 /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range) */
+				3 /* clk_ss_level */
+				1 /* clk_auto_generate */
+				0>; /* pixel_clk(unit in Hz) */
+			minilvds_attr = <6 /* channel_num */
+				0x45603012 /* channel_sel0 */
+				0x0   /* channel_sel1 */
+				0xaa0 /* clk_phase */
+				0   /* pn_swap */
+				0>; /* bit_swap */
+			phy_attr = <3 0>; /* vswing_level, preemphasis_level */
+			power_on_step = <2 0 0 0   /* signal enable */
+				0xff 0 0 0>; /* type, index, value, delay */
+			power_off_step = <2 0 0 0 /* signal disable */
+				0xff 0 0 0>; /* type, index, value, delay */
+			backlight_index = <0xff>;
+		};
+
+	}; /* end of lcd */
+
+}; /* end of / */

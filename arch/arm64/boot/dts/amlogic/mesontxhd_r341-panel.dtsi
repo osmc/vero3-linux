@@ -1,0 +1,322 @@
+/*
+ * arch/arm64/boot/dts/amlogic/mesontxhd_skt-panel.dtsi
+ *
+ * Copyright (C) 2017 Amlogic, Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+*/
+
+/ {
+	lcd {
+		compatible = "amlogic, lcd";
+		dev_name = "lcd";
+		mode = "tv";
+		status = "okay";
+		fr_auto_policy = <1>; /* 0=disable, 1=60/50hz, 2=60/50/48hz */
+		key_valid = <0>;
+		memory-region = <&lcd_tcon_reserved>;
+		tcon_fb_addr = <0x07400000>;
+		clocks = <&clock CLK_FPLL_DIV5>,
+			<&clock CLK_TCON>;
+		clock-names = "fclk_div5",
+			"clk_tcon";
+		resets = <&clock GCLK_IDX_VCLK2_ENCL
+			&clock GCLK_IDX_VCLK2_VENCL>;
+		reset-names = "encl","vencl";
+		interrupts = <0 3 1>;
+		interrupt-names = "lcd_vsync";
+		pinctrl-names = "minilvds_pins";
+		pinctrl-0 = <&lcd_minilvds_pins>;
+		pinctrl_version = <2>;
+
+		/* power type:(0=cpu_gpio, 1=pmu_gpio, 2=signal, 3=extern, 0xff=ending) */
+		/* power index:(point gpios_index, or extern_index, 0xff=invalid) */
+		/* power value:(0=output low, 1=output high, 2=input) */
+		/* power delay:(unit in ms) */
+		lcd_cpu-gpios = <&gpio GPIOZ_3 1>;
+		lcd_cpu_gpio_names = "GPIOZ_3";
+
+		lvds_0{
+			model_name = "1080p-vfreq";
+			interface = "lvds"; /* interface(lvds, mlvds) */
+			basic_setting = <1920 1080 /* h_active, v_active */
+				2200 1125  /* h_period, v_period */
+				8 16 9>;   /* lcd_bits, screen_widht, screen_height */
+			range_setting = <2060 2650  /* h_period min,max */
+				1100 1480   /* v_period min,max */
+				120000000 160000000>; /* pclk min,max */
+			lcd_timing = <44 148 0  /* hs_width, hs_bp, hs_pol */
+				5 30 0>; /* vs_width, vs_bp, vs_pol */
+			clk_attr = <2 /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range) */
+				3 /* clk_ss_level */
+				1 /* clk_auto_generate */
+				0>; /* pixel_clk(unit in Hz) */
+			lvds_attr = <1 /* lvds_repack */
+				1 /* dual_port */
+				0 /* pn_swap */
+				0 /* port_swap */
+				0>; /* lane_reverse */
+			phy_attr = <3 0  /* data_vswing_level, data_preem_level */
+				0 0>;  /* clk_vswing_level, clk_preem_level */
+			power_on_step = <0 0 1 20 /* panel power on */
+				2 0 0 0   /* signal enable */
+				0xff 0 0 0>; /* type, index, value, delay */
+			power_off_step = <2 0 0 0 /* signal disable */
+				0 0 0 100 /* panel power off */
+				0xff 0 0 0>; /* type, index, value, delay */
+			backlight_index = <0xff>;
+		};
+		lvds_1{
+			model_name = "1080p-hfreq_hdmi";
+			interface = "lvds"; /* interface(lvds, mlvds) */
+			basic_setting = <1920 1080 /* h_active, v_active */
+				2200 1125  /* h_period, v_period */
+				8 16 9>; /* lcd_bits, screen_widht, screen_height */
+			range_setting = <2080 2720  /* h_period min,max */
+				1100 1380   /* v_period min,max */
+				133940000 156000000>; /* pclk min,max */
+			lcd_timing = <44 148 0  /* hs_width, hs_bp, hs_pol */
+				5 30 0>; /* vs_width, vs_bp, vs_pol */
+			clk_attr = <1 /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range) */
+				0 /* clk_ss_level */
+				1 /* clk_auto_generate */
+				0>; /* pixel_clk(unit in Hz) */
+			lvds_attr = <1 /* lvds_repack */
+				1 /* dual_port */
+				0 /* pn_swap */
+				0 /* port_swap */
+				0>; /* lane_reverse */
+			phy_attr = <3 0  /* data_vswing_level, data_preem_level */
+				0 0>;  /* clk_vswing_level, clk_preem_level */
+			power_on_step = <0 0 1 20 /* panel power on */
+				2 0 0 0   /* signal enable */
+				0xff 0 0 0>; /* type, index, value, delay */
+			power_off_step = <2 0 0 0 /* signal disable */
+				0 0 0 100 /* panel power off */
+				0xff 0 0 0>; /* type, index, value, delay */
+			backlight_index = <0xff>;
+		};
+		lvds_2{
+			model_name = "768p-vfreq";
+			interface = "lvds"; /* interface(lvds, mlvds) */
+			basic_setting = <1366 768 /* h_active, v_active */
+				1560 806 /* h_period, v_period */
+				8 16 9>; /* lcd_bits, screen_widht, screen_height */
+			range_setting = <1460 2000 /* h_period min,max */
+				784 1015 /* v period_min,max */
+				50000000 85000000>; /* pclk min,max */
+			lcd_timing = <56 64 0 /* hs_width, hs_bp, hs_pol */
+				3 28 0>; /* vs_width, vs_bp, vs_pol */
+			clk_attr = <2 /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range) */
+				3 /* clk_ss_level */
+				1 /* clk_auto_generate */
+				0>; /* pixel_clk(unit in Hz) */
+			lvds_attr = <1 /* lvds_repack */
+				0 /* dual_port */
+				0 /* pn_swap */
+				0 /* port_swap */
+				0>; /* lane_reverse */
+			phy_attr = <3 0 /* data_vswing_level, data_preemphasis_level */
+				0 0>; /* clk_vswing_level, clk_preem_level */
+			power_on_step = <0 0 1 20 /* panel power on */
+				2 0 0 0   /* signal enable */
+				0xff 0 0 0>; /* type, index, value, delay */
+			power_off_step = <2 0 0 0 /* signal disable */
+				0 0 0 100 /* panel power off */
+				0xff 0 0 0>; /* type, index, value, delay */
+			backlight_index = <0xff>;
+		};
+
+		mlvds_0{
+			model_name = "1080p-tcon";
+			interface = "minilvds"; /* interface(lvds, minilvds) */
+			basic_setting = <1920 1080 /* h_active, v_active */
+				2200 1125  /* h_period, v_period */
+				8 16 9>; /* lcd_bits, screen_widht, screen_height */
+			range_setting = <2080 2720  /* h_period min,max */
+				1100 1380   /* v_period min,max */
+				133940000 156000000>; /* pclk min,max */
+			lcd_timing = <44 148 0  /* hs_width, hs_bp, hs_pol */
+				5 30 0>; /* vs_width, vs_bp, vs_pol */
+			clk_attr = <1 /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range) */
+				0 /* clk_ss_level */
+				1 /* clk_auto_generate */
+				0>; /* pixel_clk(unit in Hz) */
+			minilvds_attr = <6 /* channel_num */
+				0x12304567 /* channel_sel0 */
+				0x0   /* channel_sel1 */
+				0xaa0 /* clk_phase */
+				0   /* pn_swap */
+				0>; /* bit_swap */
+			phy_attr = <3 0>; /* vswing_level, preemphasis_level */
+			power_on_step = <0 0 1 20 /* panel power on */
+				2 0 0 0   /* signal enable */
+				0xff 0 0 0>; /* type, index, value, delay */
+			power_off_step = <2 0 0 0 /* signal disable */
+				0 0 0 100 /* panel power off */
+				0xff 0 0 0>; /* type, index, value, delay */
+			backlight_index = <0>;
+		};
+		mlvds_1{
+			model_name = "768p-tcon";
+			interface = "minilvds"; /* interface(lvds, minilvds) */
+			basic_setting = <1366 768 /* h_active, v_active */
+				1560 806 /* h_period, v_period */
+				8 16 9>; /* lcd_bits, screen_widht, screen_height */
+			range_setting = <1460 2000 /* h_period min,max */
+				784 1015 /* v period_min,max */
+				50000000 85000000>; /* pclk min,max */
+			lcd_timing = <56 64 0 /* hs_width, hs_bp, hs_pol */
+				3 28 0>; /* vs_width, vs_bp, vs_pol */
+			clk_attr = <2 /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range) */
+				3 /* clk_ss_level */
+				1 /* clk_auto_generate */
+				0>; /* pixel_clk(unit in Hz) */
+			minilvds_attr = <6 /* channel_num */
+				0x45603012 /* channel_sel0 */
+				0x0 /* channel_sel1 */
+				0xaa0 /* clk_phase */
+				0   /* pn_swap */
+				0>; /* bit_swap */
+			phy_attr = <3 0>; /* vswing_level, preemphasis_level */
+			power_on_step = <0 0 1 20 /* panel power on */
+				2 0 0 0   /* signal enable */
+				0xff 0 0 0>; /* type, index, value, delay */
+			power_off_step = <2 0 0 0 /* signal disable */
+				0 0 0 100 /* panel power off */
+				0xff 0 0 0>; /* type, index, value, delay */
+			backlight_index = <0xff>;
+		};
+
+	}; /* end of lcd */
+
+	backlight{
+		compatible = "amlogic, backlight";
+		dev_name = "backlight";
+		status = "okay";
+		key_valid = <0>;
+		pinctrl-names = "pwm_on","pwm_vs_on",
+				"pwm_combo_0_1_on",
+				"pwm_combo_0_vs_1_on",
+				"pwm_combo_0_1_vs_on",
+				"pwm_combo_0_on","pwm_combo_0_vs_on",
+				"pwm_combo_1_on","pwm_combo_1_vs_on";
+		pinctrl-0 = <&bl_pwm_on_pins>;
+		pinctrl-1 = <&bl_pwm_vs_on_pins>;
+		pinctrl-2 = <&bl_pwm_combo_0_on_pins &bl_pwm_combo_1_on_pins>;
+		pinctrl-3 = <&bl_pwm_combo_0_vs_on_pins &bl_pwm_combo_1_on_pins>;
+		pinctrl-4 = <&bl_pwm_combo_0_on_pins &bl_pwm_combo_1_vs_on_pins>;
+		pinctrl-5 = <&bl_pwm_combo_0_on_pins>;
+		pinctrl-6 = <&bl_pwm_combo_0_vs_on_pins>;
+		pinctrl-7 = <&bl_pwm_combo_1_on_pins>;
+		pinctrl-8 = <&bl_pwm_combo_1_vs_on_pins>;
+		pinctrl_version = <2>;
+
+		/* power index:(point gpios_index, 0xff=invalid) */
+		/* power value:(0=output low, 1=output high, 2=input) */
+		/* power delay:(unit in ms) */
+		bl-gpios = <&gpio GPIOZ_2 1 &gpio GPIOZ_1 1 &gpio GPIOZ_0 1>;
+		bl_gpio_names = "GPIOZ_2","GPIOZ_1","GPIOZ_0";
+
+		backlight_0{
+			index = <0>;
+			bl_name = "backlight_pwm";
+			bl_level_default_uboot_kernel = <100 100>;
+			bl_level_attr = <255 10 /* max, min */
+				128 102>; /* mid, mid_mapping */
+
+			bl_ctrl_method = <1>; /* 1=pwm, 2=pwm_combo */
+			bl_power_attr = <0 1 0 /* en_gpio_index, on_value, off_value */
+				200 200>; /* on_delay(ms), off_delay(ms) */
+
+			/* pwm_method: 0=negative, 1=positive */
+			/* pwm_freq: pwm_vs: 1~4(vfreq multiple), other pwm: real freq(unit: Hz) */
+			/* duty_max, duty_min: unit in % */
+			bl_pwm_port = "PWM_B"; /* PWM_A, PWM_B, PWM_C, PWM_D, PWM_VS */
+			bl_pwm_attr = <1 180 /* pwm_method, pwm_freq(Hz) */
+				100 25>; /* duty_max(%), duty_min(%) */
+			bl_pwm_power = <1 0 /* pwm_gpio_index, pwm_gpio_off */
+				10 10>; /* pwm_on_delay(ms), pwm_off_delay(ms) */
+		};
+		backlight_1{
+			index = <1>;
+			bl_name = "backlight_pwm_vs";
+			bl_level_default_uboot_kernel = <100 100>;
+			bl_level_attr = <255 10 /* max, min */
+				128 102>; /* mid, mid_mapping */
+
+			bl_ctrl_method = <1>; /* 1=pwm, 2=pwm_combo */
+			bl_power_attr = <0 1 0 /* en_gpio_index, on_value, off_value */
+				200 200>; /* on_delay(ms), off_delay(ms) */
+
+			/* pwm_method: 0=negative, 1=positive */
+			/* pwm_freq: pwm_vs: 1~4(vfreq multiple), other pwm: real freq(unit: Hz) */
+			/* duty_max, duty_min: unit in % */
+			bl_pwm_port = "PWM_VS"; /* PWM_A, PWM_B, PWM_C, PWM_D, PWM_VS */
+			bl_pwm_attr = <1 2 /* pwm_method, pwm_freq(vfreq multiple) */
+				100 25>; /* duty_max(%), duty_min(%) */
+			bl_pwm_power = <1 0 /* pwm_gpio_index, pwm_gpio_off */
+				10 10>; /* pwm_on_delay(ms), pwm_off_delay(ms) */
+		};
+		backlight_2{
+			index = <2>;
+			bl_name = "backlight_pwm_combo";
+			bl_level_default_uboot_kernel = <100 100>;
+			bl_level_attr = <255 10 /* max, min */
+				128 102>; /* mid, mid_mapping */
+
+			bl_ctrl_method = <2>; /* 1=pwm, 2=pwm_combo */
+			bl_power_attr = <0 1 0 /* en_gpio_index, on_value, off_value */
+				200 200>; /* on_delay(ms), off_delay(ms) */
+
+			/* pwm_method: 0=negative, 1=positive */
+			/* pwm_freq: pwm_vs: 1~4(vfreq multiple), other pwm: real freq(unit: Hz) */
+			/* duty_max, duty_min: unit in % */
+			bl_pwm_combo_level_mapping = <255 100 /* pwm0_level_max, pwm0_level_min */
+				100 10>; /* pwm1_level_max, pwm1_level_min */
+			bl_pwm_combo_port = "PWM_B","PWM_C"; /* PWM_A, PWM_B, PWM_C, PWM_D, PWM_VS */
+			bl_pwm_combo_attr = <1 180 /* pwm0_method, pwm0_freq */
+				100 25 /* pwm0_duty_max(%), pwm0_duty_min(%) */
+				1 18000 /* pwm1_method, pwm1_freq */
+				100 20>; /* pwm1_duty_max(%), pwm1_duty_min(%) */
+			bl_pwm_combo_power = <1 0 /* pwm0_gpio_index, pwm0_gpio_off*/
+				2 0 /* pwm1_gpio_index, pwm1_gpio_off */
+				10 10>; /* pwm_on_delay(ms), pwm_off_delay(ms) */
+		};
+		backlight_3{
+			index = <3>;
+			bl_name = "backlight_pwm_combo";
+			bl_level_default_uboot_kernel = <31 100>;
+			bl_level_attr = <255 10 /* max, min */
+				128 102>; /* mid, mid_mapping */
+
+			bl_ctrl_method = <2>; /* 1=pwm, 2=pwm_combo */
+			bl_power_attr = <0 1 0 /* en_gpio_index, on_value, off_value */
+				410 110>; /* on_delay(ms), off_delay(ms) */
+
+			/* pwm_method: 0=negative, 1=positive */
+			/* pwm_freq: pwm_vs: 1~4(vfreq multiple), other pwm: real freq(unit: Hz) */
+			/* duty_max, duty_min: unit in % */
+			bl_pwm_combo_level_mapping = <255 10 /* pwm0_level_max, pwm0_level_min */
+				0 0>; /* pwm1_level_max, pwm1_level_min */
+			bl_pwm_combo_port = "PWM_B","PWM_C"; /* PWM_A, PWM_B, PWM_C, PWM_D, PWM_VS */
+			bl_pwm_combo_attr = <1 180 /* pwm0_method, pwm0_freq */
+				100 25 /* pwm0_duty_max(%), pwm0_duty_min(%) */
+				1 18000 /* pwm1_method, pwm1_freq */
+				80 80>; /* pwm1_duty_max(%), pwm1_duty_min(%) */
+			bl_pwm_combo_power = <1 0 /* pwm0_gpio_index, pwm0_gpio_off*/
+				2 0 /* pwm1_gpio_index, pwm1_gpio_off */
+				10 10>; /* pwm_on_delay(ms), pwm_off_delay(ms) */
+		};
+	};
+
+}; /* end of / */
