@@ -1636,13 +1636,13 @@ static void zoom_display_horz(int hscale)
 			(zoom_start_x_lines - l_aligned);
 			content_r = content_l + content_w - 1;
 			VSYNC_WR_MPEG_REG(AFBC_PIXEL_HOR_SCOPE,
-				  (content_l << 16) | content_r);
+				  (((content_l << 16)) | content_r) / h_skip);
 		} else
 #endif
 		{
 			VSYNC_WR_MPEG_REG(AFBC_PIXEL_HOR_SCOPE,
-				  ((zoom_start_x_lines - l_aligned) << 16) |
-				  (zoom_end_x_lines - l_aligned));
+				  (((zoom_start_x_lines - l_aligned) << 16) |
+				  (zoom_end_x_lines - l_aligned)) / h_skip);
 		}
 		VSYNC_WR_MPEG_REG(AFBC_SIZE_IN,
 			 (VSYNC_RD_MPEG_REG(AFBC_SIZE_IN) & 0xffff) |
@@ -2628,7 +2628,10 @@ static void viu_set_dcu(struct vpp_frame_par_s *frame_par, struct vframe_s *vf)
 				r |= (1<<29);
 			VSYNC_WR_MPEG_REG(AFBC_MODE, r);
 			VSYNC_WR_MPEG_REG(AFBC_ENABLE, 0x1700);
-			VSYNC_WR_MPEG_REG(AFBC_CONV_CTRL, 0x100);
+			if (get_cpu_type() != MESON_CPU_MAJOR_ID_TXHD)
+				VSYNC_WR_MPEG_REG(AFBC_CONV_CTRL, 0x100);
+			else
+				VSYNC_WR_MPEG_REG(AFBC_CONV_CTRL, 0x80);
 			u = (vf->bitdepth >> (BITDEPTH_U_SHIFT)) & 0x3;
 			v = (vf->bitdepth >> (BITDEPTH_V_SHIFT)) & 0x3;
 			VSYNC_WR_MPEG_REG(AFBC_DEC_DEF_COLOR,
@@ -4966,10 +4969,10 @@ SET_FILTER:
 				&& cur_dispbuf &&
 				(cur_dispbuf->type & VIDTYPE_VIU_FIELD)) {
 				VSYNC_WR_MPEG_REG_BITS(VIU_VD1_FMT_CTRL +
-					cur_dev->viu_off, 0, 20, 1);
+					cur_dev->viu_off, 1, 20, 1);
 				/* HFORMATTER_EN */
 				VSYNC_WR_MPEG_REG_BITS(VIU_VD2_FMT_CTRL +
-					cur_dev->viu_off, 0, 20, 1);
+					cur_dev->viu_off, 1, 20, 1);
 				/* HFORMATTER_EN */
 			}
 			if (process_3d_type & MODE_3D_OUT_FA_MASK) {

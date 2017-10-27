@@ -794,6 +794,14 @@ vpp_set_filters2(u32 process_3d_type, u32 width_in,
 	u32 screen_aspect = 0;
 	bool skip_policy_check = true;
 
+	if (get_cpu_type() == MESON_CPU_MAJOR_ID_TXHD)
+		if (width_in > 2048) {
+			video_source_crop_left =
+				(video_source_crop_left + 1) & ~0x01;
+			video_source_crop_right =
+				(video_source_crop_right + 1) & ~0x01;
+		}
+
 	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXTVBB) {
 		if ((likely(w_in >
 			(video_source_crop_left + video_source_crop_right)))
@@ -840,6 +848,12 @@ vpp_set_filters2(u32 process_3d_type, u32 width_in,
 	if (vpp_flags & VPP_FLAG_INTERLACE_OUT)
 		height_shift++;
 
+	if (get_cpu_type() == MESON_CPU_MAJOR_ID_TXHD) {
+		if (width_in > 2048)
+			next_frame_par->hscale_skip_count++;
+		if (height_in > 1080)
+			next_frame_par->vscale_skip_count++;
+	}
 RESTART:
 
 	aspect_factor = (vpp_flags & VPP_FLAG_AR_MASK) >> VPP_FLAG_AR_BITS;
@@ -2340,6 +2354,14 @@ vpp_set_filters(u32 process_3d_type, u32 wide_mode,
 		video_source_crop_bottom = video_crop_bottom_resv;
 		video_source_crop_right = video_crop_right_resv;
 	}
+	if (get_cpu_type() == MESON_CPU_MAJOR_ID_TXHD)
+		if (src_width > 2048) {
+			/* txhd used skip count 1, crop axis need 2 aligned */
+			video_source_crop_left =
+				(video_source_crop_left + 1) & ~0x01;
+			video_source_crop_right =
+				(video_source_crop_right + 1) & ~0x01;
+		}
 	vpp_wide_mode = wide_mode;
 	vpp_flags |= wide_mode | (aspect_ratio << VPP_FLAG_AR_BITS);
 
