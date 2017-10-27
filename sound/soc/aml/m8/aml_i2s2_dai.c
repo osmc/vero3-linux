@@ -73,7 +73,7 @@ static int aml_dai_i2s2_startup(struct snd_pcm_substream *substream,
 			== SNDRV_PCM_STREAM_PLAYBACK) {
 		/*dev_info(substream->pcm->card->dev,
 				"aml_dai_i2s2_startup:i2s2 playback\n");*/
-		if (is_meson_txlx_cpu())
+		if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 			s->device_type = AML_AUDIO_I2SIN;
 	} else {
 		dev_info(substream->pcm->card->dev,
@@ -100,7 +100,7 @@ static int aml_dai_i2s2_prepare(struct snd_pcm_substream *substream,
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		/*dev_info(substream->pcm->card->dev,
 					"aml_dai_i2s2_prepare[capture]\n");*/
-		if (is_meson_txlx_cpu()) {
+		if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 			if (runtime->format == SNDRV_PCM_FORMAT_S16_LE) {
 				audio_in_i2s_set_buf(runtime->dma_addr,
 						runtime->dma_bytes * 2,
@@ -139,7 +139,7 @@ static int aml_dai_i2s2_trigger(struct snd_pcm_substream *substream, int cmd,
 		} else {
 			/*dev_info(substream->pcm->card->dev,
 				"aml_dai_i2s2_trigger:i2s2 capture enable\n");*/
-			if (is_meson_txlx_cpu())
+			if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 				audio_in_i2s_enable(1);
 		}
 		break;
@@ -152,7 +152,7 @@ static int aml_dai_i2s2_trigger(struct snd_pcm_substream *substream, int cmd,
 		} else {
 			/*dev_info(substream->pcm->card->dev,
 			"aml_dai_i2s2_trigger:i2s2 capture disable\n");*/
-			if (is_meson_txlx_cpu())
+			if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 				audio_in_i2s_enable(0);
 		}
 		break;

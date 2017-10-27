@@ -104,7 +104,7 @@ static int aml_dai_i2s_startup(struct snd_pcm_substream *substream,
 			== SNDRV_PCM_STREAM_PLAYBACK) {
 		s->device_type = AML_AUDIO_I2SOUT;
 	} else {
-		if (is_meson_txlx_cpu())
+		if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 			s->device_type = AML_AUDIO_I2SIN2;
 		else
 			s->device_type = AML_AUDIO_I2SIN;
@@ -156,7 +156,7 @@ static int aml_dai_i2s_prepare(struct snd_pcm_substream *substream,
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		dev_info(substream->pcm->card->dev, "I2S capture prepare!\n");
-		if (is_meson_txlx_cpu()) {
+		if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 			if (runtime->format == SNDRV_PCM_FORMAT_S16_LE) {
 				audio_in_i2s2_set_buf(runtime->dma_addr,
 						runtime->dma_bytes * 2, HDMI_IN,
@@ -230,7 +230,7 @@ static int aml_dai_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
 			}
 		} else {
 			dev_info(substream->pcm->card->dev, "I2S capture enable!\n");
-			if (is_meson_txlx_cpu())
+			if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 				audio_in_i2s2_enable(1);
 			else
 				audio_in_i2s_enable(1);
@@ -248,7 +248,7 @@ static int aml_dai_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
 			}
 		} else {
 			dev_info(substream->pcm->card->dev, "I2S capture disable!\n");
-			if (is_meson_txlx_cpu()) {
+			if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 				/*TODO: i2s2 deocder must always enable*/
 				/*audio_in_i2s2_enable(0);*/
 			} else
@@ -385,7 +385,8 @@ static int aml_i2s_dai_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "Can't get aml audio gate:%s\n",
 				gate_names[i]);
 
-			if (1 == i && is_meson_txlx_cpu()) {
+			if (1 == i && (is_meson_txlx_cpu()
+				|| is_meson_txhd_cpu())) {
 				pr_info("ignore aud_buf gate for txlx\n");
 				continue;
 			}

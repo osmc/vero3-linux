@@ -132,7 +132,7 @@ static int aml_audio_set_in_source(struct snd_kcontrol *kcontrol,
 				   struct snd_ctl_elem_value *ucontrol)
 {
 	if (ucontrol->value.enumerated.item[0] == 0) {
-		if (is_meson_txlx_cpu())
+		if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 			/* select internal codec ADC in TXLX as HDMI-i2s*/
 			aml_audin_update_bits(AUDIN_SOURCE_SEL, 3 << 16,
 						3 << 16);
@@ -143,15 +143,17 @@ static int aml_audio_set_in_source(struct snd_kcontrol *kcontrol,
 			/* select external codec ADC as I2S source */
 			aml_audin_update_bits(AUDIN_SOURCE_SEL, 3, 0);
 
-		if (is_meson_txl_cpu() || is_meson_txlx_cpu())
+		if (is_meson_txl_cpu() || is_meson_txlx_cpu()
+			|| is_meson_txhd_cpu())
 			DRC0_enable(1);
 		External_Mute(0);
 	} else if (ucontrol->value.enumerated.item[0] == 1) {
 		/* select ATV output as I2S source */
-		if (!is_meson_txlx_cpu())
+		if ((!is_meson_txlx_cpu()) && (!is_meson_txhd_cpu()))
 			aml_audin_update_bits(AUDIN_SOURCE_SEL, 3, 1);
 
-		if (is_meson_txl_cpu() || is_meson_txlx_cpu())
+		if (is_meson_txl_cpu() || is_meson_txlx_cpu()
+			|| is_meson_txhd_cpu())
 			DRC0_enable(1);
 		External_Mute(0);
 	} else if (ucontrol->value.enumerated.item[0] == 2) {
@@ -163,7 +165,7 @@ static int aml_audio_set_in_source(struct snd_kcontrol *kcontrol,
 		/* 1=Select HDMIRX SPDIF output as AUDIN source */
 		/* [1:0] i2sin_src_sel: */
 		/* 2=Select HDMIRX I2S output as AUDIN source */
-		if (!is_meson_txlx_cpu())
+		if ((!is_meson_txlx_cpu()) && (!is_meson_txhd_cpu()))
 			aml_audin_update_bits(AUDIN_SOURCE_SEL, 0x3, 2);
 
 		aml_audin_update_bits(AUDIN_SOURCE_SEL, 0x3 << 4,
@@ -172,11 +174,13 @@ static int aml_audio_set_in_source(struct snd_kcontrol *kcontrol,
 						0xf << 8);
 		aml_audin_update_bits(AUDIN_SOURCE_SEL, 0x7 << 12,
 						0);
-		if (is_meson_txl_cpu() || is_meson_txlx_cpu())
+		if (is_meson_txl_cpu() || is_meson_txlx_cpu()
+			|| is_meson_txhd_cpu())
 			DRC0_enable(0);
 	}  else if (ucontrol->value.enumerated.item[0] == 3) {
 		aml_audin_update_bits(AUDIN_SOURCE_SEL, 0x3 << 4, 0);
-		if (is_meson_txl_cpu() || is_meson_txlx_cpu())
+		if (is_meson_txl_cpu() || is_meson_txlx_cpu()
+			|| is_meson_txhd_cpu())
 			DRC0_enable(0);
 		External_Mute(0);
 	}
@@ -273,6 +277,10 @@ static int aml_spdif_audio_type_get_enum(
 				(PAO_IN << AUDIN_FIFO_DIN_SEL));
 			/*spdif-in data fromat:(23:0)*/
 			aml_audin_write(AUDIN_FIFO1_CTRL1, 0x8);
+			if (is_meson_txhd_cpu())
+				aml_audin_update_bits(AUDIN_HDMIRX_PAO_CTRL,
+					0x1 << 1,
+					0x1 << 1);
 		}
 		last_audio_type = audio_type;
 	}
@@ -496,7 +504,6 @@ static int aml_set_eqdrc_reg(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-#if 0
 static int set_HW_resample_pause_thd(unsigned int thd)
 {
 	aml_audin_write(AUD_RESAMPLE_CTRL2,
@@ -546,7 +553,6 @@ static int aml_set_audin_reg(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
-#endif
 
 static int set_aml_EQ_param(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
@@ -644,7 +650,18 @@ static const struct snd_kcontrol_new aml_EQ_DRC_controls[] = {
 			 AED_NG_CNT_THD, 0, 0xFFFF, 0,
 			 aml_get_eqdrc_reg, aml_set_eqdrc_reg,
 			 NULL),
+};
+
+static const struct snd_kcontrol_new aml_EQ_RESAMPLE_controls[] = {
 	/*
+	 * 0:multiply gain after eq
+	 * 1:multiply gain after ng
+	 */
+	SOC_SINGLE_EXT_TLV("EQ Volume Pos",
+			 AED_EQ_VOLUME, 28, 0x1, 0,
+			 aml_get_eqdrc_reg, set_aml_EQ_param,
+			 NULL),
+
 	SOC_SINGLE_EXT_TLV("Hw resample pause enable",
 			 AUD_RESAMPLE_CTRL2, 24, 0x1, 0,
 			 aml_get_audin_reg, aml_set_audin_reg,
@@ -654,7 +671,6 @@ static const struct snd_kcontrol_new aml_EQ_DRC_controls[] = {
 			 AUD_RESAMPLE_CTRL2, 11, 0x1FFF, 0,
 			 aml_get_audin_reg, aml_set_audin_reg,
 			 NULL),
-	*/
 };
 
 static void aml_audio_start_timer(struct aml_audio_private_data *p_aml_audio,
@@ -1061,7 +1077,8 @@ static void channel_mask_parse(struct snd_soc_card *card)
 		return;
 	}
 
-	if (is_meson_txl_cpu() || is_meson_txlx_cpu()) {
+	if (is_meson_txl_cpu() || is_meson_txlx_cpu()
+		|| is_meson_txhd_cpu()) {
 		/*Speaker need Audio Effcet from user space by i2s2/3,
 		mux i2s2/3 to layout pin*/
 		of_property_read_string(child, "Speaker_Channel_Mask", &str);
@@ -1078,7 +1095,7 @@ static void channel_mask_parse(struct snd_soc_card *card)
 		}
 	}
 
-	if (is_meson_txlx_cpu()) {
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 		/*Acodec DAC0 selects i2s source*/
 		of_property_read_string(child, "DAC0_Channel_Mask", &str);
 		ret = check_channel_mask(str);
@@ -1350,6 +1367,56 @@ static int aml_aux_dev_parse_of(struct snd_soc_card *card)
 	return 0;
 }
 
+static int aml_aux_dev_parse_of_ext(struct snd_soc_card *card)
+{
+	struct device_node *audio_codec_node = card->dev->of_node;
+	struct device_node *aux_node;
+	int n, len;
+
+	if (!of_find_property(audio_codec_node, "aux_dev", &len))
+		return 0;		/* Ok to have no aux-devs */
+
+	n = len / sizeof(__be32);
+	if (n <= 0)
+		return -EINVAL;
+
+	pr_info("num of aux_dev:%d\n", n);
+
+	if (n == 1) {
+		const char *codec_name;
+
+		aux_node = of_parse_phandle(audio_codec_node, "aux_dev", 0);
+		if (aux_node == NULL) {
+			pr_info("error: failed to find aux dev node\n");
+			return -1;
+		}
+
+		if (of_property_read_string(
+				aux_node,
+				"codec_name",
+				&codec_name)) {
+			pr_info("no aux dev!\n");
+			return -ENODEV;
+		}
+		pr_info("aux name = %s\n", codec_name);
+		strlcpy(codec_info_aux.name, codec_name, I2C_NAME_SIZE);
+		strlcpy(codec_info_aux.name_bus, codec_name, I2C_NAME_SIZE);
+
+		g9tv_audio_aux_dev.name = codec_info_aux.name;
+		g9tv_audio_aux_dev.codec_name = codec_info_aux.name_bus;
+		g9tv_audio_codec_conf[0].dev_name = codec_info_aux.name_bus;
+
+		card->aux_dev = &g9tv_audio_aux_dev;
+		card->num_aux_devs = 1;
+		card->codec_conf = g9tv_audio_codec_conf;
+		card->num_configs = ARRAY_SIZE(g9tv_audio_codec_conf);
+
+	} else
+		pr_info("Cannot support multi aux-dev yet\n");
+
+	return 0;
+}
+
 static int aml_card_dais_parse_of(struct snd_soc_card *card)
 {
 	struct device_node *np = card->dev->of_node;
@@ -1432,7 +1499,7 @@ static int aml_card_dais_parse_of(struct snd_soc_card *card)
 					      cpu_node,
 					      codec_node, plat_node);
 
-		if (NULL != strstr(dai_links[i].name, "I2S"))
+		if (NULL != strstr(dai_links[i].name, "I2S") && !ret)
 			dai_links[i].ops = &aml_asoc_ops;
 	}
 
@@ -1451,9 +1518,15 @@ static void aml_pinmux_work_func(struct work_struct *pinmux_work)
 	if (is_meson_txl_cpu()) {
 		set_internal_EQ_volume(0xc0, 0x30, 0x30);
 		init_EQ_DRC_module();
-		/*set_HW_resample_pause_thd(128);*/
 	} else if (is_meson_txlx_cpu()) {
 		set_internal_EQ_volume(0xc0, 0x30, 0x30);
+	} else if (is_meson_txhd_cpu()) {
+		set_internal_EQ_volume(0xc0, 0x30, 0x30);
+		set_HW_resample_pause_thd(128);
+
+		snd_soc_add_card_controls(card,
+			aml_EQ_RESAMPLE_controls,
+			ARRAY_SIZE(aml_EQ_RESAMPLE_controls));
 	}
 
 	channel_mask_parse(card);
@@ -1503,7 +1576,10 @@ static int aml_g9tv_audio_probe(struct platform_device *pdev)
 		dev_err(dev, "parse aml sound card dais error %d\n", ret);
 		goto err;
 	}
-	aml_aux_dev_parse_of(card);
+	if (is_meson_txhd_cpu())
+		aml_aux_dev_parse_of_ext(card);
+	else
+		aml_aux_dev_parse_of(card);
 
 	card->suspend_pre = aml_suspend_pre,
 	card->suspend_post = aml_suspend_post,

@@ -98,7 +98,8 @@ static inline bool is_meson_tv_chipset(void)
 
 	ret = is_meson_gxtvbb_cpu()
 			|| is_meson_txl_cpu()
-			|| is_meson_txlx_cpu();
+			|| is_meson_txlx_cpu()
+			|| is_meson_txhd_cpu();
 	return ret;
 }
 

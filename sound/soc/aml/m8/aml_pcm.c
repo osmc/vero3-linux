@@ -59,9 +59,9 @@ static const struct snd_pcm_hardware aml_pcm_hardware = {
 	.periods_max = 1024,
 	.buffer_bytes_max = 64 * 1024,
 	.rate_min = 8000,
-	.rate_max = 48000,
+	.rate_max = 192000,
 	.channels_min = 1,
-	.channels_max = 8,
+	.channels_max = 16,
 };
 
 static const struct snd_pcm_hardware aml_pcm_capture = {
@@ -76,9 +76,9 @@ static const struct snd_pcm_hardware aml_pcm_capture = {
 	.buffer_bytes_max = 64 * 1024,
 
 	.rate_min = 8000,
-	.rate_max = 48000,
+	.rate_max = 192000,
 	.channels_min = 1,
-	.channels_max = 8,
+	.channels_max = 16,
 	.fifo_size = 0,
 };
 

@@ -235,7 +235,8 @@ static void i2sin_fifo0_set_buf(u32 addr, u32 size, u32 i2s_mode,
 			   | 2 << 2	/* 0: 8bit; 1:16bit; 2:32bit */
 			   | din_pos << 0);	/* fifo0_din_pos */
 
-	if (audio_in_source == 1 && (!is_meson_txlx_cpu())) {
+	if (audio_in_source == 1 && (!is_meson_txlx_cpu())
+		&& (!is_meson_txhd_cpu())) {
 		aml_audin_write(AUDIN_I2SIN_CTRL, (1 << I2SIN_CHAN_EN)
 				   | (0 << I2SIN_SIZE)
 				   | (0 << I2SIN_LRCLK_INVT)
@@ -244,7 +245,8 @@ static void i2sin_fifo0_set_buf(u32 addr, u32 size, u32 i2s_mode,
 				   | (0 << I2SIN_LRCLK_SEL)
 				   | (0 << I2SIN_CLK_SEL)
 				   | (0 << I2SIN_DIR));
-	} else if (audio_in_source == 2 && (!is_meson_txlx_cpu())) {
+	} else if (audio_in_source == 2 && (!is_meson_txlx_cpu())
+		&& (!is_meson_txhd_cpu())) {
 		aml_audin_write(AUDIN_I2SIN_CTRL, (1 << I2SIN_CHAN_EN)
 				   | (3 << I2SIN_SIZE)
 				   | (1 << I2SIN_LRCLK_INVT)
@@ -308,6 +310,11 @@ static void i2sin_fifo2_set_buf(u32 addr, u32 size, u32 src, u32 ch)
 				 (0x7 << AUDIN_FIFO_DIN_SEL),
 				 (PAO_IN << AUDIN_FIFO_DIN_SEL));
 		aml_audin_write(AUDIN_FIFO2_CTRL1, 0x08);
+
+		if (is_meson_txhd_cpu())
+			aml_audin_update_bits(AUDIN_HDMIRX_PAO_CTRL,
+				0x1 << 1,
+				0x1 << 1);
 	} else if (audio_in_source == 3) {
 		/* spdif-in from spdif-pad */
 		aml_audin_write(AUDIN_FIFO2_CTRL1, 0x88);
@@ -344,6 +351,11 @@ static void spdifin_reg_set(void)
 		       /* Spdif_fs_clk_rltn */
 		       (period_96k << 18) | (period_192k << 24));
 
+	/*88k/176k support*/
+	if (is_meson_txhd_cpu())
+		aml_audin_update_bits(AUDIN_SPDIF_ENHANCE_CNTL,
+			0x1 << 12,
+			0x1 << 12);
 }
 
 static void spdifin_fifo1_set_buf(u32 addr, u32 size, u32 src)
@@ -374,6 +386,10 @@ static void spdifin_fifo1_set_buf(u32 addr, u32 size, u32 src)
 	/*3 byte mode, (23:0)*/
 	if (src == PAO_IN) {
 		aml_audin_write(AUDIN_FIFO1_CTRL1, 0x08);
+		if (is_meson_txhd_cpu())
+			aml_audin_update_bits(AUDIN_HDMIRX_PAO_CTRL,
+				0x1 << 1,
+				0x1 << 1);
 	} else if (src == HDMI_IN) {
 		/* HDMI spdif-in module */
 		aml_audin_write(AUDIN_FIFO1_CTRL1, 0x08);
@@ -563,6 +579,10 @@ void audio_set_i2s_mode(u32 mode, unsigned int channel)
 
 			aml_aiu_update_bits(AIU_I2S_SOURCE_DESC, 3 << 3,
 						2 << 3);
+			if (is_meson_txhd_cpu())
+				aml_aiu_update_bits(AIU_I2S_SOURCE_DESC,
+						1 << 12,
+						1 << 12);
 		}
 	} else if (2 == channel) {
 		aml_aiu_update_bits(AIU_I2S_SOURCE_DESC, 1 << 0, 0);

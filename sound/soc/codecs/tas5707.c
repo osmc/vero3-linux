@@ -375,7 +375,7 @@ static int tas5707_set_eq(struct snd_soc_codec *codec)
 	return 0;
 }
 
-bool EQ_enum_value = 1;
+bool EQ_enum_value;
 static int tas5707_set_EQ_enum(struct snd_kcontrol *kcontrol,
 				   struct snd_ctl_elem_value *ucontrol)
 {

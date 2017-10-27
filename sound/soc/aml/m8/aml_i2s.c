@@ -901,7 +901,8 @@ static int aml_i2s_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 			if (pos % 8)
 				dev_err(dev, "audio data unligned\n");
 
-			if (is_meson_txlx_cpu() && audio_in_source == 0
+			if ((is_meson_txlx_cpu() || is_meson_txhd_cpu())
+					&& audio_in_source == 0
 					&& tmp_buf->find_start == 0) {
 				char *hwbuf = runtime->dma_area + offset * 2;
 				int32_t *tfrom = (int32_t *)hwbuf;
