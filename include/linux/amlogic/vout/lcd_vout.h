@@ -96,7 +96,8 @@ enum lcd_chip_e {
 	LCD_CHIP_GXM,    /* 8 */
 	LCD_CHIP_TXL,    /* 9 */
 	LCD_CHIP_TXLX,   /* 10 */
-	LCD_CHIP_MAX,    /* 11 */
+	LCD_CHIP_TXHD,   /* 11 */
+	LCD_CHIP_MAX,    /* 12 */
 };
 
 enum lcd_type_e {
@@ -104,6 +105,7 @@ enum lcd_type_e {
 	LCD_LVDS,
 	LCD_VBYONE,
 	LCD_MIPI,
+	LCD_MLVDS,
 	LCD_EDP,
 	LCD_TYPE_MAX,
 };
@@ -227,7 +229,6 @@ struct ttl_config_s {
 #define LVDS_PHY_CLK_VSWING_DFT    0
 #define LVDS_PHY_CLK_PREEM_DFT     0
 struct lvds_config_s {
-	unsigned int lvds_vswing;
 	unsigned int lvds_repack;
 	unsigned int dual_port;
 	unsigned int pn_swap;
@@ -327,12 +328,34 @@ struct edp_config_s {
 	unsigned char edid_timing_used;
 };
 
+#define LCD_TCON_TABLE_MAX    4096
+struct mlvds_config_s {
+	unsigned int channel_num;
+	unsigned int channel_sel0;
+	unsigned int channel_sel1;
+	unsigned int clk_phase; /* [13:12]=clk01_pi_sel,
+				 [11:8]=pi2, [7:4]=pi1, [3:0]=pi0 */
+	unsigned int pn_swap;
+	unsigned int bit_swap; /* MSB/LSB reverse */
+	unsigned int phy_vswing;
+	unsigned int phy_preem;
+
+	/* internal used */
+	unsigned int pi_clk_sel; /* bit[9:0] */
+	unsigned int bit_rate; /* Hz */
+	unsigned char tcon_enable;
+	unsigned short reg_table_len;
+	unsigned char *reg_table;
+	unsigned int fb_addr;
+};
+
 struct lcd_control_config_s {
 	struct ttl_config_s *ttl_config;
 	struct lvds_config_s *lvds_config;
 	struct vbyone_config_s *vbyone_config;
 	struct dsi_config_s *mipi_config;
 	struct edp_config_s *edp_config;
+	struct mlvds_config_s *mlvds_config;
 };
 
 /* **********************************
@@ -467,6 +490,7 @@ struct aml_lcd_drv_s {
 
 	struct workqueue_struct *workqueue;
 	struct delayed_work     lcd_probe_delayed_work;
+	struct delayed_work     lcd_tcon_probe_delayed_work;
 	struct delayed_work     lcd_vx1_delayed_work;
 	struct delayed_work     lcd_resume_delayed_work;
 	struct work_struct      lcd_vsync_work;

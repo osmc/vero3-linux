@@ -20,6 +20,7 @@
 
 #include <linux/types.h>
 #include <linux/amlogic/vout/lcd_vout.h>
+#include <linux/clk.h>
 
 /* **********************************
  * clk config
@@ -30,6 +31,7 @@ struct lcd_clk_config_s { /* unit: kHz */
 	unsigned int fout;
 
 	/* pll parameters */
+	unsigned int pll_mode; /* txl */
 	unsigned int od_fb;
 	unsigned int pll_m;
 	unsigned int pll_n;
@@ -37,6 +39,7 @@ struct lcd_clk_config_s { /* unit: kHz */
 	unsigned int pll_od1_sel;
 	unsigned int pll_od2_sel;
 	unsigned int pll_od3_sel;
+	unsigned int pll_pi_div_sel; /* txhd */
 	unsigned int pll_level;
 	unsigned int pll_frac;
 	unsigned int pll_fout;
@@ -73,7 +76,10 @@ struct lcd_clk_config_s { /* unit: kHz */
 	unsigned int div_out_fmax; /* g9tv, g9bb, gxbb */
 	unsigned int xd_out_fmax;
 	unsigned int err_fmin;
-	unsigned int pll_mode;
+};
+
+struct lcd_clktree_s {
+	struct clk *tcon_clk;
 };
 
 /* **********************************
@@ -303,7 +309,7 @@ enum div_sel_e {
 
 /* ******** frequency limit (unit: kHz) ******** */
 /* pll */
-#define PLL_FRAC_OD_FB_GXL			1
+#define PLL_FRAC_OD_FB_GXL          1
 #define SS_LEVEL_MAX_GXL            5
 #define PLL_M_MIN_GXL               2
 #define PLL_M_MAX_GXL               511
@@ -338,7 +344,7 @@ enum div_sel_e {
 
 /* ******** frequency limit (unit: kHz) ******** */
 /* pll */
-#define PLL_FRAC_OD_FB_GXM			1
+#define PLL_FRAC_OD_FB_GXM          1
 #define SS_LEVEL_MAX_GXM            5
 #define PLL_M_MIN_GXM               2
 #define PLL_M_MAX_GXM               511
@@ -373,7 +379,7 @@ enum div_sel_e {
 
 /* ******** frequency limit (unit: kHz) ******** */
 /* pll */
-#define PLL_FRAC_OD_FB_TXL			1
+#define PLL_FRAC_OD_FB_TXL          1
 #define SS_LEVEL_MAX_TXL            5
 #define PLL_M_MIN_TXL               2
 #define PLL_M_MAX_TXL               511
@@ -408,7 +414,7 @@ enum div_sel_e {
 
 /* ******** frequency limit (unit: kHz) ******** */
 /* pll */
-#define PLL_FRAC_OD_FB_TXLX			0
+#define PLL_FRAC_OD_FB_TXLX          0
 #define SS_LEVEL_MAX_TXLX            6
 #define PLL_M_MIN_TXLX               2
 #define PLL_M_MAX_TXLX               511
@@ -426,6 +432,42 @@ enum div_sel_e {
 #define CRT_VID_CLK_IN_MAX_TXLX      (3100 * 1000)
 #define ENCL_CLK_IN_MAX_TXLX         (620 * 1000)
 
+/* **********************************
+ * TXHD
+ * ********************************** */
+/* ******** register bit ******** */
+/* PLL_CNTL 0x10c8 */
+#define LCD_PLL_LOCK_TXHD            31
+#define LCD_PLL_EN_TXHD              30
+#define LCD_PLL_RST_TXHD             28
+#define LCD_PLL_N_TXHD               9
+#define LCD_PLL_M_TXHD               0
+
+#define LCD_PLL_OD3_TXHD             19
+#define LCD_PLL_OD2_TXHD             23
+#define LCD_PLL_OD1_TXHD             21
+
+/* ******** frequency limit (unit: kHz) ******** */
+/* pll */
+#define PLL_FRAC_OD_FB_TXHD          0
+#define SS_LEVEL_MAX_TXHD            6
+#define PLL_M_MIN_TXHD               2
+#define PLL_M_MAX_TXHD               511
+#define PLL_N_MIN_TXHD               1
+#define PLL_N_MAX_TXHD               1
+#define PLL_FRAC_RANGE_TXHD          (1 << 10)
+#define PLL_OD_SEL_MAX_TXHD          3
+#define PLL_FREF_MIN_TXHD            (5 * 1000)
+#define PLL_FREF_MAX_TXHD            (25 * 1000)
+#define PLL_VCO_MIN_TXHD             (3000 * 1000)
+#define PLL_VCO_MAX_TXHD             (6000 * 1000)
+
+/* video */
+#define CLK_DIV_IN_MAX_TXHD          (3100 * 1000)
+#define CRT_VID_CLK_IN_MAX_TXHD      (3100 * 1000)
+#define ENCL_CLK_IN_MAX_TXHD         (400 * 1000)
+/* ******************************************* */
+
 extern int meson_clk_measure(unsigned int clk_mux);
 
 extern struct lcd_clk_config_s *get_lcd_clk_config(void);
@@ -441,6 +483,7 @@ extern void lcd_clk_set(struct lcd_config_s *pconf);
 extern void lcd_clk_disable(void);
 
 extern void lcd_clk_generate_parameter(struct lcd_config_s *pconf);
+extern void lcd_clk_config_post(void);
 extern void lcd_clk_config_probe(void);
 
 #endif

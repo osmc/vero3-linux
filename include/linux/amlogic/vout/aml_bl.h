@@ -48,6 +48,7 @@ enum bl_chip_type_e {
 	BL_CHIP_GXTVBB,
 	BL_CHIP_TXL,
 	BL_CHIP_TXLX,
+	BL_CHIP_TXHD,
 	BL_CHIP_MAX,
 };
 

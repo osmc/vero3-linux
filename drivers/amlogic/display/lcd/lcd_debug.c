@@ -24,11 +24,30 @@
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/io.h>
+#include <linux/fs.h>
+#include <linux/uaccess.h>
 #include <linux/amlogic/vout/lcd_vout.h>
 #include <linux/amlogic/vout/lcd_notify.h>
 #include <linux/amlogic/vout/lcd_unifykey.h>
 #include "lcd_reg.h"
 #include "lcd_common.h"
+
+static void lcd_debug_parse_param(char *buf_orig, char **parm)
+{
+	char *ps, *token;
+	char str[3] = {' ', '\n', '\0'};
+	unsigned int n = 0;
+
+	ps = buf_orig;
+	while (1) {
+		token = strsep(&ps, str);
+		if (token == NULL)
+			break;
+		if (*token == '\0')
+			continue;
+		parm[n++] = token;
+	}
+}
 
 static const char *lcd_common_usage_str = {
 "Usage:\n"
@@ -40,9 +59,9 @@ static const char *lcd_common_usage_str = {
 "\n"
 "    echo <num> > test ; show lcd bist pattern(1~7), 0=disable bist\n"
 "\n"
-"    echo w<v|h|c|p> <reg> <data> > reg ; write data to vcbus|hiu|cbus|periphs reg\n"
-"    echo r<v|h|c|p> <reg> > reg ; read vcbus|hiu|cbus|periphs reg\n"
-"    echo d<v|h|c|p> <reg> <num> > reg ; dump vcbus|hiu|cbus|periphs regs\n"
+"    echo w<v|h|c|p|t> <reg> <data> > reg ; write data to vcbus|hiu|cbus|periphs|tcon reg\n"
+"    echo r<v|h|c|p|t> <reg> > reg ; read vcbus|hiu|cbus|periphs|tcon reg\n"
+"    echo d<v|h|c|p|t> <reg> <num> > reg ; dump vcbus|hiu|cbus|periphs|tcon regs\n"
 "\n"
 "    echo <0|1> > print ; 0=disable debug print; 1=enable debug print\n"
 "    cat print ; read current debug print flag\n"
@@ -252,6 +271,30 @@ static void lcd_info_print(void)
 			pconf->lcd_control.lvds_config->phy_clk_vswing,
 			pconf->lcd_control.lvds_config->phy_clk_preem);
 		break;
+	case LCD_MLVDS:
+		pr_info("channel_num       %d\n"
+			"channel_sel0      0x%08x\n"
+			"channel_sel1      0x%08x\n"
+			"clk_phase         0x%04x\n"
+			"pn_swap           %u\n"
+			"bit_swap          %u\n"
+			"phy_vswing        0x%x\n"
+			"phy_preem         0x%x\n"
+			"bit_rate          %dHz\n"
+			"pi_clk_sel        0x%03x\n"
+			"tcon_fb_addr      0x%08x\n\n",
+			pconf->lcd_control.mlvds_config->channel_num,
+			pconf->lcd_control.mlvds_config->channel_sel0,
+			pconf->lcd_control.mlvds_config->channel_sel1,
+			pconf->lcd_control.mlvds_config->clk_phase,
+			pconf->lcd_control.mlvds_config->pn_swap,
+			pconf->lcd_control.mlvds_config->bit_swap,
+			pconf->lcd_control.mlvds_config->phy_vswing,
+			pconf->lcd_control.mlvds_config->phy_preem,
+			pconf->lcd_control.mlvds_config->bit_rate,
+			pconf->lcd_control.mlvds_config->pi_clk_sel,
+			pconf->lcd_control.mlvds_config->fb_addr);
+		break;
 	case LCD_VBYONE:
 		vx1_conf = pconf->lcd_control.vbyone_config;
 		pr_info("lane_count        %u\n"
@@ -403,6 +446,7 @@ static void lcd_ttl_reg_print(void)
 static void lcd_lvds_reg_print(void)
 {
 	unsigned int reg;
+	struct aml_lcd_drv_s *lcd_drv = aml_lcd_get_driver();
 
 	pr_info("\nlvds registers:\n");
 	reg = LVDS_PACK_CNTL_ADDR;
@@ -420,6 +464,22 @@ static void lcd_lvds_reg_print(void)
 	reg = HHI_LVDS_TX_PHY_CNTL1;
 	pr_info("LVDS_PHY_CNTL1      [0x%04x] = 0x%08x\n",
 		reg, lcd_hiu_read(reg));
+
+	switch (lcd_drv->chip_type) {
+	case LCD_CHIP_TXHD:
+		reg = LVDS_CH_SWAP0;
+		pr_info("LVDS_CH_SWAP0       [0x%04x] = 0x%08x\n",
+			reg, lcd_vcbus_read(reg));
+		reg = LVDS_CH_SWAP1;
+		pr_info("LVDS_CH_SWAP1       [0x%04x] = 0x%08x\n",
+			reg, lcd_vcbus_read(reg));
+		reg = LVDS_CH_SWAP2;
+		pr_info("LVDS_CH_SWAP2       [0x%04x] = 0x%08x\n",
+			reg, lcd_vcbus_read(reg));
+		break;
+	default:
+		break;
+	}
 }
 
 static void lcd_vbyone_reg_print(void)
@@ -476,6 +536,63 @@ static void lcd_vbyone_reg_print(void)
 		reg, lcd_hiu_read(reg));
 }
 
+static void lcd_mlvds_reg_print(void)
+{
+	unsigned int reg;
+
+	reg = PERIPHS_PIN_MUX_4_TXHD;
+	pr_info("\nPERIPHS_PIN_MUX_4   [0x%04x] = 0x%08x\n",
+		reg, lcd_periphs_read(reg));
+	reg = PERIPHS_PIN_MUX_5_TXHD;
+	pr_info("PERIPHS_PIN_MUX_5   [0x%04x] = 0x%08x\n",
+		reg, lcd_periphs_read(reg));
+
+	lcd_lvds_reg_print();
+
+	pr_info("\ntcon clk registers:\n");
+	reg = HHI_TCON_CLK_CNTL;
+	pr_info("HHI_TCON_CLK_CNTL   [0x%08x] = 0x%08x\n",
+		reg, lcd_hiu_read(reg));
+	reg = HHI_HDMI_PLL_CNTL6;
+	pr_info("HHI_HDMI_PLL_CNTL6  [0x%08x] = 0x%08x\n",
+		reg, lcd_hiu_read(reg));
+	reg = HHI_DIF_TCON_CNTL0;
+	pr_info("HHI_DIF_TCON_CNTL0  [0x%08x] = 0x%08x\n",
+		reg, lcd_hiu_read(reg));
+	reg = HHI_DIF_TCON_CNTL1;
+	pr_info("HHI_DIF_TCON_CNTL1  [0x%08x] = 0x%08x\n",
+		reg, lcd_hiu_read(reg));
+	reg = HHI_DIF_TCON_CNTL2;
+	pr_info("HHI_DIF_TCON_CNTL2  [0x%08x] = 0x%08x\n",
+		reg, lcd_hiu_read(reg));
+
+	pr_info("\ntcon top registers:\n");
+	reg = TCON_TOP_CTRL;
+	pr_info("TCON_TOP_CTRL       [0x%04x] = 0x%08x\n",
+		reg, lcd_tcon_read(reg));
+	reg = TCON_OUT_CH_SEL0;
+	pr_info("TCON_OUT_CH_SEL0    [0x%04x] = 0x%08x\n",
+		reg, lcd_tcon_read(reg));
+	reg = TCON_OUT_CH_SEL1;
+	pr_info("TCON_OUT_CH_SEL1    [0x%04x] = 0x%08x\n",
+		reg, lcd_tcon_read(reg));
+	reg = TCON_STATUS0;
+	pr_info("TCON_STATUS0        [0x%04x] = 0x%08x\n",
+		reg, lcd_tcon_read(reg));
+	reg = TCON_PLLLOCK_CNTL;
+	pr_info("TCON_PLLLOCK_CNTL   [0x%04x] = 0x%08x\n",
+		reg, lcd_tcon_read(reg));
+	reg = TCON_RST_CTRL;
+	pr_info("TCON_RST_CTRL       [0x%04x] = 0x%08x\n",
+		reg, lcd_tcon_read(reg));
+	reg = TCON_CLK_CTRL;
+	pr_info("TCON_CLK_CTRL       [0x%04x] = 0x%08x\n",
+		reg, lcd_tcon_read(reg));
+	reg = TCON_STATUS1;
+	pr_info("TCON_STATUS1        [0x%04x] = 0x%08x\n",
+		reg, lcd_tcon_read(reg));
+}
+
 static void lcd_phy_analog_reg_print(void)
 {
 	unsigned int reg;
@@ -523,6 +640,10 @@ static void lcd_reg_print(void)
 		break;
 	case LCD_VBYONE:
 		lcd_vbyone_reg_print();
+		lcd_phy_analog_reg_print();
+		break;
+	case LCD_MLVDS:
+		lcd_mlvds_reg_print();
 		lcd_phy_analog_reg_print();
 		break;
 	case LCD_MIPI:
@@ -778,7 +899,7 @@ static ssize_t lcd_debug_store(struct class *class,
 					val[0], val[1]);
 				pr_info("set h_period=%d, v_period=%d\n",
 					val[2], val[3]);
-				lcd_tcon_config(pconf);
+				lcd_timing_init_config(pconf);
 				lcd_debug_config_update();
 			} else if (ret == 5) {
 				pconf->lcd_basic.h_active = val[0];
@@ -793,7 +914,7 @@ static ssize_t lcd_debug_store(struct class *class,
 				pr_info("set h_period=%d, v_period=%d\n",
 					val[2], val[3]);
 				pr_info("set lcd_bits=%d\n", val[4]);
-				lcd_tcon_config(pconf);
+				lcd_timing_init_config(pconf);
 				lcd_debug_config_update();
 			} else {
 				LCDERR("invalid data\n");
@@ -825,7 +946,7 @@ static ssize_t lcd_debug_store(struct class *class,
 				val[0], val[1], val[2]);
 			pr_info("set vsync width=%d, bp=%d, pol=%d\n",
 				val[3], val[4], val[5]);
-			lcd_tcon_config(pconf);
+			lcd_timing_init_config(pconf);
 			lcd_debug_config_update();
 		} else {
 			LCDERR("invalid data\n");
@@ -1012,7 +1133,7 @@ static ssize_t lcd_debug_change_store(struct class *class,
 					val[0], val[1]);
 				pr_info("change h_period=%d, v_period=%d\n",
 					val[2], val[3]);
-				lcd_tcon_config(pconf);
+				lcd_timing_init_config(pconf);
 				pconf->change_flag = 1;
 			} else if (ret == 5) {
 				pconf->lcd_basic.h_active = val[0];
@@ -1027,7 +1148,7 @@ static ssize_t lcd_debug_change_store(struct class *class,
 				pr_info("change h_period=%d, v_period=%d\n",
 					val[2], val[3]);
 				pr_info("change lcd_bits=%d\n", val[4]);
-				lcd_tcon_config(pconf);
+				lcd_timing_init_config(pconf);
 				pconf->change_flag = 1;
 			} else {
 				LCDERR("invalid data\n");
@@ -1068,7 +1189,7 @@ static ssize_t lcd_debug_change_store(struct class *class,
 					val[0], val[1], val[2]);
 				pr_info("change vs width=%d, bp=%d, pol=%d\n",
 					val[3], val[4], val[5]);
-				lcd_tcon_config(pconf);
+				lcd_timing_init_config(pconf);
 				pconf->change_flag = 1;
 			} else {
 				LCDERR("invalid data\n");
@@ -1402,6 +1523,10 @@ static void lcd_debug_reg_write(unsigned int reg, unsigned int data,
 		pr_info("write periphs [0x%04x] = 0x%08x, readback 0x%08x\n",
 			reg, data, lcd_periphs_read(reg));
 		break;
+	case 4: /* tcon */
+		lcd_tcon_write(reg, data);
+		pr_info("write tcon [0x%04x] = 0x%08x, readback 0x%08x\n",
+			reg, data, lcd_tcon_read(reg));
 		break;
 	default:
 		break;
@@ -1426,6 +1551,10 @@ static void lcd_debug_reg_read(unsigned int reg, unsigned int bus)
 	case 3: /* periphs */
 		pr_info("read periphs [0x%04x] = 0x%08x\n",
 			reg, lcd_periphs_read(reg));
+		break;
+	case 4: /* tcon */
+		pr_info("read tcon [0x%04x] = 0x%08x\n",
+			reg, lcd_tcon_read(reg));
 		break;
 	default:
 		break;
@@ -1466,6 +1595,13 @@ static void lcd_debug_reg_dump(unsigned int reg, unsigned int num,
 				(reg + i), lcd_periphs_read(reg + i));
 		}
 		break;
+	case 4: /* tcon */
+		pr_info("dump tcon regs:\n");
+		for (i = 0; i < num; i++) {
+			pr_info("[0x%04x] = 0x%08x\n",
+				(reg + i), lcd_tcon_read(reg + i));
+		}
+		break;
 	default:
 		break;
 	}
@@ -1492,6 +1628,9 @@ static ssize_t lcd_debug_reg_store(struct class *class,
 		} else if (buf[1] == 'p') {
 			ret = sscanf(buf, "wp %x %x", &reg32, &data32);
 			bus = 3;
+		} else if (buf[1] == 't') {
+			ret = sscanf(buf, "wt %x %x", &reg32, &data32);
+			bus = 4;
 		}
 		if (ret == 2) {
 			lcd_debug_reg_write(reg32, data32, bus);
@@ -1513,6 +1652,9 @@ static ssize_t lcd_debug_reg_store(struct class *class,
 		} else if (buf[1] == 'p') {
 			ret = sscanf(buf, "rp %x", &reg32);
 			bus = 3;
+		} else if (buf[1] == 't') {
+			ret = sscanf(buf, "rt %x", &reg32);
+			bus = 4;
 		}
 		if (ret == 1) {
 			lcd_debug_reg_read(reg32, bus);
@@ -1534,6 +1676,9 @@ static ssize_t lcd_debug_reg_store(struct class *class,
 		} else if (buf[1] == 'p') {
 			ret = sscanf(buf, "dp %x %d", &reg32, &data32);
 			bus = 3;
+		} else if (buf[1] == 't') {
+			ret = sscanf(buf, "dt %x %d", &reg32, &data32);
+			bus = 4;
 		}
 		if (ret == 2) {
 			lcd_debug_reg_dump(reg32, data32, bus);
@@ -1660,6 +1805,265 @@ static ssize_t lcd_debug_dither_store(struct class *class,
 	return count;
 }
 
+static const char *lcd_debug_tcon_usage_str = {
+	"Usage:\n"
+	"    echo reg > tcon ; print tcon system regs\n"
+	"    echo reg save <path> > tcon ; save tcon system regs to bin file\n"
+	"\n"
+	"    echo table > tcon ; print tcon reg table\n"
+	"    echo table r <index> > tcon ; read tcon reg table by specified index\n"
+	"    echo table w <index> <value> > tcon ; write tcon reg table by specified index\n"
+	"    echo table d <index> <len> > tcon ; dump tcon reg table\n"
+	"data format:\n"
+	"    <index>    : hex number\n"
+	"    <value>    : hex number\n"
+	"    <len>      : dec number\n"
+	"\n"
+	"    echo table update > tcon ; update tcon reg table into tcon system regs\n"
+	"    echo table save <path> > tcon ; save tcon reg table to bin file\n"
+	"\n"
+	"    echo od <en> > tcon ; tcon over driver control\n"
+	"data format:\n"
+	"    <en>       : 0=disable, 1=enable\n"
+};
+
+static ssize_t lcd_debug_tcon_show(struct class *class,
+		struct class_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%s\n", lcd_debug_tcon_usage_str);
+}
+
+static void lcd_tcon_reg_table_save(char *path,
+		struct mlvds_config_s *mlvds_conf)
+{
+	struct file *filp = NULL;
+	loff_t pos = 0;
+	void *buf = NULL;
+	mm_segment_t old_fs = get_fs();
+
+	set_fs(KERNEL_DS);
+	filp = filp_open(path, O_RDWR|O_CREAT, 0666);
+
+	if (IS_ERR(filp)) {
+		LCDERR("%s: create %s error\n", __func__, path);
+		return;
+	}
+
+	pos = 0;
+	buf = mlvds_conf->reg_table;
+	vfs_write(filp, buf, LCD_TCON_TABLE_MAX, &pos);
+
+	vfs_fsync(filp, 0);
+	filp_close(filp, NULL);
+	set_fs(old_fs);
+
+	LCDPR("save tcon reg table to %s finished\n", path);
+}
+
+static void lcd_tcon_reg_save(char *path)
+{
+	struct file *filp = NULL;
+	loff_t pos = 0;
+	unsigned char *temp;
+	void *buf = NULL;
+	mm_segment_t old_fs = get_fs();
+	int i;
+
+	set_fs(KERNEL_DS);
+	filp = filp_open(path, O_RDWR|O_CREAT, 0666);
+
+	if (IS_ERR(filp)) {
+		LCDERR("%s: create %s error\n", __func__, path);
+		return;
+	}
+
+	temp = kzalloc((sizeof(unsigned char) * LCD_TCON_TABLE_MAX),
+		GFP_KERNEL);
+	if (!temp) {
+		LCDERR("%s: Not enough memory\n", __func__);
+		return;
+	}
+	for (i = 0; i < LCD_TCON_TABLE_MAX; i++)
+		temp[i] = lcd_tcon_read(i + TCON_SYS_REG_START);
+
+	pos = 0;
+	buf = (void *)temp;
+	vfs_write(filp, buf, LCD_TCON_TABLE_MAX, &pos);
+
+	vfs_fsync(filp, 0);
+	filp_close(filp, NULL);
+	set_fs(old_fs);
+
+	LCDPR("save tcon reg to %s finished\n", path);
+}
+
+static ssize_t lcd_debug_tcon_store(struct class *class,
+		struct class_attribute *attr, const char *buf, size_t count)
+{
+	struct aml_lcd_drv_s *lcd_drv = aml_lcd_get_driver();
+	struct mlvds_config_s *mlvds_conf;
+	char *buf_orig;
+	char *parm[47] = {NULL};
+	long val = 0;
+	unsigned int temp = 0, i, n;
+	unsigned char data;
+	int ret = -1;
+
+	switch (lcd_drv->chip_type) {
+	case LCD_CHIP_TXHD:
+		ret = 0;
+		break;
+	default:
+		ret = -1;
+		LCDPR("don't support tcon for current chip\n");
+		break;
+	}
+	if (ret)
+		return count;
+
+	mlvds_conf = lcd_drv->lcd_config->lcd_control.mlvds_config;
+	if (mlvds_conf == NULL) {
+		LCDERR("%s: invalid minilvds config\n", __func__);
+		return count;
+	}
+	if (mlvds_conf->tcon_enable == 0) {
+		LCDERR("%s: invalid tcon\n", __func__);
+		return count;
+	}
+	if (mlvds_conf->reg_table == NULL) {
+		LCDERR("%s: invalid table\n", __func__);
+		return count;
+	}
+
+	if (!buf)
+		return count;
+	buf_orig = kstrdup(buf, GFP_KERNEL);
+	if (buf_orig == NULL) {
+		LCDERR("%s: buf malloc error\n", __func__);
+		return count;
+	}
+	lcd_debug_parse_param(buf_orig, (char **)&parm);
+
+	if (strcmp(parm[0], "reg") == 0) {
+		if (parm[1] == NULL) {
+			lcd_tcon_regs_readback_print(mlvds_conf);
+			return count;
+		}
+		if (strcmp(parm[1], "save") == 0) {
+			if (parm[2] != NULL)
+				lcd_tcon_reg_save(parm[2]);
+			else
+				pr_info("invalid save path\n");
+		}
+	} else if (strcmp(parm[0], "table") == 0) {
+		if (parm[1] == NULL) {
+			lcd_tcon_regs_table_print(mlvds_conf);
+			return count;
+		}
+		if (strcmp(parm[1], "r") == 0) {
+			if (parm[2] != NULL) {
+				ret = 0;
+				if (!kstrtol(parm[2], 16, &val))
+					temp = (unsigned int)val;
+				else
+					ret = 1;
+				if (ret) {
+					pr_info("invalid parameters\n");
+					return count;
+				}
+				if (temp <= 0xfff) {
+					data = mlvds_conf->reg_table[temp];
+					pr_info("read tcon table[%d]=0x%02x\n",
+						temp, data);
+				} else {
+					pr_info("invalid table index: %d\n",
+						temp);
+				}
+			}
+		} else if (strcmp(parm[1], "w") == 0) {
+			if (parm[3] != NULL) {
+				ret = 0;
+				if (!kstrtol(parm[2], 16, &val))
+					temp = (unsigned int)val;
+				else
+					ret = 1;
+				if (!kstrtol(parm[3], 16, &val))
+					data = (unsigned char)val;
+				else
+					ret = 1;
+				if (ret) {
+					pr_info("invalid parameters\n");
+					return count;
+				}
+				if (temp <= 0xfff) {
+					mlvds_conf->reg_table[temp] = data;
+					pr_info("write tcon table[%d]=0x%02x\n",
+						temp, data);
+				} else {
+					pr_info("invalid table index: %d\n",
+						temp);
+				}
+			}
+		} else if (strcmp(parm[1], "d") == 0) {
+			if (parm[3] != NULL) {
+				ret = 0;
+				if (!kstrtol(parm[2], 16, &val))
+					temp = (unsigned int)val;
+				else
+					ret = 1;
+				if (!kstrtol(parm[3], 16, &val))
+					n = (unsigned char)val;
+				else
+					ret = 1;
+				if (ret) {
+					pr_info("invalid parameters\n");
+					return count;
+				}
+				pr_info("dump tcon table:\n");
+				for (i = temp; i < (temp + n); i++) {
+					if (i > 0xfff)
+						break;
+					data = mlvds_conf->reg_table[i];
+					pr_info("  [%d]=0x%02x\n", temp, data);
+				}
+			}
+		} else if (strcmp(parm[1], "update") == 0) {
+			lcd_tcon_sys_regs_update(mlvds_conf->reg_table,
+				LCD_TCON_TABLE_MAX);
+		} else if (strcmp(parm[1], "save") == 0) {
+			if (parm[2] != NULL)
+				lcd_tcon_reg_table_save(parm[2], mlvds_conf);
+			else
+				pr_info("invalid save path\n");
+		}
+	} else if (strcmp(parm[0], "od") == 0) { /* over drive */
+		if (parm[1] != NULL) {
+			if (strcmp(parm[1], "status") == 0) {
+				temp = lcd_tcon_od_get();
+				if (temp) {
+					LCDPR("tcon od is enabled: %d\n", temp);
+				} else {
+					LCDPR("tcon od is disabled: %d\n",
+						temp);
+				}
+			} else {
+				if (!kstrtol(parm[1], 10, &val)) {
+					temp = (unsigned int)val;
+					if (temp)
+						lcd_tcon_od_set(1);
+					else
+						lcd_tcon_od_set(0);
+				}
+			}
+		}
+	} else {
+		LCDERR("wrong command\n");
+		return -EINVAL;
+	}
+
+	return count;
+}
+
 static ssize_t lcd_debug_print_show(struct class *class,
 		struct class_attribute *attr, char *buf)
 {
@@ -1708,6 +2112,8 @@ static struct class_attribute lcd_debug_class_attrs[] = {
 	__ATTR(reg,         S_IRUGO | S_IWUSR, NULL, lcd_debug_reg_store),
 	__ATTR(dither,      S_IRUGO | S_IWUSR,
 		lcd_debug_dither_show, lcd_debug_dither_store),
+	__ATTR(tcon,        S_IRUGO | S_IWUSR,
+		lcd_debug_tcon_show, lcd_debug_tcon_store),
 	__ATTR(print,       S_IRUGO | S_IWUSR,
 		lcd_debug_print_show, lcd_debug_print_store),
 };
@@ -1797,6 +2203,17 @@ static const char *lcd_edp_debug_usage_str = {
 "\n"
 };
 
+static const char *lcd_mlvds_debug_usage_str = {
+"Usage:\n"
+"    echo <channel_num> <channel_sel0> <channel_sel1> <clk_phase> <pn_swap> <bit_swap> > minilvds ; set minilvds config\n"
+"data format:\n"
+"    <channel_sel> : minilvds 8 channels mapping in tx 10 channels\n"
+"    <clk_phase>   : bit[13:12]=clk01_pi_sel, bit[11:8]=pi2, bit[7:4]=pi1, bit[3:0]=pi0\n"
+"    <pn_swap>     : 0=normal, 1=swap p/n channels\n"
+"    <bit_swap>    : 0=normal, 1=swap bit LSB/MSB\n"
+"\n"
+};
+
 static ssize_t lcd_ttl_debug_show(struct class *class,
 		struct class_attribute *attr, char *buf)
 {
@@ -1825,6 +2242,12 @@ static ssize_t lcd_edp_debug_show(struct class *class,
 		struct class_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%s\n", lcd_edp_debug_usage_str);
+}
+
+static ssize_t lcd_mlvds_debug_show(struct class *class,
+		struct class_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%s\n", lcd_mlvds_debug_usage_str);
 }
 
 static ssize_t lcd_ttl_debug_store(struct class *class,
@@ -1979,6 +2402,38 @@ static ssize_t lcd_edp_debug_store(struct class *class,
 	return count;
 }
 
+static ssize_t lcd_mlvds_debug_store(struct class *class,
+		struct class_attribute *attr, const char *buf, size_t count)
+{
+	int ret = 0;
+	struct aml_lcd_drv_s *lcd_drv = aml_lcd_get_driver();
+	struct mlvds_config_s *mlvds_conf;
+
+	mlvds_conf = lcd_drv->lcd_config->lcd_control.mlvds_config;
+	ret = sscanf(buf, "%d %x %x %x %d %d",
+		&mlvds_conf->channel_num,
+		&mlvds_conf->channel_sel0, &mlvds_conf->channel_sel1,
+		&mlvds_conf->clk_phase,
+		&mlvds_conf->pn_swap, &mlvds_conf->bit_swap);
+	if (ret == 6) {
+		pr_info("set minilvds config:\n"
+			"channel_num=%d,\n"
+			"channel_sel0=0x%08x, channel_sel1=0x%08x,\n"
+			"clk_phase=0x%04x,\n"
+			"pn_swap=%d, bit_swap=%d\n",
+			mlvds_conf->channel_num,
+			mlvds_conf->channel_sel0, mlvds_conf->channel_sel1,
+			mlvds_conf->clk_phase,
+			mlvds_conf->pn_swap, mlvds_conf->bit_swap);
+		lcd_debug_config_update();
+	} else {
+		pr_info("invalid data\n");
+		return -EINVAL;
+	}
+
+	return count;
+}
+
 static void lcd_phy_config_update(unsigned int *para, int cnt)
 {
 	struct aml_lcd_drv_s *lcd_drv = aml_lcd_get_driver();
@@ -1992,51 +2447,130 @@ static void lcd_phy_config_update(unsigned int *para, int cnt)
 	switch (type) {
 	case LCD_LVDS:
 		lvdsconf = pconf->lcd_control.lvds_config;
-		if (cnt == 4) {
-			if ((para[0] > 7) || (para[1] > 7) ||
-				(para[2] > 3) || (para[3] > 7)) {
-				LCDERR("%s: wrong value:\n", __func__);
+		if (lcd_drv->chip_type == LCD_CHIP_TXHD) {
+			if (cnt >= 2) {
+				if ((para[0] > 7) || (para[1] > 3)) {
+					LCDERR("%s: wrong value:\n", __func__);
+					pr_info("vswing=0x%x, preem=0x%x\n",
+						para[0], para[1]);
+					return;
+				}
+
+				lvdsconf->phy_vswing = para[0];
+				lvdsconf->phy_preem = para[1];
+
+				data32 = lcd_hiu_read(HHI_DIF_CSI_PHY_CNTL1);
+				data32 &= ~((0x7 << 3) | (0x7 << 0) |
+					(0x3 << 23));
+				data32 |= ((para[0] << 3) | (para[0] << 0) |
+					(para[1] << 23));
+				lcd_hiu_write(HHI_DIF_CSI_PHY_CNTL1, data32);
+				data32 = lcd_hiu_read(HHI_DIF_CSI_PHY_CNTL2);
+				data32 &= ~((0x3 << 14) | (0x3 << 12) |
+					(0x3 << 26) | (0x3 << 24));
+				data32 |= ((para[1] << 14) | (para[1] << 12) |
+					(para[1] << 26) | (para[1] << 24));
+				lcd_hiu_write(HHI_DIF_CSI_PHY_CNTL2, data32);
+				data32 = lcd_hiu_read(HHI_DIF_CSI_PHY_CNTL3);
+				data32 &= ~((0x3 << 6) | (0x3 << 4) |
+					(0x3 << 2) | (0x3 << 0) |
+					(0x3 << 30));
+				data32 = ((para[1] << 6) | (para[1] << 4) |
+					(para[1] << 2) | (para[1] << 0) |
+					(para[1] << 30));
+				lcd_hiu_write(HHI_DIF_CSI_PHY_CNTL3, data32);
+
+				LCDPR("%s: vswing=0x%x, preemphasis=0x%x\n",
+					__func__, para[0], para[1]);
+			} else {
+				LCDERR("%s: invalid parameters cnt: %d\n",
+					__func__, cnt);
+			}
+		} else {
+			if (cnt == 4) {
+				if ((para[0] > 7) || (para[1] > 7) ||
+					(para[2] > 3) || (para[3] > 7)) {
+					LCDERR("%s: wrong value:\n", __func__);
+					pr_info("vswing=0x%x, preem=0x%x\n",
+						para[0], para[1]);
+					pr_info("clk vswing=%x, preem=%x\n",
+						para[2], para[3]);
+					return;
+				}
+
+				lvdsconf->phy_vswing = para[0];
+				lvdsconf->phy_preem = para[1];
+				lvdsconf->phy_clk_vswing = para[2];
+				lvdsconf->phy_clk_preem = para[3];
+
+				data32 = lcd_hiu_read(HHI_DIF_CSI_PHY_CNTL1);
+				data32 &= ~((0x7 << 26) | (0x7 << 0));
+				data32 |= ((para[0] << 26) | (para[1] << 0));
+				lcd_hiu_write(HHI_DIF_CSI_PHY_CNTL1, data32);
+				data32 = lcd_hiu_read(HHI_DIF_CSI_PHY_CNTL3);
+				data32 &= ~((0x3 << 8) | (0x7 << 5));
+				data32 |= ((para[2] << 8) | (para[3] << 5));
+				lcd_hiu_write(HHI_DIF_CSI_PHY_CNTL3, data32);
+
+				LCDPR("%s:\n", __func__);
 				pr_info("vswing=0x%x, preemphasis=0x%x\n",
 					para[0], para[1]);
 				pr_info("clk_vswing=0x%x, clk_preem=0x%x\n",
 					para[2], para[3]);
-				return;
+			} else if (cnt == 2) {
+				if ((para[0] > 7) || (para[1] > 7)) {
+					LCDERR("%s: wrong value:\n", __func__);
+					pr_info("vswing=0x%x, preem=0x%x\n",
+						para[0], para[1]);
+					return;
+				}
+
+				lvdsconf->phy_vswing = para[0];
+				lvdsconf->phy_preem = para[1];
+
+				data32 = lcd_hiu_read(HHI_DIF_CSI_PHY_CNTL1);
+				data32 &= ~((0x7 << 26) | (0x7 << 0));
+				data32 |= ((para[0] << 26) | (para[1] << 0));
+				lcd_hiu_write(HHI_DIF_CSI_PHY_CNTL1, data32);
+
+				LCDPR("%s: vswing=0x%x, preemphasis=0x%x\n",
+					__func__, para[0], para[1]);
+			} else {
+				LCDERR("%s: invalid parameters cnt: %d\n",
+					__func__, cnt);
 			}
-
-			lvdsconf->phy_vswing = para[0];
-			lvdsconf->phy_preem = para[1];
-			lvdsconf->phy_clk_vswing = para[2];
-			lvdsconf->phy_clk_preem = para[3];
-
-			data32 = lcd_hiu_read(HHI_DIF_CSI_PHY_CNTL1);
-			data32 &= ~((0x7 << 26) | (0x7 << 0));
-			data32 |= ((para[0] << 26) | (para[1] << 0));
-			lcd_hiu_write(HHI_DIF_CSI_PHY_CNTL1, data32);
-			data32 = lcd_hiu_read(HHI_DIF_CSI_PHY_CNTL3);
-			data32 &= ~((0x3 << 8) | (0x7 << 5));
-			data32 |= ((para[2] << 8) | (para[3] << 5));
-			lcd_hiu_write(HHI_DIF_CSI_PHY_CNTL3, data32);
-
-			LCDPR("%s:\n", __func__);
-			pr_info("vswing=0x%x, preemphasis=0x%x\n",
-				para[0], para[1]);
-			pr_info("clk_vswing=0x%x, clk_preemphasis=0x%x\n",
-				para[2], para[3]);
-		} else if (cnt == 2) {
-			if ((para[0] > 7) || (para[1] > 7)) {
+		}
+		break;
+	case LCD_MLVDS:
+		if (cnt >= 2) {
+			if ((para[0] > 7) || (para[1] > 3)) {
 				LCDERR("%s: wrong value:\n", __func__);
 				pr_info("vswing=0x%x, preemphasis=0x%x\n",
 					para[0], para[1]);
 				return;
 			}
 
-			lvdsconf->phy_vswing = para[0];
-			lvdsconf->phy_preem = para[1];
+			pconf->lcd_control.mlvds_config->phy_vswing = para[0];
+			pconf->lcd_control.mlvds_config->phy_preem = para[1];
 
 			data32 = lcd_hiu_read(HHI_DIF_CSI_PHY_CNTL1);
-			data32 &= ~((0x7 << 26) | (0x7 << 0));
-			data32 |= ((para[0] << 26) | (para[1] << 0));
+			data32 &= ~((0x7 << 3) | (0x7 << 0) | (0x3 << 23));
+			data32 |= ((para[0] << 3) | (para[0] << 0) |
+				(para[1] << 23));
 			lcd_hiu_write(HHI_DIF_CSI_PHY_CNTL1, data32);
+			data32 = lcd_hiu_read(HHI_DIF_CSI_PHY_CNTL2);
+			data32 &= ~((0x3 << 14) | (0x3 << 12) |
+				(0x3 << 26) | (0x3 << 24));
+			data32 |= ((para[1] << 14) | (para[1] << 12) |
+				(para[1] << 26) | (para[1] << 24));
+			lcd_hiu_write(HHI_DIF_CSI_PHY_CNTL2, data32);
+			data32 = lcd_hiu_read(HHI_DIF_CSI_PHY_CNTL3);
+			data32 &= ~((0x3 << 6) | (0x3 << 4) |
+				(0x3 << 2) | (0x3 << 0) | (0x3 << 30));
+			data32 |= ((para[1] << 6) | (para[1] << 4) |
+				(para[1] << 2) | (para[1] << 0) |
+				(para[1] << 30));
+			lcd_hiu_write(HHI_DIF_CSI_PHY_CNTL3, data32);
 
 			LCDPR("%s: vswing=0x%x, preemphasis=0x%x\n",
 				__func__, para[0], para[1]);
@@ -2108,6 +2642,13 @@ static ssize_t lcd_phy_debug_show(struct class *class,
 			"clk_vswing=0x%x, clk_preemphasis=0x%x\n",
 			clk_vswing, clk_preem);
 		break;
+	case LCD_MLVDS:
+		vswing = pconf->lcd_control.mlvds_config->phy_vswing;
+		preem = pconf->lcd_control.mlvds_config->phy_preem;
+		len += sprintf(buf+len, "%s:\n", __func__);
+		len += sprintf(buf+len, "vswing=0x%x, preemphasis=0x%x\n",
+			vswing, preem);
+		break;
 	case LCD_VBYONE:
 		vswing = pconf->lcd_control.vbyone_config->phy_vswing;
 		preem = pconf->lcd_control.vbyone_config->phy_preem;
@@ -2155,6 +2696,8 @@ static struct class_attribute lcd_interface_debug_class_attrs[] = {
 		lcd_mipi_debug_show, lcd_mipi_debug_store),
 	__ATTR(edp,    S_IRUGO | S_IWUSR,
 		lcd_edp_debug_show, lcd_edp_debug_store),
+	__ATTR(minilvds, S_IRUGO | S_IWUSR,
+		lcd_mlvds_debug_show, lcd_mlvds_debug_store),
 };
 
 static struct class_attribute lcd_phy_debug_class_attrs[] = {
@@ -2222,6 +2765,7 @@ int lcd_class_creat(void)
 	switch (type) {
 	case LCD_LVDS:
 	case LCD_VBYONE:
+	case LCD_MLVDS:
 		for (i = 0; i < ARRAY_SIZE(lcd_phy_debug_class_attrs); i++) {
 			if (class_create_file(lcd_drv->lcd_debug_class,
 				&lcd_phy_debug_class_attrs[i])) {
@@ -2255,6 +2799,19 @@ int lcd_class_remove(void)
 			continue;
 		class_remove_file(lcd_drv->lcd_debug_class,
 			&lcd_interface_debug_class_attrs[i]);
+	}
+
+	switch (type) {
+	case LCD_LVDS:
+	case LCD_VBYONE:
+	case LCD_MLVDS:
+		for (i = 0; i < ARRAY_SIZE(lcd_phy_debug_class_attrs); i++) {
+			class_remove_file(lcd_drv->lcd_debug_class,
+				&lcd_phy_debug_class_attrs[i]);
+		}
+		break;
+	default:
+		break;
 	}
 
 	class_destroy(lcd_drv->lcd_debug_class);

@@ -25,6 +25,34 @@
 
 #define VPP_OUT_SATURATE            (1 << 0)
 
+/* -------------------------- */
+/* lvsd phy parameters define */
+/* -------------------------- */
+#define LVDS_PHY_CNTL1_G9TV    0x606cca80
+#define LVDS_PHY_CNTL2_G9TV    0x0000006c
+#define LVDS_PHY_CNTL3_G9TV    0x00000800
+
+#define LVDS_PHY_CNTL1_TXHD    0x6c60ca80
+#define LVDS_PHY_CNTL2_TXHD    0x00000070
+#define LVDS_PHY_CNTL3_TXHD    0x03ff0c00
+/* -------------------------- */
+
+/* -------------------------- */
+/* vbyone phy parameters define */
+/* -------------------------- */
+#define VX1_PHY_CNTL1_G9TV     0x6e0ec900
+#define VX1_PHY_CNTL2_G9TV     0x00000a7c
+#define VX1_PHY_CNTL3_G9TV     0x00ff0800
+/* -------------------------- */
+
+/* -------------------------- */
+/* minilvsd phy parameters define */
+/* -------------------------- */
+#define MLVDS_PHY_CNTL1_TXHD   0x6c60ca80
+#define MLVDS_PHY_CNTL2_TXHD   0x00000070
+#define MLVDS_PHY_CNTL3_TXHD   0x03ff0c00
+/* -------------------------- */
+
 extern struct mutex lcd_power_mutex;
 extern struct mutex lcd_vout_mutex;
 extern unsigned char lcd_resume_flag;
@@ -42,16 +70,29 @@ extern unsigned int lcd_cpu_gpio_get(unsigned int index);
 extern void lcd_ttl_pinmux_set(int status);
 extern void lcd_vbyone_pinmux_set(int status);
 extern unsigned int lcd_lvds_channel_on_value(struct lcd_config_s *pconf);
+extern void lcd_mlvds_pinmux_set(int status);
 extern int lcd_power_load_from_dts(struct lcd_config_s *pconf,
 		struct device_node *child);
 extern int lcd_power_load_from_unifykey(struct lcd_config_s *pconf,
 		unsigned char *buf, int key_len, int len);
 
 extern void lcd_hdr_vinfo_update(void);
-extern void lcd_tcon_config(struct lcd_config_s *pconf);
+extern void lcd_timing_init_config(struct lcd_config_s *pconf);
 extern int lcd_vmode_change(struct lcd_config_s *pconf);
 extern void lcd_venc_change(struct lcd_config_s *pconf);
 extern void lcd_clk_gate_switch(int status);
+
+/* lcd tcon */
+extern void lcd_tcon_regs_table_print(struct mlvds_config_s *mlvds_conf);
+extern void lcd_tcon_regs_readback_print(struct mlvds_config_s *mlvds_conf);
+extern int lcd_tcon_sys_regs_update(unsigned char *table, int len);
+extern int lcd_tcon_init(struct lcd_config_s *pconf);
+extern void lcd_tcon_disable(void);
+extern int lcd_tcon_probe(struct device *dev);
+
+extern int lcd_tcon_od_set(int flag);
+extern int lcd_tcon_od_get(void);
+
 
 /* lcd debug */
 extern int lcd_class_creat(void);

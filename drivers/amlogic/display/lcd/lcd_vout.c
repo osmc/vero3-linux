@@ -77,7 +77,6 @@ static struct ttl_config_s lcd_ttl_config = {
 };
 
 static struct lvds_config_s lcd_lvds_config = {
-	.lvds_vswing = 1,
 	.lvds_repack = 1,
 	.dual_port = 0,
 	.pn_swap = 0,
@@ -86,6 +85,8 @@ static struct lvds_config_s lcd_lvds_config = {
 	.port_sel = 0,
 	.phy_vswing = LVDS_PHY_VSWING_DFT,
 	.phy_preem = LVDS_PHY_PREEM_DFT,
+	.phy_clk_vswing = LVDS_PHY_CLK_VSWING_DFT,
+	.phy_clk_preem = LVDS_PHY_CLK_PREEM_DFT,
 };
 
 static struct vbyone_config_s lcd_vbyone_config = {
@@ -135,6 +136,24 @@ static struct edp_config_s lcd_edp_config = {
 	.vswing = 0,
 	.preemphasis = 0,
 	.sync_clock_mode = 1,
+};
+
+static struct mlvds_config_s lcd_mlvds_config = {
+	.channel_num = 6,
+	.channel_sel0 = 0x45603012,
+	.channel_sel1 = 0x0,
+	.clk_phase = 0x0, /* 0x0~0xf */
+	.pn_swap = 0,
+	.bit_swap = 0, /* MSB/LSB reverse */
+	.phy_vswing = LVDS_PHY_VSWING_DFT,
+	.phy_preem = LVDS_PHY_PREEM_DFT,
+
+	.pi_clk_sel = 0x0,
+	.bit_rate = 0,
+	.tcon_enable = 0,
+	.reg_table_len = 0,
+	.reg_table = NULL,
+	.fb_addr = 0,
 };
 
 static struct lcd_power_ctrl_s lcd_power_config = {
@@ -210,6 +229,7 @@ static struct lcd_config_s lcd_config_dft = {
 		.vbyone_config = &lcd_vbyone_config,
 		.mipi_config = &lcd_mipi_config,
 		.edp_config = &lcd_edp_config,
+		.mlvds_config = &lcd_mlvds_config,
 	},
 	.lcd_power = &lcd_power_config,
 	.pinmux_flag = 0,
@@ -260,6 +280,9 @@ static void lcd_chip_detect(void)
 		break;
 	case MESON_CPU_MAJOR_ID_TXLX:
 		lcd_driver->chip_type = LCD_CHIP_TXLX;
+		break;
+	case MESON_CPU_MAJOR_ID_TXHD:
+		lcd_driver->chip_type = LCD_CHIP_TXHD;
 		break;
 	default:
 		lcd_driver->chip_type = LCD_CHIP_MAX;
@@ -732,6 +755,43 @@ static void lcd_init_vout(void)
 	}
 }
 
+static void lcd_config_tcon_probe_delayed(struct work_struct *work)
+{
+	int key_init_flag = 0;
+	int i = 0;
+
+	key_init_flag = key_unify_get_init_flag();
+	while (key_init_flag == 0) {
+		if (i++ >= LCD_UNIFYKEY_WAIT_TIMEOUT)
+			break;
+		msleep(20);
+		key_init_flag = key_unify_get_init_flag();
+	}
+	LCDPR("%s: key_init_flag=%d, i=%d\n", __func__, key_init_flag, i);
+
+	lcd_tcon_probe(lcd_driver->dev);
+}
+
+static void lcd_config_tcon_probe(struct device *dev)
+{
+	int key_init_flag = 0;
+
+	key_init_flag = key_unify_get_init_flag();
+	if (key_init_flag) {
+		lcd_tcon_probe(dev);
+	} else {
+		if (lcd_driver->workqueue) {
+			queue_delayed_work(lcd_driver->workqueue,
+				&lcd_driver->lcd_tcon_probe_delayed_work,
+				msecs_to_jiffies(2000));
+		} else {
+			LCDPR("Warning: no lcd workqueue\n");
+			msleep(3000);
+			lcd_tcon_probe(dev);
+		}
+	}
+}
+
 static int lcd_mode_probe(struct device *dev)
 {
 	int ret;
@@ -751,6 +811,10 @@ static int lcd_mode_probe(struct device *dev)
 		LCDERR("invalid lcd mode: %d\n", lcd_driver->lcd_mode);
 		break;
 	}
+	/* lcd_config post */
+	if (lcd_driver->chip_type == LCD_CHIP_TXHD)
+		lcd_config_tcon_probe(dev);
+	lcd_clk_config_post();
 
 	lcd_class_creat();
 	lcd_fops_create();
@@ -824,6 +888,7 @@ static void lcd_config_default(void)
 	struct lcd_config_s *pconf;
 
 	pconf = lcd_driver->lcd_config;
+
 	pconf->lcd_basic.h_active = lcd_vcbus_read(ENCL_VIDEO_HAVON_END)
 			- lcd_vcbus_read(ENCL_VIDEO_HAVON_BEGIN) + 1;
 	pconf->lcd_basic.v_active = lcd_vcbus_read(ENCL_VIDEO_VAVON_ELINE)
@@ -939,12 +1004,13 @@ static int lcd_probe(struct platform_device *pdev)
 	lcd_vout_serve_bypass = 0;
 
 	/* init workqueue */
-	INIT_DELAYED_WORK(&lcd_driver->lcd_probe_delayed_work,
-		lcd_config_probe_delayed);
 	lcd_driver->workqueue = create_workqueue("lcd_work_queue");
 	if (lcd_driver->workqueue == NULL)
 		LCDERR("can't create lcd workqueue\n");
-
+	INIT_DELAYED_WORK(&lcd_driver->lcd_probe_delayed_work,
+		lcd_config_probe_delayed);
+	INIT_DELAYED_WORK(&lcd_driver->lcd_tcon_probe_delayed_work,
+		lcd_config_tcon_probe_delayed);
 	INIT_DELAYED_WORK(&lcd_driver->lcd_resume_delayed_work,
 		lcd_resume_work);
 

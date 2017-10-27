@@ -22,17 +22,11 @@
 /* ********************************
  * register offset address define
  * ********************************* */
-/* base & offset */
-#if 0
-#define LCD_REG_BASE_PERIPHS                      (0xc8834400L)
-#define LCD_REG_BASE_CBUS                         (0xc1100000L)
-#define LCD_REG_BASE_HIU                          (0xc883c000L)
-#define LCD_REG_BASE_VCBUS                        (0xd0100000L)
-#endif
 #define LCD_REG_OFFSET_PERIPHS(reg)               ((reg << 2))
 #define LCD_REG_OFFSET_CBUS(reg)                  ((reg << 2))
 #define LCD_REG_OFFSET_HIU(reg)                   ((reg << 2))
 #define LCD_REG_OFFSET_VCBUS(reg)                 ((reg << 2))
+#define LCD_REG_OFFSET_TCON_APB(reg)              ((reg << 2))
 
 /* ********************************
  * PERIPHS: 0xc8834400
@@ -66,6 +60,23 @@
 #define PERIPHS_PIN_MUX_10                         0x36
 #define PERIPHS_PIN_MUX_11                         0x37
 #define PERIPHS_PIN_MUX_12                         0x38
+
+#define PERIPHS_PIN_MUX_0_TXHD                     0x20
+#define PERIPHS_PIN_MUX_1_TXHD                     0x21
+#define PERIPHS_PIN_MUX_2_TXHD                     0x22
+#define PERIPHS_PIN_MUX_3_TXHD                     0x23
+#define PERIPHS_PIN_MUX_4_TXHD                     0x24
+#define PERIPHS_PIN_MUX_5_TXHD                     0x25
+#define PERIPHS_PIN_MUX_6_TXHD                     0x26
+#define PERIPHS_PIN_MUX_7_TXHD                     0x27
+#define PERIPHS_PIN_MUX_8_TXHD                     0x28
+#define PERIPHS_PIN_MUX_9_TXHD                     0x29
+#define PERIPHS_PIN_MUX_A_TXHD                     0x2a
+#define PERIPHS_PIN_MUX_B_TXHD                     0x2b
+#define PERIPHS_PIN_MUX_C_TXHD                     0x2c
+#define PERIPHS_PIN_MUX_D_TXHD                     0x2d
+#define PERIPHS_PIN_MUX_E_TXHD                     0x2e
+#define PERIPHS_PIN_MUX_F_TXHD                     0x2f
 
 #define LCD_PERIPHS_REG_GX(addr)                  (addr & 0xff)
 
@@ -165,6 +176,11 @@
 #define HHI_VID2_PLL_CNTL5                         0x10e4
 #define HHI_VID2_PLL_CNTL6                         0x10e5
 #define HHI_VID_LOCK_CLK_CNTL                      0x10f2
+
+#define HHI_DIF_TCON_CNTL0                         0x3c
+#define HHI_DIF_TCON_CNTL1                         0x3d
+#define HHI_DIF_TCON_CNTL2                         0x3e
+#define HHI_TCON_CLK_CNTL                          0xf0
 
 /* ********************************
  * HIU:  GXBB
@@ -799,6 +815,10 @@
    /* Bit 11:0 */
    #define     mLVDS_reset_range_line_1    0
 
+#define LVDS_CH_SWAP0                              0x14e1
+#define LVDS_CH_SWAP1                              0x14e2
+#define LVDS_CH_SWAP2                              0x14e3
+
 /* **************************************************************************
    Vbyone registers  (Note: no MinLVDS in G9tv, share the register)
  ************************************************************************** */
@@ -1005,6 +1025,29 @@
 #define ENCT_DACSEL_1                              0x1c8a
 
 /* ********************************
+ * TCON TOP:  TCON_TOP_BASE = 0x1000
+ * ******************************** */
+#define TCON_SYS_REG_START                         0x0000
+
+#define TCON_TOP_CTRL                              0x1000
+#define TCON_RGB_IN_MUX                            0x1001
+#define TCON_OUT_CH_SEL0                           0x1002
+#define TCON_OUT_CH_SEL1                           0x1003
+#define TCON_I2C_DEGLITCH_CNTL                     0x1004
+#define TCON_STATUS0                               0x1008 /* read only */
+#define TCON_PLLLOCK_CNTL                          0x1009
+#define TCON_PLLLCK_RST_CNT                        0x100a
+#define TCON_RST_CTRL                              0x100b
+#define TCON_AXI_OFST                              0x100c
+#define TCON_DDRIF_CTRL0                           0x100d
+#define TCON_CLK_CTRL                              0x100e
+#define TCON_DDRIF_CTRL1                           0x100f
+#define TCON_STATUS1                               0x1010 /* read only */
+#define TCON_DDRIF_CTRL2                           0x1011
+#define TCON_INTR_MASKN                            0x1022
+#define TCON_INTR                                  0x1023 /* read only */
+
+/* ********************************
  * Video post-processing:  VPP_VCBUS_BASE = 0x1d
  * ******************************** */
 /* Bit 31  vd1_bgosd_exchange_en for preblend
@@ -1177,5 +1220,12 @@ extern unsigned int lcd_periphs_read(unsigned int _reg);
 extern void lcd_periphs_write(unsigned int _reg, unsigned int _value);
 extern void lcd_pinmux_set_mask(unsigned int _reg, unsigned int _mask);
 extern void lcd_pinmux_clr_mask(unsigned int _reg, unsigned int _mask);
+
+extern unsigned int lcd_tcon_read(unsigned int _reg);
+extern void lcd_tcon_write(unsigned int _reg, unsigned int _value);
+extern void lcd_tcon_setb(unsigned int _reg, unsigned int _value,
+		unsigned int _start, unsigned int _len);
+extern void lcd_tcon_set_mask(unsigned int _reg, unsigned int _mask);
+extern void lcd_tcon_clr_mask(unsigned int _reg, unsigned int _mask);
 
 #endif

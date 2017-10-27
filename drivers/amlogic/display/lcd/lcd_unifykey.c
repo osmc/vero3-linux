@@ -84,7 +84,7 @@ int lcd_unifykey_header_check(unsigned char *buf,
 int lcd_unifykey_check(char *key_name)
 {
 	unsigned int key_exist, keypermit, key_len;
-	unsigned char buf[550];
+	unsigned char *buf;
 	struct aml_lcd_unifykey_header_s key_header;
 	int retry_cnt = 0;
 	unsigned int key_crc32;
@@ -118,6 +118,11 @@ int lcd_unifykey_check(char *key_name)
 		LCDUKEY("%s size: %d\n", key_name, key_len);
 
 lcd_unifykey_read:
+	buf = kzalloc((sizeof(unsigned char) * key_len), GFP_KERNEL);
+	if (!buf) {
+		LCDUKEYERR("%s: Not enough memory\n", __func__);
+		return -1;
+	}
 	ret = key_unify_read(key_name, buf, key_len, &key_len);
 	if (ret < 0) {
 		LCDUKEYERR("%s unify read error\n", key_name);
@@ -170,6 +175,66 @@ int lcd_unifykey_get(char *key_name, unsigned char *buf, int *len)
 
 	key_len = 0;
 	ret = lcd_unifykey_check(key_name);
+	if (ret < 0)
+		return -1;
+	ret = key_unify_size(key_name, &key_len);
+	if (key_len > *len) {
+		LCDUKEYERR("%s size(%d) is bigger than buf_size(%d)\n",
+			key_name, key_len, *len);
+		return -1;
+	}
+	*len = key_len;
+
+	ret = key_unify_read(key_name, buf, key_len, &key_len);
+	if (ret < 0) {
+		LCDUKEYERR("%s unify read error\n", key_name);
+		return -1;
+	}
+	return 0;
+}
+
+int lcd_unifykey_check_no_header(char *key_name)
+{
+	unsigned int key_exist, keypermit, key_len;
+	int ret;
+
+	key_exist = 0;
+	key_len = 0;
+	ret = key_unify_query(key_name, &key_exist, &keypermit);
+	if (ret < 0) {
+		if (lcd_debug_print_flag)
+			LCDUKEYERR("%s query exist error\n", key_name);
+		return -1;
+	}
+	if (key_exist == 0) {
+		if (lcd_debug_print_flag)
+			LCDUKEYERR("%s is not exist\n", key_name);
+		return -1;
+	}
+
+	ret = key_unify_size(key_name, &key_len);
+	if (ret < 0) {
+		LCDUKEYERR("%s query size error\n", key_name);
+		return -1;
+	}
+	if (key_len == 0) {
+		if (lcd_debug_print_flag)
+			LCDUKEY("%s size is zero\n", key_name);
+		return -1;
+	}
+	if (lcd_debug_print_flag)
+		LCDUKEY("%s size: %d\n", key_name, key_len);
+
+	return 0;
+}
+
+int lcd_unifykey_get_no_header(char *key_name, unsigned char *buf, int *len)
+{
+	int key_len;
+	int ret;
+
+	key_len = 0;
+	ret = lcd_unifykey_check_no_header(key_name);
 	if (ret < 0)
 		return -1;
 	ret = key_unify_size(key_name, &key_len);
@@ -293,6 +358,18 @@ int lcd_unifykey_check(char *key_name)
 }
 
 int lcd_unifykey_get(char *key_name, unsigned char *buf, int *len)
+{
+	LCDUKEYERR("Don't support unifykey\n");
+	return -1;
+}
+
+int lcd_unifykey_check_no_header(char *key_name)
+{
+	LCDUKEYERR("Don't support unifykey\n");
+	return -1;
+}
+
+int lcd_unifykey_get_no_header(char *key_name, unsigned char *buf, int *len)
 {
 	LCDUKEYERR("Don't support unifykey\n");
 	return -1;

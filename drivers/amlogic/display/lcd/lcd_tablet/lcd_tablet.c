@@ -1037,7 +1037,7 @@ static void lcd_config_init(struct lcd_config_s *pconf)
 	pconf->lcd_timing.lcd_clk_dft = pconf->lcd_timing.lcd_clk;
 	pconf->lcd_timing.h_period_dft = pconf->lcd_basic.h_period;
 	pconf->lcd_timing.v_period_dft = pconf->lcd_basic.v_period;
-	lcd_tcon_config(pconf);
+	lcd_timing_init_config(pconf);
 
 	lcd_tablet_vinfo_update();
 

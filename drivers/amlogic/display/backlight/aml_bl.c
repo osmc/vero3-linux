@@ -120,6 +120,7 @@ const char *bl_chip_table[] = {
 	"GXTVBB",
 	"TXL",
 	"TXLX",
+	"TXHD",
 	"invalid",
 };
 
@@ -216,6 +217,9 @@ enum bl_chip_type_e aml_bl_check_chip(void)
 		break;
 	case MESON_CPU_MAJOR_ID_TXLX:
 		bl_chip = BL_CHIP_TXLX;
+		break;
+	case MESON_CPU_MAJOR_ID_TXHD:
+		bl_chip = BL_CHIP_TXHD;
 		break;
 	default:
 		bl_chip = BL_CHIP_MAX;
@@ -738,7 +742,8 @@ void bl_pwm_ctrl(struct bl_pwm_config_s *bl_pwm, int status)
 		case BL_PWM_D:
 		case BL_PWM_E:
 		case BL_PWM_F:
-			if (bl_chip_type == BL_CHIP_TXLX) {
+			if ((bl_chip_type == BL_CHIP_TXLX) |
+				(bl_chip_type == BL_CHIP_TXHD)) {
 				/* pwm clk_div */
 				bl_cbus_setb(pwm_misc_txlx[port][0], pre_div,
 					pwm_misc_txlx[port][1], 7);
@@ -778,7 +783,8 @@ void bl_pwm_ctrl(struct bl_pwm_config_s *bl_pwm, int status)
 		case BL_PWM_D:
 		case BL_PWM_E:
 		case BL_PWM_F:
-			if (bl_chip_type == BL_CHIP_TXLX) {
+			if ((bl_chip_type == BL_CHIP_TXLX) |
+				(bl_chip_type == BL_CHIP_TXHD)) {
 				/* pwm clk_disable */
 				bl_cbus_setb(pwm_misc_txlx[port][0], 0,
 					pwm_misc[port][3], 1);
@@ -1147,7 +1153,8 @@ static void bl_set_pwm(struct bl_pwm_config_s *bl_pwm)
 	case BL_PWM_D:
 	case BL_PWM_E:
 	case BL_PWM_F:
-		if (bl_chip_type == BL_CHIP_TXLX) {
+		if ((bl_chip_type == BL_CHIP_TXLX) |
+			(bl_chip_type == BL_CHIP_TXHD)) {
 			bl_cbus_write(pwm_reg_txlx[port],
 				(pwm_hi << 16) | pwm_lo);
 		} else {
@@ -2702,7 +2709,8 @@ static ssize_t bl_debug_pwm_show(struct class *class,
 			case BL_PWM_D:
 			case BL_PWM_E:
 			case BL_PWM_F:
-				if (bl_chip_type == BL_CHIP_TXLX) {
+				if ((bl_chip_type == BL_CHIP_TXLX) |
+					(bl_chip_type == BL_CHIP_TXHD)) {
 					value = bl_cbus_read(
 						pwm_reg_txlx[bl_pwm->pwm_port]);
 				} else {
@@ -2756,7 +2764,8 @@ static ssize_t bl_debug_pwm_show(struct class *class,
 			case BL_PWM_D:
 			case BL_PWM_E:
 			case BL_PWM_F:
-				if (bl_chip_type == BL_CHIP_TXLX) {
+				if ((bl_chip_type == BL_CHIP_TXLX) |
+					(bl_chip_type == BL_CHIP_TXHD)) {
 					value = bl_cbus_read(
 						pwm_reg_txlx[bl_pwm->pwm_port]);
 				} else {
@@ -2804,7 +2813,8 @@ static ssize_t bl_debug_pwm_show(struct class *class,
 			case BL_PWM_D:
 			case BL_PWM_E:
 			case BL_PWM_F:
-				if (bl_chip_type == BL_CHIP_TXLX) {
+				if ((bl_chip_type == BL_CHIP_TXLX) |
+					(bl_chip_type == BL_CHIP_TXHD)) {
 					value = bl_cbus_read(
 						pwm_reg_txlx[bl_pwm->pwm_port]);
 				} else {

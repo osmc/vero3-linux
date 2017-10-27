@@ -19,7 +19,7 @@
 #ifndef _INC_AML_LCD_UNIFYKEY_H__
 #define _INC_AML_LCD_UNIFYKEY_H__
 
-#define LCD_UNIFYKEY_WAIT_TIMEOUT    300
+#define LCD_UNIFYKEY_WAIT_TIMEOUT         300  /* *20ms */
 
 /* declare external unifykey function */
 extern int key_unify_read(char *keyname, unsigned char *keydata,
@@ -237,13 +237,21 @@ struct aml_lcd_unifykey_header_s {
 
 
 /* ********************************
+ * tcon
+ * ********************************* */
+#define LCD_UKEY_TCON_SIZE          4096
+
+/* ********************************
  * API
  * ********************************* */
 extern int lcd_unifykey_len_check(int key_len, int len);
-extern int lcd_unifykey_check(char *key_name);
 extern int lcd_unifykey_header_check(unsigned char *buf,
 		struct aml_lcd_unifykey_header_s *header);
+extern int lcd_unifykey_check(char *key_name);
 extern int lcd_unifykey_get(char *key_name,
+		unsigned char *buf, int *len);
+extern int lcd_unifykey_check_no_header(char *key_name);
+extern int lcd_unifykey_get_no_header(char *key_name,
 		unsigned char *buf, int *len);
 extern void lcd_unifykey_print(void);
 

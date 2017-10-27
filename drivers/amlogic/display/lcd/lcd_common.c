@@ -44,12 +44,13 @@ struct lcd_type_match_s {
 };
 
 static struct lcd_type_match_s lcd_type_match_table[] = {
-	{"ttl",     LCD_TTL},
-	{"lvds",    LCD_LVDS},
-	{"vbyone",  LCD_VBYONE},
-	{"mipi",    LCD_MIPI},
-	{"edp",     LCD_EDP},
-	{"invalid", LCD_TYPE_MAX},
+	{"ttl",      LCD_TTL},
+	{"lvds",     LCD_LVDS},
+	{"vbyone",   LCD_VBYONE},
+	{"mipi",     LCD_MIPI},
+	{"edp",      LCD_EDP},
+	{"minilvds", LCD_MLVDS},
+	{"invalid",  LCD_TYPE_MAX},
 };
 
 int lcd_type_str_to_type(const char *str)
@@ -316,6 +317,37 @@ void lcd_vbyone_pinmux_set(int status)
 		lcd_pinmux_clr_mask(7, ((1 << 11) | (1 << 12)));
 	}
 #endif
+}
+
+void lcd_mlvds_pinmux_set(int status)
+{
+	struct aml_lcd_drv_s *lcd_drv = aml_lcd_get_driver();
+	struct lcd_config_s *pconf;
+
+	if (lcd_debug_print_flag)
+		LCDPR("%s: %d\n", __func__, status);
+
+	pconf = lcd_drv->lcd_config;
+	if (status) {
+		if (pconf->pinmux_flag == 0) {
+			pconf->pinmux_flag = 1;
+			/* request pinmux */
+			pconf->pin = devm_pinctrl_get_select(lcd_drv->dev,
+				"minilvds_pins");
+			if (IS_ERR(pconf->pin))
+				LCDERR("set mlvds_pins pinmux error\n");
+		} else {
+			LCDPR("mlvds_pins pinmux is already selected\n");
+		}
+	} else {
+		if (pconf->pinmux_flag) {
+			pconf->pinmux_flag = 0;
+			/* release pinmux */
+			devm_pinctrl_put(pconf->pin);
+		} else {
+			LCDPR("mlvds_pins pinmux is already released\n");
+		}
+	}
 }
 
 unsigned int lcd_lvds_channel_on_value(struct lcd_config_s *pconf)
@@ -647,7 +679,7 @@ void lcd_hdr_vinfo_update(void)
 	lcd_drv->lcd_info->hdr_info.lumi_max = pconf->hdr_info.luma_max;
 }
 
-void lcd_tcon_config(struct lcd_config_s *pconf)
+void lcd_timing_init_config(struct lcd_config_s *pconf)
 {
 	unsigned short h_period, v_period, h_active, v_active;
 	unsigned short hsync_bp, hsync_width, vsync_bp, vsync_width;
