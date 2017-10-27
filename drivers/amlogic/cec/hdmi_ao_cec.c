@@ -923,6 +923,7 @@ static int get_line(void)
 		break;
 	case MESON_CPU_MAJOR_ID_TXL:
 	case MESON_CPU_MAJOR_ID_TXLX:
+	case MESON_CPU_MAJOR_ID_TXHD:
 		ret = (reg & (1 <<  7));
 		break;
 	default:
@@ -2574,14 +2575,15 @@ static int aml_cec_suspend_noirq(struct device *dev)
 {
 	struct pinctrl *p;
 	struct pinctrl_state *s;
-	int ret;
+	int ret = -1;
 
-	if (ee_cec) {
+	if (ee_cec && (get_cpu_type() < MESON_CPU_MAJOR_ID_TXLX)) {
 		p = devm_pinctrl_get(cec_dev->dbg_dev);
 		if (IS_ERR(p))
 			return -EINVAL;
 		s = pinctrl_lookup_state(p, "dummy");
-		ret = pinctrl_select_state(p, s);
+		if (s != NULL)
+			ret = pinctrl_select_state(p, s);
 		if (ret < 0)
 			devm_pinctrl_put(p);
 		CEC_INFO("%s, unselect pin mux\n", __func__);
