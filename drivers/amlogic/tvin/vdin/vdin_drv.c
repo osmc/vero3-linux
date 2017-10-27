@@ -877,7 +877,8 @@ void vdin_start_dec(struct vdin_dev_s *devp)
 	/*gxbb/gxl/gxm use clkb as vdin clk,
 	for clkb is low speed,wich is enough for 1080p process,
 	gxtvbb/txl use vpu clk for process 4k*/
-	if (is_meson_gxl_cpu() || is_meson_gxm_cpu() || is_meson_gxbb_cpu())
+	if (is_meson_gxl_cpu() || is_meson_gxm_cpu() || is_meson_gxbb_cpu() ||
+		is_meson_txhd_cpu())
 		switch_vpu_clk_gate_vmod(VPU_VPU_CLKB, VPU_CLK_GATE_ON);
 
 	vdin_get_format_convert(devp);
@@ -2988,7 +2989,8 @@ static int vdin_drv_probe(struct platform_device *pdev)
 		/* only gxtvbb & txl support 10bit mode@20161108 */
 		if ((get_cpu_type() == MESON_CPU_MAJOR_ID_GXTVBB) ||
 			(get_cpu_type() == MESON_CPU_MAJOR_ID_TXL) ||
-			(get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX)) {
+			(get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX) ||
+			(get_cpu_type() == MESON_CPU_MAJOR_ID_TXHD)) {
 			ret = of_property_read_u32(pdev->dev.of_node,
 					"tv_bit_mode", &bit_mode);
 			if (ret)

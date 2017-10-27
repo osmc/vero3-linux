@@ -1709,7 +1709,9 @@ void set_vpp_matrix(int m_select, int *s, int on)
 
 	if (m_select == VPP_MATRIX_OSD) {
 		/* osd matrix, VPP_MATRIX_0 */
-		if (!is_meson_txlx_cpu() && !is_meson_gxlx_cpu()) {
+		if (!is_meson_txlx_cpu() &&
+			!is_meson_gxlx_cpu() &&
+			!is_meson_txhd_cpu()) {
 			/* not enable latched */
 			hdr_osd_reg.viu_osd1_matrix_pre_offset0_1 =
 				((m[0] & 0xfff) << 16) | (m[1] & 0xfff);
@@ -1848,13 +1850,24 @@ void set_vpp_matrix(int m_select, int *s, int on)
 							((m[15] & 0x1fff) << 16)
 							| (m[16] & 0x1fff));
 					}
-					VSYNC_WR_MPEG_REG(
+					if (is_meson_txhd_cpu()) {
+						VSYNC_WR_MPEG_REG(
 						VPP_MATRIX_OFFSET0_1,
-						((m[18] & 0xfff) << 16)
-						| (m[19] & 0xfff));
-					VSYNC_WR_MPEG_REG(
-						VPP_MATRIX_OFFSET2,
-						m[20] & 0xfff);
+							(((m[18]>>2)&0xfff)<<16)
+							| ((m[19]>>2)&0xfff));
+						VSYNC_WR_MPEG_REG(
+							VPP_MATRIX_OFFSET2,
+							(m[20] >> 2) & 0xfff);
+					} else {
+						VSYNC_WR_MPEG_REG(
+							VPP_MATRIX_OFFSET0_1,
+							((m[18] & 0xfff) << 16)
+							| (m[19] & 0xfff));
+						VSYNC_WR_MPEG_REG(
+							VPP_MATRIX_OFFSET2,
+							m[20] & 0xfff);
+					}
+
 					VSYNC_WR_MPEG_REG_BITS(
 						VPP_MATRIX_CLIP,
 						m[21], 3, 2);
@@ -1877,7 +1890,9 @@ void set_vpp_matrix(int m_select, int *s, int on)
 			VSYNC_WR_MPEG_REG(VIU_EOTF_CTL + i + 1,
 				((m[i * 2] & 0x1fff) << 16)
 				| (m[i * 2 + 1] & 0x1fff));
-		if (is_meson_txlx_cpu() || is_meson_gxlx_cpu()) {
+		if (is_meson_txlx_cpu() ||
+			is_meson_gxlx_cpu() ||
+			is_meson_txhd_cpu()) {
 			VSYNC_WR_MPEG_REG(VIU_EOTF_CTL + 8, 0);
 			VSYNC_WR_MPEG_REG(VIU_EOTF_CTL + 9, 0);
 		}
@@ -1885,7 +1900,9 @@ void set_vpp_matrix(int m_select, int *s, int on)
 		WRITE_VPP_REG_BITS(VIU_EOTF_CTL, on, 31, 1);
 	} else if (m_select == VPP_MATRIX_OSD_EOTF) {
 		/* osd eotf matrix, VPP_MATRIX_OSD_EOTF */
-		if (!is_meson_txlx_cpu() && !is_meson_gxlx_cpu()) {
+		if (!is_meson_txlx_cpu() &&
+			!is_meson_gxlx_cpu() &&
+			!is_meson_txhd_cpu()) {
 			/* enable latched */
 			hdr_osd_reg.viu_osd1_eotf_coef00_01 =
 				((m[0 * 2] & 0x1fff) << 16)
@@ -2070,11 +2087,21 @@ void set_vpp_matrix(int m_select, int *s, int on)
 						((m[15] & 0x1fff) << 16)
 						| (m[16] & 0x1fff));
 				}
-				VSYNC_WR_MPEG_REG(VPP_MATRIX_OFFSET0_1,
-					((m[18] & 0xfff) << 16)
-					| (m[19] & 0xfff));
-				VSYNC_WR_MPEG_REG(VPP_MATRIX_OFFSET2,
-					m[20] & 0xfff);
+				if (is_meson_txhd_cpu() &&
+					(m_select == VPP_MATRIX_XVYCC)) {
+					VSYNC_WR_MPEG_REG(VPP_MATRIX_OFFSET0_1,
+						(((m[18] >> 2) & 0xfff) << 16)
+						| ((m[19] >> 2) & 0xfff));
+					VSYNC_WR_MPEG_REG(
+						VPP_MATRIX_OFFSET2,
+						(m[20] >> 2) & 0xfff);
+				} else {
+					VSYNC_WR_MPEG_REG(VPP_MATRIX_OFFSET0_1,
+						((m[18] & 0xfff) << 16)
+						| (m[19] & 0xfff));
+					VSYNC_WR_MPEG_REG(VPP_MATRIX_OFFSET2,
+						m[20] & 0xfff);
+				}
 				VSYNC_WR_MPEG_REG_BITS(VPP_MATRIX_CLIP,
 					m[21], 3, 2);
 				VSYNC_WR_MPEG_REG_BITS(VPP_MATRIX_CLIP,
@@ -2110,11 +2137,20 @@ void set_vpp_matrix(int m_select, int *s, int on)
 						((m[15] & 0x1fff) << 16)
 						| (m[16] & 0x1fff));
 				}
-				WRITE_VPP_REG(VPP_MATRIX_OFFSET0_1,
-					((m[18] & 0xfff) << 16)
-					| (m[19] & 0xfff));
-				WRITE_VPP_REG(VPP_MATRIX_OFFSET2,
-					m[20] & 0xfff);
+				if (is_meson_txhd_cpu()	&&
+					(m_select == VPP_MATRIX_XVYCC)) {
+					WRITE_VPP_REG(VPP_MATRIX_OFFSET0_1,
+						(((m[18] >> 2) & 0xfff) << 16)
+						| ((m[19] >> 2) & 0xfff));
+					WRITE_VPP_REG(VPP_MATRIX_OFFSET2,
+						(m[20] >> 2) & 0xfff);
+				} else {
+					WRITE_VPP_REG(VPP_MATRIX_OFFSET0_1,
+						((m[18] & 0xfff) << 16)
+						| (m[19] & 0xfff));
+					WRITE_VPP_REG(VPP_MATRIX_OFFSET2,
+						m[20] & 0xfff);
+				}
 				WRITE_VPP_REG_BITS(VPP_MATRIX_CLIP,
 					m[21], 3, 2);
 				WRITE_VPP_REG_BITS(VPP_MATRIX_CLIP,
@@ -2468,7 +2504,9 @@ void set_vpp_lut(
 			for (i = 0; i < OSD_OETF_LUT_SIZE; i++)
 				b_map[i] = b[i];
 
-		if (!is_meson_txlx_cpu() && !is_meson_gxlx_cpu()) {
+		if (!is_meson_txlx_cpu() &&
+			!is_meson_gxlx_cpu() &&
+			!is_meson_txhd_cpu()) {
 			for (i = 0; i < OSD_OETF_LUT_SIZE; i++) {
 				hdr_osd_reg.lut_val.or_map[i] = r_map[i];
 				hdr_osd_reg.lut_val.og_map[i] = g_map[i];
@@ -2534,7 +2572,9 @@ void set_vpp_lut(
 			for (i = 0; i < EOTF_LUT_SIZE; i++)
 				b_map[i] = b[i];
 
-		if (!is_meson_txlx_cpu() && !is_meson_gxlx_cpu()) {
+		if (!is_meson_txlx_cpu() &&
+			!is_meson_gxlx_cpu() &&
+			!is_meson_txhd_cpu()) {
 			for (i = 0; i < EOTF_LUT_SIZE; i++) {
 				hdr_osd_reg.lut_val.r_map[i] = r_map[i];
 				hdr_osd_reg.lut_val.g_map[i] = g_map[i];
@@ -2590,7 +2630,9 @@ void set_vpp_lut(
 			for (i = 0; i < EOTF_LUT_SIZE; i++)
 				b_map[i] = b[i];
 		/*txlx add eotf latch ctl bit 26*/
-		if (is_meson_txlx_cpu() || is_meson_gxlx_cpu())
+		if (is_meson_txlx_cpu() ||
+			is_meson_gxlx_cpu() ||
+			is_meson_txhd_cpu())
 			WRITE_VPP_REG_BITS(ctrl_port, 1, 26, 1);
 
 		if (on) {
@@ -3126,6 +3168,29 @@ int signal_type_changed(struct vframe_s *vf, struct vinfo_s *vinfo)
 		cus.present_flag = 1;
 		p_new = &cus;
 	}
+
+	/* For txhd, must skip HDR process */
+	if (is_meson_txhd_cpu()) {
+		if (((signal_type & 0xff) != 1)	&&
+			((signal_type & 0xff) != 3)) {
+			signal_type &= 0xffffff00;
+			signal_type |= 0x00000001;
+		}
+		if (((signal_type & 0xff00) != 1) &&
+			((signal_type & 0xff00) != 3)) {
+			signal_type &= 0xffff00ff;
+			signal_type |= 0x00000100;
+		}
+		if (((signal_type & 0xff0000) != 1) &&
+			((signal_type & 0xff0000) != 3)) {
+			signal_type &= 0xff00ffff;
+			signal_type |= 0x00010000;
+		}
+		/*pr_err("Signal type changed from 0x%x to 0x%x.\n",
+			vf->signal_type, signal_type);
+		*/
+	}
+
 	if (p_new->present_flag & 1) {
 		for (i = 0; i < 3; i++)
 			for (j = 0; j < 2; j++) {

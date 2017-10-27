@@ -154,9 +154,12 @@ extern bool platform_type;
 enum select_scaler_path_e {
 	CORE0_PPS_CORE1 = 0,
 	CORE0_CORE1_PPS,
-	/*gxlx only have core1,support below tow mode*/
+	/*gxlx only have core1,support below two mode*/
 	CORE1_BEFORE_PPS,
 	CORE1_AFTER_PPS,
+	/*txhd only have core0,support below two mode*/
+	CORE0_BEFORE_PPS,
+	CORE0_AFTER_PPS,
 	SCALER_PATH_MAX,
 };
 /*

@@ -849,6 +849,8 @@ static ssize_t vdin_attr_store(struct device *dev,
 
 			/*disable irq untill vdin is configured completely*/
 		disable_irq_nosync(devp->irq);
+		/*init queue*/
+		init_waitqueue_head(&devp->queue);
 		/* remove the hardware limit to vertical [0-max]*/
 		/* WRITE_VCBUS_REG(VPP_PREBLEND_VD1_V_START_END, 0x00000fff); */
 		/* pr_info("open device %s ok\n", dev_name(devp->dev)); */

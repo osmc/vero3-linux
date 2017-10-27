@@ -165,7 +165,8 @@ void ana_ref_cntl0_bit9(bool on, unsigned int module_sel)
 			vdac_cntl0_bit9 &= ~VDAC_MODULE_CVBS_OUT;
 		break;
 	case VDAC_MODULE_AUDIO_OUT: /* audio out ctrl*/
-		if (is_meson_txl_cpu() || is_meson_txlx_cpu()) {
+		if (is_meson_txl_cpu() || is_meson_txlx_cpu() ||
+			is_meson_txhd_cpu()) {
 			if (on)
 				vdac_cntl0_bit9 |= VDAC_MODULE_AUDIO_OUT;
 			else
@@ -183,7 +184,7 @@ void ana_ref_cntl0_bit9(bool on, unsigned int module_sel)
 	else
 		enable = 1;
 
-	if (is_meson_txl_cpu() || is_meson_txlx_cpu() ||
+	if (is_meson_txl_cpu() || is_meson_txlx_cpu() || is_meson_txhd_cpu() ||
 				(is_meson_gxtvbb_cpu() &&
 		(0xa != get_meson_cpu_version(MESON_CPU_VERSION_LVL_MINOR))))
 		vdac_hiu_reg_setb(HHI_VDAC_CNTL0, enable, 9, 1);
@@ -337,7 +338,7 @@ void vdac_out_cntl1_bit3(bool on, unsigned int module_sel)
 	else
 		enable = 1;
 
-	if (is_meson_txl_cpu() || is_meson_txlx_cpu() ||
+	if (is_meson_txl_cpu() || is_meson_txlx_cpu() || is_meson_txhd_cpu() ||
 					(is_meson_gxtvbb_cpu() &&
 		(0xa != get_meson_cpu_version(MESON_CPU_VERSION_LVL_MINOR))))
 		vdac_hiu_reg_setb(HHI_VDAC_CNTL1, enable, 3, 1);
@@ -523,7 +524,8 @@ void vdac_enable(bool on, unsigned int module_sel)
 		}
 		break;
 	case VDAC_MODULE_AUDIO_OUT: /* audio demod */
-		if (is_meson_txl_cpu() || is_meson_txlx_cpu()) {
+		if (is_meson_txl_cpu() || is_meson_txlx_cpu() ||
+			is_meson_txhd_cpu()) {
 			if (on) {
 				ana_ref_cntl0_bit9(1, VDAC_MODULE_AUDIO_OUT);
 				/*if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXLX)) {

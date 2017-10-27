@@ -929,7 +929,8 @@ int amvecm_on_vs(
 	}
 	/* todo:vlock processs only for tv chip */
 	if (is_meson_g9tv_cpu() || is_meson_gxtvbb_cpu() ||
-		is_meson_txl_cpu() || is_meson_txlx_cpu()) {
+		is_meson_txl_cpu() || is_meson_txlx_cpu()
+		|| is_meson_txhd_cpu()) {
 		if (vf != NULL)
 			amve_vlock_process(vf);
 		else
@@ -2309,7 +2310,8 @@ static ssize_t amvecm_dump_reg_show(struct class *cla,
 	unsigned int value;
 	unsigned int base_reg;
 
-	if (get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX)
+	if (is_meson_txlx_cpu() ||
+		is_meson_txhd_cpu())
 		base_reg = 0xff900000;
 	else
 		base_reg = 0xd0100000;
@@ -2320,14 +2322,15 @@ static ssize_t amvecm_dump_reg_show(struct class *cla,
 		pr_info("[0x%x]vcbus[0x%04x]=0x%08x\n",
 				(base_reg + (addr<<2)), addr,
 				READ_VPP_REG(addr));
-	if (is_meson_txl_cpu() || is_meson_txlx_cpu()) {
+	if (is_meson_txl_cpu() || is_meson_txlx_cpu()
+		|| is_meson_txhd_cpu()) {
 		for (addr = 0x3265;
 			addr <= 0x3272; addr++)
 			pr_info("[0x%x]vcbus[0x%04x]=0x%08x\n",
 					(base_reg + (addr<<2)), addr,
 					READ_VPP_REG(addr));
 	}
-	if (is_meson_txlx_cpu()) {
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 		for (addr = 0x3273;
 			addr <= 0x327f; addr++)
 			pr_info("[0x%x]vcbus[0x%04x]=0x%08x\n",
@@ -2340,14 +2343,15 @@ static ssize_t amvecm_dump_reg_show(struct class *cla,
 		pr_info("[0x%x]vcbus[0x%04x]=0x%08x\n",
 				(base_reg + (addr<<2)), addr,
 				READ_VPP_REG(addr));
-	if (is_meson_txl_cpu() || is_meson_txlx_cpu()) {
+	if (is_meson_txl_cpu() || is_meson_txlx_cpu()
+		|| is_meson_txhd_cpu()) {
 		for (addr = (0x3265+0x80);
 			addr <= (0x3272+0x80); addr++)
 			pr_info("[0x%x]vcbus[0x%04x]=0x%08x\n",
 					(base_reg + (addr<<2)), addr,
 					READ_VPP_REG(addr));
 	}
-	if (is_meson_txlx_cpu()) {
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 		for (addr = (0x3273+0x80);
 			addr <= (0x327f+0x80); addr++)
 			pr_info("[0x%x]vcbus[0x%04x]=0x%08x\n",
@@ -3133,7 +3137,7 @@ static void amvecm_pq_enable(int enable)
 			WRITE_VPP_REG_BITS(SRSHARP1_SR3_DERING_CTRL, 1, 28, 3);
 		}
 		/*sr4 drtlpf theta/ debanding en*/
-		if (is_meson_txlx_cpu()) {
+		if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 			WRITE_VPP_REG_BITS(SRSHARP0_SR3_DRTLPF_EN, 7, 4, 3);
 
 			WRITE_VPP_REG_BITS(SRSHARP0_DB_FLT_CTRL, 1, 4, 1);
@@ -3179,7 +3183,7 @@ static void amvecm_pq_enable(int enable)
 			WRITE_VPP_REG_BITS(SRSHARP1_SR3_DERING_CTRL, 0, 28, 3);
 		}
 		/*sr4 drtlpf theta/ debanding en*/
-		if (is_meson_txlx_cpu()) {
+		if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 			WRITE_VPP_REG_BITS(SRSHARP0_SR3_DRTLPF_EN, 0, 4, 3);
 
 			WRITE_VPP_REG_BITS(SRSHARP0_DB_FLT_CTRL, 0, 4, 1);
@@ -4179,7 +4183,7 @@ static int aml_vecm_probe(struct platform_device *pdev)
 #endif
 	/* #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV) */
 	if (is_meson_gxtvbb_cpu() || is_meson_txl_cpu()
-		|| is_meson_txlx_cpu())
+		|| is_meson_txlx_cpu() || is_meson_txhd_cpu())
 		init_pq_setting();
 	/* #endif */
 	vpp_get_hist_en();
@@ -4189,7 +4193,8 @@ static int aml_vecm_probe(struct platform_device *pdev)
 		/*post matrix 12bit yuv2rgb*/
 		/* mtx_sel_dbg |= 1 << VPP_MATRIX_2; */
 		/* amvecm_vpp_mtx_debug(mtx_sel_dbg, 1);*/
-	}
+	} else if (is_meson_txhd_cpu())
+		vpp_set_10bit_datapath1();
 	memset(&vpp_hist_param.vpp_histgram[0],
 		0, sizeof(unsigned short) * 64);
 	/* box sdr_mode:auto, tv sdr_mode:off */
@@ -4205,12 +4210,14 @@ static int aml_vecm_probe(struct platform_device *pdev)
 	/*config vlock mode*/
 	/*todo:txlx & g9tv support auto pll,
 	but support not good,need vlsi support optimize*/
-	if (is_meson_txlx_cpu() || is_meson_g9tv_cpu())
+	if (is_meson_txlx_cpu() || is_meson_g9tv_cpu()
+		|| is_meson_txhd_cpu())
 		vlock_mode = VLOCK_MODE_MANUAL_PLL;
 	else
 		vlock_mode = VLOCK_MODE_MANUAL_PLL;
 	if (is_meson_g9tv_cpu() || is_meson_gxtvbb_cpu() ||
-		is_meson_txl_cpu() || is_meson_txlx_cpu())
+		is_meson_txl_cpu() || is_meson_txlx_cpu()
+		|| is_meson_txhd_cpu())
 		vlock_en = 1;
 	else
 		vlock_en = 0;
@@ -4330,7 +4337,7 @@ static int __init aml_vecm_init(void)
 	unsigned int hiu_reg_base;
 	pr_info("%s:module init\n", __func__);
 	/* remap the hiu bus */
-	if (is_meson_txlx_cpu())
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 		hiu_reg_base = 0xff63c000;
 	else
 		hiu_reg_base = 0xc883c000;

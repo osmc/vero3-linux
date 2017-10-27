@@ -337,6 +337,13 @@ void vpp_set_10bit_datapath1(void)
 	/*don't skip eotf & oetf*/
 	vpp_skip_eotf_matrix3(0);
 	vpp_set_post_s2u(U_TO_S_NULL);
+
+	if (is_meson_txhd_cpu()) {
+		WRITE_VPP_REG_BITS(VPP_DOLBY_CTRL, 0, 11, 1);
+		WRITE_VPP_REG_BITS(VPP_DOLBY_CTRL, 1, 8, 1);
+		WRITE_VPP_REG_BITS(VPP_DOLBY_CTRL, 1, 9, 1);
+		WRITE_VPP_REG_BITS(VPP_DOLBY_CTRL, 1, 10, 1);
+	}
 }
 
 void  vpp_set_datapath(void)

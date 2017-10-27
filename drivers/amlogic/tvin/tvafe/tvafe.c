@@ -885,7 +885,7 @@ int tvafe_dec_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	}
 #ifdef CONFIG_TVIN_AVIN_DETECT
 	/*only txlx chip enabled*/
-	if (is_meson_txlx_cpu()) {
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 		/*synctip set to 0 when tvafe working*/
 		if (port == TVIN_PORT_CVBS1) {
 			/*channel1*/
@@ -1105,7 +1105,7 @@ void tvafe_dec_close(struct tvin_frontend_s *fe)
 	tvafe_cma_release(devp);
 #endif
 #ifdef CONFIG_TVIN_AVIN_DETECT
-	if (is_meson_txlx_cpu()) {
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 		/*avsync tip set 1 to resume av detect*/
 		if (tvafe->parm.port == TVIN_PORT_CVBS1) {
 			/*channel1*/

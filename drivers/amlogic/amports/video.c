@@ -1095,6 +1095,8 @@ static void vpp_settings_h(struct vpp_frame_par_s *framePtr)
 	if ((framePtr->supscl_path == CORE0_PPS_CORE1) ||
 		(framePtr->supscl_path == CORE1_AFTER_PPS))
 		r3 >>= framePtr->supsc1_hori_ratio;
+	if (framePtr->supscl_path == CORE0_AFTER_PPS)
+		r3 >>= framePtr->supsc0_hori_ratio;
 
 	if (platform_type == 1) {
 		x_lines = zoom_end_x_lines / (framePtr->hscale_skip_count + 1);
@@ -1364,6 +1366,8 @@ static void vpp_settings_v(struct vpp_frame_par_s *framePtr)
 	if ((framePtr->supscl_path == CORE0_PPS_CORE1) ||
 		(framePtr->supscl_path == CORE1_AFTER_PPS))
 		r >>= framePtr->supsc1_vert_ratio;
+	if (framePtr->supscl_path == CORE0_AFTER_PPS)
+		r >>= framePtr->supsc0_vert_ratio;
 
 	VSYNC_WR_MPEG_REG(VPP_VSC_REGION4_ENDP + cur_dev->vpp_off, r);
 
@@ -5324,8 +5328,10 @@ cur_dev->vpp_off,0,VPP_VD2_ALPHA_BIT,9);//vd2 alpha must set
 		}
 		if (super_scaler && cur_dispbuf) {
 			if (cur_dispbuf->type & VIDTYPE_INTERLACE) {
-				if (cur_frame_par->supscl_path ==
-					CORE1_BEFORE_PPS) {
+				if ((cur_frame_par->supscl_path ==
+					CORE1_BEFORE_PPS) ||
+					(cur_frame_par->supscl_path ==
+					CORE0_AFTER_PPS)) {
 					cur_frame_par->VPP_pic_in_height_ =
 					(zoom_end_y_lines -
 					zoom_start_y_lines + 1)  <<
@@ -5345,8 +5351,10 @@ cur_dev->vpp_off,0,VPP_VD2_ALPHA_BIT,9);//vd2 alpha must set
 					cur_frame_par->supsc0_hori_ratio;
 				}
 			} else {
-				if (cur_frame_par->supscl_path ==
-					CORE1_BEFORE_PPS) {
+				if ((cur_frame_par->supscl_path ==
+					CORE1_BEFORE_PPS) ||
+					(cur_frame_par->supscl_path ==
+					CORE0_AFTER_PPS)) {
 					cur_frame_par->VPP_pic_in_height_ =
 					((zoom_end_y_lines -
 					zoom_start_y_lines + 1) /
@@ -5387,7 +5395,8 @@ cur_dev->vpp_off,0,VPP_VD2_ALPHA_BIT,9);//vd2 alpha must set
 					1)) << cur_frame_par->supsc0_hori_ratio;
 				}
 			}
-			if (cur_frame_par->supscl_path == CORE1_BEFORE_PPS)
+			if ((cur_frame_par->supscl_path == CORE1_BEFORE_PPS) ||
+				cur_frame_par->supscl_path == CORE0_AFTER_PPS)
 				VSYNC_WR_MPEG_REG(VPP_IN_H_V_SIZE,
 				(((cur_frame_par->VPP_line_in_length_ >>
 				cur_frame_par->supsc1_hori_ratio) & 0x1fff) <<
@@ -7488,6 +7497,8 @@ static u32 eight2ten(u32 yuv)
 			return  ((y << 20)<<2) | ((cb << 10)<<2) | (cr<<2);
 		else
 			return  (y << 20) | (cb << 10) | cr;
+	} else if (is_meson_txhd_cpu()) {
+		return	((y << 20)<<2) | ((cb << 10)<<2) | (cr<<2);
 	} else
 		return  (y << 20) | (cb << 10) | cr;
 }
@@ -7540,8 +7551,8 @@ static ssize_t video_test_screen_store(struct class *cla,
 	   data &= (~VPP_VD2_POSTBLEND);
 	 */
 	/* show test screen  YUV blend*/
-	if (is_meson_gxm_cpu() ||
-		(get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX))
+	if (is_meson_gxm_cpu() || is_meson_txlx_cpu() ||
+		is_meson_txhd_cpu())
 		/* bit width change to 10bit in gxm, 10/12 in txlx*/
 		WRITE_VCBUS_REG(VPP_DUMMY_DATA1,
 			eight2ten(test_screen & 0x00ffffff));
@@ -8884,29 +8895,26 @@ static int __init video_early_init(void)
 	//moved to vpu.c, default config by dts */
 
 	if (get_logo_vmode() >= VMODE_MAX) {
-#if 1				/* MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6 */
-		if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXTVBB))
+		if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXTVBB) &&
+			(!is_meson_txhd_cpu()))
 			WRITE_VCBUS_REG_BITS(VPP_OFIFO_SIZE, 0xfff,
 				VPP_OFIFO_SIZE_BIT, VPP_OFIFO_SIZE_WID);
 		else
 			WRITE_VCBUS_REG_BITS(VPP_OFIFO_SIZE, 0x77f,
 				VPP_OFIFO_SIZE_BIT, VPP_OFIFO_SIZE_WID);
-#if 0			/* MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV */
-		WRITE_VCBUS_REG_BITS(VPP_OFIFO_SIZE, 0x800, VPP_OFIFO_SIZE_BIT,
-				     VPP_OFIFO_SIZE_WID);
-#endif
-#endif			/* MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6 */
 	} else {
-		if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXTVBB))
+		if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXTVBB) &&
+			(!is_meson_txhd_cpu()))
 			WRITE_VCBUS_REG_BITS(VPP_OFIFO_SIZE, 0xfff,
 				VPP_OFIFO_SIZE_BIT, VPP_OFIFO_SIZE_WID);
+		else
+			WRITE_VCBUS_REG_BITS(VPP_OFIFO_SIZE, 0x77f,
+				VPP_OFIFO_SIZE_BIT, VPP_OFIFO_SIZE_WID);
 	}
-#if 1			/* MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8 */
 	WRITE_VCBUS_REG(VPP_PREBLEND_VD1_H_START_END, 4096);
 	WRITE_VCBUS_REG(VPP_BLEND_VD2_H_START_END, 4096);
-#endif
 	if (is_meson_txl_cpu() || is_meson_txlx_cpu() ||
-		is_meson_gxlx_cpu()) {
+		is_meson_gxlx_cpu() || is_meson_txhd_cpu()) {
 		/* fifo max size on txl :128*3=384[0x180]  */
 		WRITE_VCBUS_REG(VD1_IF0_LUMA_FIFO_SIZE, 0x180);
 		WRITE_VCBUS_REG(VD2_IF0_LUMA_FIFO_SIZE, 0x180);
@@ -8955,7 +8963,7 @@ static int __init video_early_init(void)
 		vpp_dummy_data will be left shift 2bit auto on gxm!!! */
 		WRITE_VCBUS_REG(VPP_DUMMY_DATA1, 0x1020080);
 		WRITE_VCBUS_REG(VPP_DUMMY_DATA, 0x42020);
-	} else if (is_meson_txlx_cpu()) {
+	} else if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 		/*black 10bit*/
 		WRITE_VCBUS_REG(VPP_DUMMY_DATA, 0x4080200);
 	}

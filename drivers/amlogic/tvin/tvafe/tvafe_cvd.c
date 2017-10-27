@@ -785,10 +785,10 @@ static void tvafe_cvd2_non_std_config(struct tvafe_cvd2_s *cvd2)
 inline void tvafe_cvd2_reset_pga(void)
 {
 	/* reset pga value */
-	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXTVBB)
+	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXTVBB) {
 		W_APB_BIT(TVFE_VAFE_CTRL1, pga_default_vale,
 			VAFE_PGA_GAIN_BIT, VAFE_PGA_GAIN_WID);
-	else {
+	} else {
 		if ((R_APB_BIT(ADC_REG_05, PGAGAIN_BIT, PGAGAIN_WID) !=
 		pga_default_vale) ||
 		(R_APB_BIT(ADC_REG_06 , PGAMODE_BIT, PGAMODE_WID) != 0)) {
