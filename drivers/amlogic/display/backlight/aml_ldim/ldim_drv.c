@@ -2815,6 +2815,7 @@ static ssize_t ldim_attr_store(struct class *cla,
 	} else
 		pr_info("no support cmd!!!\n");
 
+	kfree(buf_orig);
 	return len;
 
 ldim_attr_store_end:
