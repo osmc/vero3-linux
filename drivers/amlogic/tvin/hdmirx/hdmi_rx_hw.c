@@ -533,7 +533,7 @@ void hdmirx_irq_enable(bool enable)
 		/*data32 = 0;
 		data32 |= AKSV_RCV;
 		data32 |= SCDC_TMDS_CFG_CHG;
-		/* if (!is_meson_txhd_cpu())
+		if (!is_meson_txhd_cpu())
 			data32 |= SCDC_TMDS_CFG_CHG;
 		data32 |= _BIT(6);
 		data32 |= _BIT(5);
