@@ -453,6 +453,7 @@ static irqreturn_t aml_sd_emmc_data_thread_v3(int irq, void *data)
 
 #define SRC_24MHZ 0
 #define SRC_400MHZ 1
+#define SRC_667MHZ 2
 static void aml_sd_emmc_set_clk_rate_v3(struct mmc_host *mmc,
 	unsigned int clk_ios)
 {
@@ -463,6 +464,7 @@ static void aml_sd_emmc_set_clk_rate_v3(struct mmc_host *mmc,
 	struct sd_emmc_regs_v3 *sd_emmc_regs =
 		(struct sd_emmc_regs_v3 *)host->sd_emmc_regs;
 	u32 second_src = 0;
+	int div = 0;
 	if (clk_ios == 0) {
 		aml_sd_emmc_clk_switch_off(host);
 		return;
@@ -475,19 +477,27 @@ static void aml_sd_emmc_set_clk_rate_v3(struct mmc_host *mmc,
 	} else if (clk_ios >= 200000000) {
 		clk_src_sel = SD_EMMC_CLOCK_SRC_FCLK_DIV2;
 
-		if ((host->ctrl_ver >= 3)
-			&& (aml_card_type_mmc(pdata))) {
+		if (aml_card_type_mmc(pdata)) {
 			clk_src_sel = SD_EMMC_CLOCK_SRC_OSC;
 			second_src = SRC_400MHZ;
-			if (host->clksrc_base) {
-				writel((1<<7)|(3<<9), host->clksrc_base);
-				emmc_dbg(AMLSD_DBG_V3, "P_HHI_NAND_CLK_CNTL = 0x%x\n",
-						readl(host->clksrc_base));
-			} else
-				emmc_dbg(AMLSD_DBG_V3, "clksrc_base is err\n");
+			div = 3;
 		}
-	} else
+	} else if ((clk_ios >= 133000000)
+			&& (aml_card_type_mmc(pdata))) {
+		clk_src_sel = SD_EMMC_CLOCK_SRC_OSC;
+		second_src = SRC_667MHZ;
+		div = 2;
+	} else {
 		clk_src_sel = SD_EMMC_CLOCK_SRC_FCLK_DIV2;
+		div = 1;
+	}
+
+	if ((host->clksrc_base) && (div != 0)) {
+		writel((1<<7)|(div<<9), host->clksrc_base);
+		emmc_dbg(AMLSD_DBG_V3, "P_HHI_NAND_CLK_CNTL = 0x%x\n",
+				readl(host->clksrc_base));
+	} else
+		emmc_dbg(AMLSD_DBG_V3, "clksrc_base is err\n");
 
 	emmc_dbg(AMLSD_DBG_CLK_V3, "clk_ios: %u\n", clk_ios);
 	if (clk_ios > pdata->f_max)
@@ -505,6 +515,9 @@ static void aml_sd_emmc_set_clk_rate_v3(struct mmc_host *mmc,
 			break;
 		case SRC_400MHZ:
 			clk_rate = 400000000;
+			break;
+		case SRC_667MHZ:
+			clk_rate = 667000000;
 			break;
 		default:
 			break;
@@ -975,7 +988,7 @@ RETRY:
 			eyetest_out1 = 0x0;
 	}*/
 	pdata->align[line_x] = ((tmp | eyetest_out1) << 32) | eyetest_out0;
-	emmc_dbg(AMLSD_DBG_V3, "d1:0x%x,d2:0x%x,u64eyet:0x%llx,l_x:%d\n",
+	emmc_dbg(AMLSD_DBG_V3, "d1:0x%x,d2:0x%x,u64eyet:0x%016llx,l_x:%d\n",
 			sd_emmc_regs->gdelay1, sd_emmc_regs->gdelay2,
 			pdata->align[line_x], line_x);
 	host->is_tunning = 0;
@@ -1249,7 +1262,7 @@ static int emmc_ds_manual_sht(struct mmc_host *mmc)
 	struct intf3 *gintf3 = (struct intf3 *)&(intf3);
 	u32 blksz = 512;
 	int i, err = 0;
-	int match[32];
+	int match[64], sum = 0;
 	int best_start = -1, best_size = -1;
 	int cur_start  = -1, cur_size = 0;
 	pr_info("[%s] 2017-7-4 emmc HS400 Timming\n", __func__);
@@ -1263,7 +1276,12 @@ static int emmc_ds_manual_sht(struct mmc_host *mmc)
 	emmc_ds_data_alignment(mmc);
 	print_all_line_eyetest(mmc);
 	host->is_tunning = 1;
-	for (i = 0; i < 32; i++) {
+
+	if (pdata->count > 63)
+		sum = 63;
+	else
+		sum = pdata->count;
+	for (i = 0; i < sum; i++) {
 		gintf3->ds_sht_m += 1;
 		sd_emmc_regs->intf3 = intf3;
 		err = aml_sd_emmc_cali_v3(mmc,
@@ -1277,7 +1295,7 @@ static int emmc_ds_manual_sht(struct mmc_host *mmc)
 		else
 			match[i] = -1;
 	}
-	for (i = 0; i < 32; i++) {
+	for (i = 0; i < sum; i++) {
 		if (match[i] == 0) {
 			if (cur_start < 0)
 				cur_start = i;
