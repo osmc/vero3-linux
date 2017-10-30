@@ -1122,13 +1122,22 @@ int ge2d_context_config_ex(struct ge2d_context_s *context,
 		ge2d_config->src1_hsc_phase0_always_en;
 	dp_gen_cfg->src1_hsc_phase0_always_en =
 		ge2d_config->src1_vsc_phase0_always_en;
-	/* 1bit, 0: using minus, 1: using repeat data */
-	dp_gen_cfg->src1_hsc_rpt_ctrl = ge2d_config->src1_hsc_rpt_ctrl;
-	/* 1bit, 0: using minus  1: using repeat data */
-	dp_gen_cfg->src1_vsc_rpt_ctrl = ge2d_config->src1_vsc_rpt_ctrl;
-
-	dp_gen_cfg->src1_gb_alpha = 0xff;
-	dp_gen_cfg->src1_gb_alpha_en = 0;
+	if ((context->config.v_scale_coef_type == FILTER_TYPE_GAU0) ||
+		(context->config.v_scale_coef_type == FILTER_TYPE_GAU0_BOT) ||
+		(context->config.v_scale_coef_type == FILTER_TYPE_GAU1) ||
+		(context->config.h_scale_coef_type == FILTER_TYPE_GAU0) ||
+		(context->config.h_scale_coef_type == FILTER_TYPE_GAU0_BOT) ||
+		(context->config.h_scale_coef_type == FILTER_TYPE_GAU1)) {
+		/* 1bit, 0: using minus, 1: using repeat data */
+		dp_gen_cfg->src1_hsc_rpt_ctrl = ge2d_config->src1_hsc_rpt_ctrl;
+		/* 1bit, 0: using minus  1: using repeat data */
+		dp_gen_cfg->src1_vsc_rpt_ctrl = ge2d_config->src1_vsc_rpt_ctrl;
+	} else {
+		/* 1bit, 0: using minus, 1: using repeat data */
+		dp_gen_cfg->src1_hsc_rpt_ctrl = 1;
+		/* 1bit, 0: using minus  1: using repeat data */
+		dp_gen_cfg->src1_vsc_rpt_ctrl = 1;
+	}
 
 	dp_gen_cfg->src2_key_en = ge2d_config->src2_key.key_enable;
 	dp_gen_cfg->src2_key_mode = ge2d_config->src2_key.key_mode;
@@ -1404,13 +1413,22 @@ int ge2d_context_config_ex_ion(struct ge2d_context_s *context,
 		ge2d_config->src1_hsc_phase0_always_en;
 	dp_gen_cfg->src1_hsc_phase0_always_en =
 		ge2d_config->src1_vsc_phase0_always_en;
-	/* 1bit, 0: using minus, 1: using repeat data */
-	dp_gen_cfg->src1_hsc_rpt_ctrl = ge2d_config->src1_hsc_rpt_ctrl;
-	/* 1bit, 0: using minus  1: using repeat data */
-	dp_gen_cfg->src1_vsc_rpt_ctrl = ge2d_config->src1_vsc_rpt_ctrl;
-
-	dp_gen_cfg->src1_gb_alpha = ge2d_config->src1_gb_alpha & 0xff;
-	dp_gen_cfg->src1_gb_alpha_en = ge2d_config->src1_gb_alpha_en & 1;
+	if ((context->config.v_scale_coef_type == FILTER_TYPE_GAU0) ||
+		(context->config.v_scale_coef_type == FILTER_TYPE_GAU0_BOT) ||
+		(context->config.v_scale_coef_type == FILTER_TYPE_GAU1) ||
+		(context->config.h_scale_coef_type == FILTER_TYPE_GAU0) ||
+		(context->config.h_scale_coef_type == FILTER_TYPE_GAU0_BOT) ||
+		(context->config.h_scale_coef_type == FILTER_TYPE_GAU1)) {
+		/* 1bit, 0: using minus, 1: using repeat data */
+		dp_gen_cfg->src1_hsc_rpt_ctrl = ge2d_config->src1_hsc_rpt_ctrl;
+		/* 1bit, 0: using minus  1: using repeat data */
+		dp_gen_cfg->src1_vsc_rpt_ctrl = ge2d_config->src1_vsc_rpt_ctrl;
+	} else {
+		/* 1bit, 0: using minus, 1: using repeat data */
+		dp_gen_cfg->src1_hsc_rpt_ctrl = 1;
+		/* 1bit, 0: using minus  1: using repeat data */
+		dp_gen_cfg->src1_vsc_rpt_ctrl = 1;
+	}
 
 	dp_gen_cfg->src2_key_en = ge2d_config->src2_key.key_enable;
 	dp_gen_cfg->src2_key_mode = ge2d_config->src2_key.key_mode;
