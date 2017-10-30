@@ -1089,6 +1089,7 @@ int Gxtv_Demod_Atsc_Init(struct aml_fe_dev *dev)
 	demod_status.tmp = Adc_mode;
 	demod_set_sys(&demod_status, &i2c, &sys);
 	demod_mode_para = AML_ATSC;
+	atsc_flag = VSB_8;
 	return 0;
 }
 
