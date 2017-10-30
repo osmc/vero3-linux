@@ -198,14 +198,6 @@ void init_field_mode(unsigned short height)
 		DI_Wr(DIPD_COMB_CTRL5, 0x04040804);
 	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXLX))
 		DI_Wr(DIPD_COMB_CTRL6, 0x00107064);
-	DI_Wr(DI_MC_32LVL1, 16 | (16 << 8));
-	DI_Wr(DI_MC_32LVL0, 16 | (16 << 8) |
-				(16 << 16) | (16 << 24));
-	DI_Wr(DI_MC_22LVL0, 256 | (768 << 16));
-	DI_Wr(DI_MC_22LVL1, 768	| (768 << 16));
-	DI_Wr(DI_MC_22LVL2, 768 | (768 << 16));
-	DI_Wr(DI_MC_CTRL, 0x1f);
-
 }
 void mc_pre_mv_irq(void)
 {
@@ -1583,7 +1575,7 @@ static void set_di_if0_mif(struct DI_MIF_s *mif, int urgent, int hold_line)
 		loop = 0;
 	pat = vpat[di_vscale_skip_count_real];
 
-	if ((post_wr_en && post_wr_surpport)) {
+	if ((post_wr_en && post_wr_support)) {
 		bytes_per_pixel =
 			mif->set_separate_en ? 0 : (mif->video_mode ? 2 : 1);
 		demux_mode = mif->video_mode;
@@ -1634,7 +1626,7 @@ static void set_di_if0_mif(struct DI_MIF_s *mif, int urgent, int hold_line)
 	DI_VSYNC_WR_MPEG_REG(VD1_IF0_LUMA0_RPT_PAT,   pat);
 	DI_VSYNC_WR_MPEG_REG(VD1_IF0_CHROMA0_RPT_PAT, pat);
 
-	if ((post_wr_en && post_wr_surpport)) {
+	if (post_wr_en && post_wr_support) {
 		/* 4:2:0 block mode. */
 		if (mif->set_separate_en != 0) {
 			set_di_if0_fmt_more(
@@ -1752,6 +1744,20 @@ void initial_di_post_2(int hsize_post, int vsize_post, int hold_line)
 	}
 }
 
+static void post_bit_mode_config(unsigned char if0,
+	unsigned char if1, unsigned char if2, unsigned char post_wr)
+{
+	if (!cpu_after_eq(MESON_CPU_MAJOR_ID_GXTVBB))
+		return;
+
+	DI_Wr_reg_bits(VD1_IF0_GEN_REG3, if0&0x3, 8, 2);
+	DI_Wr_reg_bits(DI_IF1_GEN_REG3, if1&0x3, 8, 2);
+	DI_Wr_reg_bits(DI_IF2_GEN_REG3, if2&0x3, 8, 2);
+	DI_Wr_reg_bits(DI_DIWR_Y, post_wr&0x1, 14, 1);
+	if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXL) && ((post_wr&0x3) == 0x3))
+		DI_Wr_reg_bits(DI_DIWR_CTRL, 0x3, 22, 2);
+}
+
 static unsigned int pldn_ctrl_rflsh = 1;
 module_param(pldn_ctrl_rflsh, uint, 0644);
 MODULE_PARM_DESC(pldn_ctrl_rflsh, "/n post blend reflesh./n");
@@ -1777,6 +1783,9 @@ void di_post_switch_buffer(
 	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXBB)) {
 		if ((VSYNC_RD_MPEG_REG(VIU_MISC_CTRL0) & 0x50000) != 0x50000)
 			DI_VSYNC_WR_MPEG_REG_BITS(VIU_MISC_CTRL0, 5, 16, 3);
+			if (post_wr_en)
+				DI_VSYNC_WR_MPEG_REG_BITS(VIU_MISC_CTRL0,
+					1, 28, 1);
 	}
 
 	if (ei_en || di_vpp_en || di_ddr_en)
@@ -1808,6 +1817,10 @@ void di_post_switch_buffer(
 				(urgent << 16)	|
 				(2 << 26)		|
 				(di_ddr_en << 30));
+		post_bit_mode_config(di_buf0_mif->bit_mode,
+			di_buf1_mif->bit_mode,
+			di_buf2_mif->bit_mode,
+			di_diwr_mif->bit_mode);
 	}
 	if ((pldn_ctrl_rflsh == 1) && pulldown_enable) {
 		DI_VSYNC_WR_MPEG_REG_BITS(DI_BLEND_CTRL, blend_en, 31, 1);
@@ -1860,6 +1873,8 @@ void di_post_switch_buffer(
 		(post_field_num << 29) |	/* post field number. */
 		(0x3 << 30)	/* post soft rst  post frame rst. */
 	);
+	if (post_wr_support && post_wr_en && mcpre_en)
+		DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MCVECRD_CTRL, 1, 9, 1);
 }
 
 void enable_di_post_2(
@@ -1911,6 +1926,11 @@ blend_mtn_en,blend_mode); */
 		(urgent << 16) |
 		(2 << 26) |
 		(di_ddr_en << 30));
+
+		post_bit_mode_config(di_buf0_mif->bit_mode,
+			di_buf1_mif->bit_mode,
+			di_buf2_mif->bit_mode,
+			di_diwr_mif->bit_mode);
 	}
 
 	DI_VSYNC_WR_MPEG_REG_BITS(DI_BLEND_CTRL, 7, 22, 3);

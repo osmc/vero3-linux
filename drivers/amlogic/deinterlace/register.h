@@ -131,10 +131,8 @@ when bit 11 is 1, this bit should be 1. */
 
 /* timerc */
 /* vd1 */
-#define VD1_IF0_LUMA_FIFO_SIZE			0x1a63
-		/* 0xd010698c */
-#define VD2_IF0_LUMA_FIFO_SIZE			0x1a83
-		/* 0xd0106a0c */
+#define VD1_IF0_GEN_REG					0x1a50
+
 #define VD1_IF0_CANVAS0					0x1a51
 		/* 0xd0106944 */
 #define VD1_IF0_CANVAS1					0x1a52
@@ -147,11 +145,50 @@ when bit 11 is 1, this bit should be 1. */
 		/* 0xd0106954 */
 #define VD1_IF0_CHROMA_Y0				0x1a56
 		/* 0xd0106958 */
+#define VD1_IF0_LUMA_X1					0x1a57
+
+#define VD1_IF0_LUMA_Y1					0x1a58
+
+#define VD1_IF0_CHROMA_X1				0x1a59
+
+#define VD1_IF0_CHROMA_Y1				0x1a5a
+
 #define VD1_IF0_RPT_LOOP				0x1a5b
-		/* 0xd010696c */
-#define VD1_IF0_LUMA0_RPT_PAT			0x1a5c
-		/* 0xd0106970 */
-#define VD1_IF0_CHROMA0_RPT_PAT			0x1a5d
+
+#define VD1_IF0_LUMA0_RPT_PAT				0x1a5c
+
+#define VD1_IF0_CHROMA0_RPT_PAT				0x1a5d
+
+#define VD1_IF0_LUMA1_RPT_PAT				0x1a5e
+
+#define VD1_IF0_CHROMA1_RPT_PAT				0x1a5f
+
+#define VD1_IF0_LUMA_PSEL				0x1a60
+
+#define VD1_IF0_CHROMA_PSEL				0x1a61
+
+#define VD1_IF0_DUMMY_PIXEL				0x1a62
+
+#define VD1_IF0_LUMA_FIFO_SIZE				0x1a63
+
+#define VD1_IF0_RANGE_MAP_Y				0x1a6a
+
+#define VD1_IF0_RANGE_MAP_CB				0x1a6b
+
+#define VD1_IF0_RANGE_MAP_CR				0x1a6c
+
+#define VD1_IF0_GEN_REG2				0x1a6d
+
+#define VD1_IF0_PROT_CNTL				0x1a6e
+
+#define VIU_VD1_FMT_CTRL				0x1a68
+
+#define VIU_VD1_FMT_W					0x1a69
+
+#define VD1_IF0_LUMA_FIFO_SIZE				0x1a63
+		/* 0xd010698c */
+#define VD2_IF0_LUMA_FIFO_SIZE				0x1a83
+		/* 0xd0106a0c */
 		/* 0xd0106974 */
 #define VIU_OSD1_CTRL_STAT				0x1a10
 		/* 0xd0106840 */

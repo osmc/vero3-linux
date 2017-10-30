@@ -426,7 +426,7 @@ extern int di_vscale_skip_count_real;
 extern unsigned int pulldown_enable;
 
 extern bool post_wr_en;
-extern unsigned int post_wr_surpport;
+extern unsigned int post_wr_support;
 
 int di_print(const char *fmt, ...);
 
@@ -503,13 +503,14 @@ struct di_dev_s {
 	unsigned long	   mem_start;
 	unsigned int	   mem_size;
 	unsigned int	   buffer_size;
+	unsigned int	   post_buffer_size;
 	unsigned int	   buf_num_avail;
 	unsigned int	   hw_version;
 	int		rdma_handle;
 	/* is surpport nr10bit */
-	unsigned int	   nr10bit_surpport;
+	unsigned int	   nr10bit_support;
 	/* is DI surpport post wr to mem for OMX */
-	unsigned int       post_wr_surpport;
+	unsigned int       post_wr_support;
 	/* cma alloc operation */
 	struct	mutex      cma_mutex;
 	unsigned int	   flag_cma;

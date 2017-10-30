@@ -20,4 +20,5 @@
 #include "register.h"
 void dump_di_reg(void);
 void dump_pre_mif_state(void);
+void dump_post_mif_reg(void);
 #endif
