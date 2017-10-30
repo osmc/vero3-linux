@@ -896,7 +896,9 @@ static int gxtv_demod_atsc_read_status
 	struct aml_demod_i2c demod_i2c;
 	struct aml_demod_sta demod_sta;
 	int ilock;
+	struct dvb_frontend *dvbfe;
 	unsigned char s = 0;
+	int strength = 0;
 
 	if (!demod_thread) {
 		ilock = 1;
@@ -907,7 +909,6 @@ static int gxtv_demod_atsc_read_status
 	}
 	if (!get_dtvpll_init_flag())
 		return 0;
-	pr_dbg("status:atsc_flag is %d\n", atsc_flag);
 	if ((c->modulation <= QAM_AUTO) && (c->modulation != QPSK)
 		&& (atsc_flag == QAM_AUTO)) {
 		s = amdemod_dvbc_stat_islock(dev);
@@ -917,6 +918,14 @@ static int gxtv_demod_atsc_read_status
 		atsc_thread();
 		s = amdemod_atsc_stat_islock(dev);
 	}
+	dvbfe = get_si2177_tuner();
+	if (dvbfe != NULL)
+		if (dvbfe->ops.tuner_ops.get_strength) {
+				strength =
+			dvbfe->ops.tuner_ops.get_strength(dvbfe);
+			}
+	strength -= 100;
+	pr_dbg("[rsj_test]freq[%d] strength[%d]\n", freq_p, strength);
 	if (s == 1) {
 		ilock = 1;
 		*status =
@@ -940,7 +949,6 @@ static int gxtv_demod_atsc_read_ber(struct dvb_frontend *fe, u32 *ber)
 	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
 	if (!get_dtvpll_init_flag())
 		return 0;
-	pr_dbg("ber:atsc_flag is %d\n", atsc_flag);
 	if ((c->modulation > QAM_AUTO)
 		&& (atsc_flag == VSB_8))
 		*ber = atsc_read_reg(0x980)&0xffff;
@@ -963,8 +971,8 @@ static int gxtv_demod_atsc_read_signal_strength
 		*strength = 0;
 	else
 		*strength = (100 + read_strength);
-	pr_dbg("[read_strength]read_strength is %d,*strength is %d\n",
-		read_strength, *strength);
+	/*pr_dbg("[read_strength]read_strength is %d,*strength is %d\n",
+		read_strength, *strength);*/
 	if (*strength < 0)
 		*strength = 0;
 	else if (*strength > 100)
@@ -978,7 +986,6 @@ static int gxtv_demod_atsc_read_snr(struct dvb_frontend *fe, u16 *snr)
 	struct aml_demod_sts demod_sts;
 	struct aml_demod_i2c demod_i2c;
 	struct aml_demod_sta demod_sta;
-	pr_dbg("snr:atsc_flag is %d\n", atsc_flag);
 	if ((c->modulation <= QAM_AUTO)
 		&& (c->modulation != QPSK)
 		&& (atsc_flag == QAM_AUTO)) {

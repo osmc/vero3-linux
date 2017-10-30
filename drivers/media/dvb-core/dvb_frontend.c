@@ -56,7 +56,7 @@ static int dvb_afc_debug;
 static int disable_set_frotend_param;
 static int dvb_dtv_debug;
 static int dvb_atsc_timeout = 2000;
-static int dvb_j83b_count = 10;
+static int dvb_j83b_count = 5;
 
 
 
