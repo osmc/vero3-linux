@@ -67,12 +67,6 @@ enum, used in TVIN vbi sub-module processing
 #define VBI_DATA_TYPE_WSS625       0xcc
 #define VBI_DATA_TYPE_WSSJ         0xdd
 
-/* vbi start line: unit is hcount value */
-#define VBI_START_CC		0x54
-#define VBI_START_WSS		0x54
-#define VBI_START_TT		0x82
-#define VBI_START_VPS		0x82
-
 
 /* vbi start code,TT start code is programmable by software,
 but our ic use the programmable value as reverse!!
@@ -153,7 +147,7 @@ enum vbi_package_type_e {
 #define VBI_IOC_STOP               _IO(VBI_IOC_MAGIC, 0x06)
 
 
-#define VBI_MEM_SIZE               0x80000
+/*#define VBI_MEM_SIZE               0x80000*/
 /* 0x8000   // 32768 hw address with 8bit not 64bit */
 /* #define VBI_SLICED_MAX            64
 // 32768 hw address with 8bit not 64bit */
@@ -302,5 +296,6 @@ struct vbi_dev_s {
 0: tvafe clk disable
 read write cvd acd reg will crash when clk disabled*/
 extern bool tvafe_clk_status;
+extern unsigned int vbi_mem_start;
 
 #endif /* TVIN_VBI_H_ */

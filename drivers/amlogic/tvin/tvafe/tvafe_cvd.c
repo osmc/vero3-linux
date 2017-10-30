@@ -86,6 +86,7 @@
 #define CVD2_NONSTD_FLAG_OFF_TH 2
 
 #define SCENE_COLORFUL_TH 0x80000
+
 /********Local variables*********************************/
 static const unsigned int cvd_mem_4f_length[TVIN_SIG_FMT_CVBS_SECAM-
 			TVIN_SIG_FMT_CVBS_NTSC_M+1] = {
@@ -329,15 +330,45 @@ static unsigned int noise3;
 /* test */
 static short print_cnt;
 
+unsigned int vbi_mem_start;
+
 /*****************the  version of changing log**********************/
-static  const char last_version_s[] = "2015-07-06a";
-static  const char version_s[] = "2017-01-19a";
+static  const char last_version_s[] = "2017-01-19a";
+static  const char version_s[] = "2017-11-17";
 /**********************************************************/
 
 void get_cvd_version(const char **ver, const char **last_ver)
 {
 	*ver = version_s;
 	*last_ver = last_version_s;
+	return;
+}
+
+void cvd_vbi_mem_set(unsigned int offset, unsigned int size)
+{
+	W_APB_REG(ACD_REG_2F, offset);
+	if (0) {/*(is_meson_txlx_cpu()) {*/
+		W_VBI_APB_BIT(ACD_REG_42, size, 0, 24);
+		W_VBI_APB_BIT(ACD_REG_42, 1, 31, 1);
+	} else
+		W_APB_BIT(ACD_REG_21, size,
+			AML_VBI_SIZE_BIT, AML_VBI_SIZE_WID);
+	W_APB_BIT(ACD_REG_21, DECODER_VBI_START_ADDR,
+		AML_VBI_START_ADDR_BIT, AML_VBI_START_ADDR_WID);
+	return;
+}
+
+void cvd_vbi_config(void)
+{
+	W_APB_REG(CVD2_VBI_CC_START, VBI_START_CC);
+	W_APB_REG(CVD2_VBI_WSS_START, 0x54);
+	W_VBI_APB_REG(CVD2_VBI_TT_START, VBI_START_TT);
+	W_VBI_APB_REG(CVD2_VBI_VPS_START, VBI_START_VPS);
+	W_APB_BIT(CVD2_VBI_CONTROL, 1, 0, 1);
+	W_APB_REG(CVD2_VSYNC_VBI_LOCKOUT_START, 0x00000000);
+	W_APB_REG(CVD2_VSYNC_VBI_LOCKOUT_END, 0x00000025);
+	if (cvd_dbg_en)
+		pr_info("[tvafe..] cvd_vbi_config\n");
 	return;
 }
 
@@ -350,7 +381,8 @@ static void tvafe_cvd2_memory_init(struct tvafe_cvd2_mem_s *mem,
 	unsigned int cvd2_addr = mem->start >> 4;/*gxtvbb >>4;g9tv >>3*/
 	unsigned int motion_offset = DECODER_MOTION_BUFFER_ADDR_OFFSET;
 	unsigned int vbi_offset = DECODER_VBI_ADDR_OFFSET;
-	unsigned int vbi_size = DECODER_VBI_VBI_SIZE;
+	unsigned int vbi_start;
+	unsigned int vbi_size;
 
 	if ((mem->start == 0) || (mem->size == 0)) {
 
@@ -363,13 +395,27 @@ static void tvafe_cvd2_memory_init(struct tvafe_cvd2_mem_s *mem,
 	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXTVBB)) {
 		cvd2_addr = mem->start >> 4;
 		motion_offset = motion_offset >> 4;
-		vbi_offset = vbi_offset >> 4;
-		vbi_size = vbi_size >> 4;
+#if defined(CONFIG_TVIN_VBI)
+	if (vbi_mem_start != 0)
+		vbi_start = vbi_mem_start >> 4;
+	else
+		vbi_start = cvd2_addr + (vbi_offset >> 4);
+#else
+	vbi_start = cvd2_addr + (vbi_offset >> 4);
+#endif
+		vbi_size = (DECODER_VBI_SIZE/2) >> 4;
 	} else {
 		cvd2_addr = mem->start >> 3;
 		motion_offset = motion_offset >> 3;
-		vbi_offset = vbi_offset >> 3;
-		vbi_size = vbi_size >> 3;
+#if defined(CONFIG_TVIN_VBI)
+	if (vbi_mem_start != 0)
+		vbi_start = vbi_mem_start >> 3;
+	else
+		vbi_start = cvd2_addr + (vbi_offset >> 3);
+#else
+	vbi_start = cvd2_addr + (vbi_offset >> 3);
+#endif
+		vbi_size = (DECODER_VBI_SIZE/2) >> 3;
 	}
 	/* CVD2 mem addr is based on 64bit, system mem is based on 8bit*/
 	W_APB_REG(CVD2_REG_96, cvd2_addr);
@@ -380,11 +426,7 @@ static void tvafe_cvd2_memory_init(struct tvafe_cvd2_mem_s *mem,
 		REG_4F_MOTION_LENGTH_BIT, REG_4F_MOTION_LENGTH_WID);
 #if 1
 	/* vbi memory setting */
-	W_APB_REG(ACD_REG_2F, (cvd2_addr + vbi_offset));
-	W_APB_BIT(ACD_REG_21, vbi_size,
-		AML_VBI_SIZE_BIT, AML_VBI_SIZE_WID);
-	W_APB_BIT(ACD_REG_21, DECODER_VBI_START_ADDR,
-		AML_VBI_START_ADDR_BIT, AML_VBI_START_ADDR_WID);
+	cvd_vbi_mem_set(vbi_start, vbi_size);
 	/*open front lpf for av ring*/
 	W_APB_BIT(ACD_REG_26, 1, 8, 1);
 #endif
@@ -459,7 +501,8 @@ static void tvafe_cvd2_write_mode_reg(struct tvafe_cvd2_s *cvd2,
 
 		for (i = 0; i < (ACD_REG_NUM+1); i++) {
 
-
+			if (i == 0x21 || i == 0x2f)
+				continue;
 			W_APB_REG(((ACD_BASE_ADD+i)<<2),
 					(cvbs_acd_table[cvd2->config_fmt-
 					TVIN_SIG_FMT_CVBS_NTSC_M][i]));
@@ -591,10 +634,8 @@ static void tvafe_cvd2_write_mode_reg(struct tvafe_cvd2_s *cvd2,
 	W_APB_REG(CVD2_VBI_WSS_DTO_LSB, 0x66);
 
 	/* config vbi start line */
-	W_APB_REG(CVD2_VBI_WSS_START, 0x54);
-	W_APB_BIT(CVD2_VBI_CONTROL, 1, 0, 1);
-	W_APB_REG(CVD2_VSYNC_VBI_LOCKOUT_START, 0x00000000);
-	W_APB_REG(CVD2_VSYNC_VBI_LOCKOUT_END, 0x00000025);
+	cvd_vbi_config();
+
 	/* be care the polarity bellow!!! */
 	W_APB_BIT(CVD2_VSYNC_TIME_CONSTANT, 0, 7, 1);
 	/*enable vbi*/

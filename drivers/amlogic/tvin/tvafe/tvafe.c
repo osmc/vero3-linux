@@ -2238,16 +2238,15 @@ static int tvafe_mmap(struct file *file, struct vm_area_struct *vma)
 	if (vma->vm_pgoff > (~0UL >> PAGE_SHIFT))
 		return -EINVAL;
 
-
-	/* capture the vbi data  */
-	start = (devp->mem.start + (DECODER_VBI_ADDR_OFFSET << 3)) & PAGE_MASK;
-	len = PAGE_ALIGN((start & ~PAGE_MASK) + (DECODER_VBI_VBI_SIZE << 3));
+	start = (devp->mem.start) & PAGE_MASK;
+	len = PAGE_ALIGN((start & ~PAGE_MASK) + (devp->mem.size));
+	pr_info("[tvafe..]: cat start add:0x%x ,size:%x\n",
+			(devp->mem.start), (devp->mem.size));
 
 	off = vma->vm_pgoff << PAGE_SHIFT;
 
 	if ((vma->vm_end - vma->vm_start + off) > len)
 		return -EINVAL;
-
 
 	off += start;
 	vma->vm_pgoff = off >> PAGE_SHIFT;

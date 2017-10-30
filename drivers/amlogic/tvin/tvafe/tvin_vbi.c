@@ -37,6 +37,7 @@
 
 /* Local include */
 #include "tvafe_regs.h"
+#include "tvafe_cvd.h"
 #include "tvin_vbi.h"
 #include "../tvin_global.h"
 
@@ -255,30 +256,15 @@ static void vbi_hw_init(struct vbi_dev_s *devp)
 {
 	/* vbi memory setting */
 	memset(devp->pac_addr_start, 0, devp->mem_size);
-	W_VBI_APB_REG(ACD_REG_2F, devp->mem_start >> 4);
-	if (0) {/*(is_meson_txlx_cpu()) {*/
-		W_VBI_APB_BIT(ACD_REG_42, ((devp->mem_size >> 4) - 1), 0, 24);
-		W_VBI_APB_BIT(ACD_REG_42, 1, 31, 1);
-	} else
-		W_VBI_APB_BIT(ACD_REG_21, ((devp->mem_size >> 4) - 1), 16, 16);
-	W_VBI_APB_BIT(ACD_REG_21, 0, AML_VBI_START_ADDR_BIT,
-		AML_VBI_START_ADDR_WID);
+	cvd_vbi_mem_set(devp->mem_start >> 4, devp->mem_size >> 4);
 	/*disable vbi*/
 	W_VBI_APB_REG(CVD2_VBI_FRAME_CODE_CTL,   0x14);
-	/* config vbi start line */
-	W_VBI_APB_REG(CVD2_VBI_CC_START,	     VBI_START_CC);
-	W_VBI_APB_REG(CVD2_VBI_WSS_START,	     VBI_START_WSS);
-	W_VBI_APB_REG(CVD2_VBI_TT_START,	     VBI_START_TT);
-	W_VBI_APB_REG(CVD2_VBI_VPS_START,	     VBI_START_VPS);
-	W_VBI_APB_BIT(CVD2_VBI_CONTROL, 1, 0, 1);
-	W_VBI_APB_REG(CVD2_VSYNC_VBI_LOCKOUT_START, 0x00000000);
-	W_VBI_APB_REG(CVD2_VSYNC_VBI_LOCKOUT_END, 0x00000025);
-	/* be care the polarity bellow!!! */
-	W_VBI_APB_BIT(CVD2_VSYNC_TIME_CONSTANT, 0, 7, 1);
+	cvd_vbi_config();
 	/*enable vbi*/
 	W_VBI_APB_REG(CVD2_VBI_FRAME_CODE_CTL,   0x15);
 	pr_info("[vbi..] %s: vbi hw init done.\n", __func__);
 }
+
 #define vbi_get_byte(rdptr, total_buffer, retbyte) \
 	do {\
 		retbyte = *(rdptr); \
@@ -440,6 +426,8 @@ static void vbi_slicer_task(unsigned long arg)
 	unsigned int sync_code = 0;
 	unsigned int len;
 	if (devp->vbi_start == false)
+		return;
+	if (tvafe_clk_status == false)
 		return;
 	rptr = devp->pac_addr;  /* backup package data pointer */
 	/* get tatal bytes */
@@ -872,6 +860,7 @@ static int vbi_release(struct inode *inode, struct file *file)
 	if (vbi_dev->irq_free_status == 1)
 		free_irq(vbi_dev->vs_irq, (void *)vbi_dev);
 	vbi_dev->irq_free_status = 0;
+	vcnt = 1;
 	/* vbi reset release, vbi agent enable */
 	W_VBI_APB_REG(ACD_REG_22, 0x06080000);
 	W_VBI_APB_REG(CVD2_VBI_FRAME_CODE_CTL, 0x00000014);
@@ -897,12 +886,13 @@ static long vbi_ioctl(struct file *file,
 	case VBI_IOC_START:
 		if (mutex_lock_interruptible(&vbi_slicer->mutex)) {
 			mutex_unlock(&vbi_dev->mutex);
-			pr_info("[vbi..] %s: slicer mutex error\n", __func__);
+			pr_err("[vbi..] %s: slicer mutex error\n", __func__);
 			return -ERESTARTSYS;
 		}
 		if (tvafe_clk_status)
 			vbi_hw_init(vbi_dev);
 		else {
+			pr_err("[vbi..] tvafe not opend.ioctl start err\n");
 			ret = -EINVAL;
 			mutex_unlock(&vbi_slicer->mutex);
 			break;
@@ -925,7 +915,7 @@ static long vbi_ioctl(struct file *file,
 	case VBI_IOC_STOP:
 		if (mutex_lock_interruptible(&vbi_slicer->mutex)) {
 			mutex_unlock(&vbi_dev->mutex);
-			pr_info("[vbi..] %s: slicer mutex error\n", __func__);
+			pr_err("[vbi..] %s: slicer mutex error\n", __func__);
 			return -ERESTARTSYS;
 		}
 		ret = vbi_slicer_stop(vbi_slicer);
@@ -1308,6 +1298,7 @@ static int vbi_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 	memset(vbi_dev, 0, sizeof(struct vbi_dev_s));
+	vbi_mem_start = 0;
 
 	/* connect the file operations with cdev */
 	cdev_init(&vbi_dev->cdev, &vbi_fops);
@@ -1342,8 +1333,8 @@ static int vbi_probe(struct platform_device *pdev)
 		pr_info("vbi: can't get memory resource\n");
 	vbi_dev->mem_start = res->start;
 	vbi_dev->mem_size = res->end - res->start + 1;
-	if (vbi_dev->mem_size > VBI_MEM_SIZE)
-		vbi_dev->mem_size = VBI_MEM_SIZE;
+	if (vbi_dev->mem_size > DECODER_VBI_SIZE)
+		vbi_dev->mem_size = DECODER_VBI_SIZE;
 	pr_info("[vbi..]: start_addr is:0x%x, size is:0x%x\n",
 			vbi_dev->mem_start, vbi_dev->mem_size);
 
@@ -1354,6 +1345,7 @@ static int vbi_probe(struct platform_device *pdev)
 	vbi_dev->mem_size = vbi_dev->mem_size/2;
 	vbi_dev->mem_size >>= 4;
 	vbi_dev->mem_size <<= 4;
+	vbi_mem_start = vbi_dev->mem_start;
 	vbi_dev->pac_addr_end = vbi_dev->pac_addr_start + vbi_dev->mem_size - 1;
 	if (vbi_dev->pac_addr_start == NULL)
 		pr_err("[vbi..]: ioremap error!!!\n");
@@ -1369,13 +1361,13 @@ static int vbi_probe(struct platform_device *pdev)
 	dev_set_drvdata(vbi_dev->dev, vbi_dev);
 	platform_set_drvdata(pdev, vbi_dev);
 
+	vbi_dev->tasklet_enable = false;
+	vbi_dev->vbi_start = false;
 	/* Initialize tasklet */
 	tasklet_init(&vbi_dev->tsklt_slicer, vbi_slicer_task,
 				(unsigned long)vbi_dev);
 
 	tasklet_disable_nosync(&vbi_dev->tsklt_slicer);
-	vbi_dev->tasklet_enable = false;
-	vbi_dev->vbi_start = false;
 	vbi_dev->vs_delay = 40;
 
 	vbi_dev->slicer = vmalloc(sizeof(struct vbi_slicer_s));

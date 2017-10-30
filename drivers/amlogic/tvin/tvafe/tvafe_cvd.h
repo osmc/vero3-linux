@@ -15,8 +15,14 @@
 #define DECODER_MOTION_BUFFER_4F_LENGTH     0x15a60
 /*motion is not use,only 3d-com need mem:1135x625x10bit/8 * 4 = 0x361ef8*/
 #define DECODER_VBI_ADDR_OFFSET             0x400000/*0x86000*/
-#define DECODER_VBI_VBI_SIZE                0x1000
+#define DECODER_VBI_SIZE                0x80000/*0x1000*/
 #define DECODER_VBI_START_ADDR              0x0
+
+/* vbi start line: unit is hcount value */
+#define VBI_START_CC		0x54
+#define VBI_START_WSS		0x54
+#define VBI_START_TT		0x82
+#define VBI_START_VPS		0x82
 
 /* cvd2 function enable/disable defines*/
 /* #define TVAFE_CVD2_NOT_TRUST_NOSIG  //
@@ -190,6 +196,8 @@ extern void tvafe_snow_config_acd(void);
 extern void tvafe_snow_config_acd_resume(void);
 extern enum tvin_aspect_ratio_e tvafe_cvd2_get_wss(void);
 extern void tvafe_cvd2_get_signal_status(struct tvafe_cvd2_s *cvd2);
+extern void cvd_vbi_mem_set(unsigned int offset, unsigned int size);
+extern void cvd_vbi_config(void);
 
 extern bool tvafe_snow_function_flag;
 
