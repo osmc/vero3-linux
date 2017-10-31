@@ -307,19 +307,6 @@ static int amaudio_open(struct inode *inode, struct file *file)
 		pr_info("amaudio2_ctl opened\n");
 	} else if (iminor(inode) == 3) {
 		pr_info("amaudio2_utils opened\n");
-		playback_data_cache_start = (unsigned long)kmalloc(
-				(SOFT_BUFFER_SIZE), GFP_KERNEL);
-		if (!playback_data_cache_start) {
-			pr_err("malloc for the audio output cache buffer fail\n");
-			goto error;
-		}
-		playback_tmp_start = kmalloc(
-				(SOFT_BUFFER_SIZE), GFP_KERNEL);
-		if (!playback_tmp_start) {
-			pr_err("malloc for the audio output tmp buffer fail\n");
-			goto error;
-		}
-
 		playback_data_cache_buf_size = SOFT_BUFFER_SIZE;
 		playback_data_cache_rp = playback_data_cache_start;
 		playback_data_cache_wp = playback_data_cache_start;
@@ -348,15 +335,8 @@ static int amaudio_release(struct inode *inode, struct file *file)
 		free_irq(IRQ_OUT, amaudio);
 		amaudio->sw.addr = 0;
 		amaudio2_enable = 0;
-	} else if (iminor(inode) == 3) {
-		if (playback_data_cache_start) {
-			kfree((void *)playback_data_cache_start);
-			playback_data_cache_start = 0;
-		}
-
-		kfree(playback_tmp_start);
+	} else if (iminor(inode) == 3)
 		amaudio2_read_enable = 0;
-	}
 
 	kfree(amaudio);
 	return 0;
@@ -1652,9 +1632,30 @@ static int amaudio2_init(struct platform_device *pdev)
 		goto err4;
 	}
 
+	playback_data_cache_start = (unsigned long)kmalloc(
+			(SOFT_BUFFER_SIZE), GFP_KERNEL);
+	if (!playback_data_cache_start) {
+		pr_err("malloc for the audio output cache buffer fail\n");
+		goto err5;
+	}
+	playback_tmp_start = kmalloc(
+			(SOFT_BUFFER_SIZE), GFP_KERNEL);
+	if (!playback_tmp_start) {
+		pr_err("malloc for the audio output tmp buffer fail\n");
+		goto err6;
+	}
+
 	pr_info("amaudio2: driver %s succuess!\n", AMAUDIO2_DRIVER_NAME);
 	return 0;
 
+err6:
+	kfree((void *)playback_data_cache_start);
+	playback_data_cache_start = 0;
+err5:
+	dma_free_coherent(amaudio_dev, SOFT_BUFFER_SIZE,
+			(void *)amaudio_start_addr,
+			amaudio_phy_start_addr);
+	amaudio_start_addr = 0;
 err4:
 	device_destroy(&amaudio_class, MKDEV(AMAUDIO2_MAJOR, 10));
 err3:
@@ -1674,6 +1675,13 @@ static int amaudio2_exit(struct platform_device *pdev)
 {
 	int i = 0;
 	struct amaudio_port_t *ap;
+
+	if (playback_data_cache_start) {
+		kfree((void *)playback_data_cache_start);
+		playback_data_cache_start = 0;
+	}
+
+	kfree(playback_tmp_start);
 
 	if (amaudio_start_addr) {
 		dma_free_coherent(amaudio_dev, SOFT_BUFFER_SIZE,
