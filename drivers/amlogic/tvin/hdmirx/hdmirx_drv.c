@@ -1705,13 +1705,13 @@ static int hdmirx_probe(struct platform_device *pdev)
 		rx_pr("hdmirx: fail to create esm_base attribute file\n");
 		goto fail_create_esm_base_file;
 	}
-	if (!is_meson_txlx_cpu() && !is_meson_txhd_cpu()) {
-		ret = device_create_file(hdevp->dev, &dev_attr_cec);
-		if (ret < 0) {
-			rx_pr("hdmirx: fail to create cec attribute file\n");
-			goto fail_create_cec_file;
-		}
+
+	ret = device_create_file(hdevp->dev, &dev_attr_cec);
+	if (ret < 0) {
+		rx_pr("hdmirx: fail to create cec attribute file\n");
+		goto fail_create_cec_file;
 	}
+
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res) {
 		rx_pr("%s: can't get irq resource\n", __func__);
@@ -1885,8 +1885,7 @@ static int hdmirx_probe(struct platform_device *pdev)
 
 	return 0;
 fail_create_cec_file:
-		if (!is_meson_txlx_cpu() && !is_meson_txhd_cpu())
-			device_remove_file(hdevp->dev, &dev_attr_cec);
+	device_remove_file(hdevp->dev, &dev_attr_cec);
 fail_create_esm_base_file:
 	device_remove_file(hdevp->dev, &dev_attr_esm_base);
 fail_create_reg_file:
@@ -1937,8 +1936,7 @@ static int hdmirx_remove(struct platform_device *pdev)
 	device_remove_file(hdevp->dev, &dev_attr_key);
 	device_remove_file(hdevp->dev, &dev_attr_log);
 	device_remove_file(hdevp->dev, &dev_attr_reg);
-	if (!is_meson_txlx_cpu() && !is_meson_txhd_cpu())
-		device_remove_file(hdevp->dev, &dev_attr_cec);
+	device_remove_file(hdevp->dev, &dev_attr_cec);
 	tvin_unreg_frontend(&hdevp->frontend);
 	hdmirx_delete_device(hdevp->index);
 	tasklet_kill(&rx_tasklet);
