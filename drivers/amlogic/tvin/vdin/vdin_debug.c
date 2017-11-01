@@ -275,15 +275,19 @@ static void vdin_dump_one_buf_mem(char *path, struct vdin_dev_s *devp,
 		pr_info(KERN_ERR"create %s error.\n", path);
 		return;
 	}
-	if ((devp->cma_config_flag == 1) &&
+	if ((devp->cma_config_flag & 0x1) &&
 		(devp->cma_mem_alloc == 0)) {
 		pr_info("%s:no cma alloc mem!!!\n", __func__);
 		return;
 	}
 	if (buf_num < devp->canvas_max_num) {
-		if (devp->cma_config_flag == 1)
+		if (devp->cma_config_flag == 0x1)
 			buf = codec_mm_phys_to_virt(devp->mem_start +
 				devp->canvas_max_size*buf_num);
+		else if (devp->cma_config_flag == 0x101)
+			buf = codec_mm_phys_to_virt(devp->vfmem_start[buf_num]);
+		else if (devp->cma_config_flag == 0x100)
+			buf = phys_to_virt(devp->vfmem_start[buf_num]);
 		else
 			buf = phys_to_virt(devp->mem_start +
 				devp->canvas_max_size*buf_num);
@@ -305,31 +309,42 @@ static void vdin_dump_mem(char *path, struct vdin_dev_s *devp)
 {
 	struct file *filp = NULL;
 	loff_t pos = 0;
-	void *buf = NULL;
 	loff_t i = 0;
+	void *buf = NULL;
+	void *vfbuf[VDIN_CANVAS_MAX_CNT];
 	mm_segment_t old_fs = get_fs();
 	set_fs(KERNEL_DS);
 	filp = filp_open(path, O_RDWR|O_CREAT, 0666);
 
+	for (i = 0; i < VDIN_CANVAS_MAX_CNT; i++)
+			vfbuf[i] = NULL;
 	if (IS_ERR(filp)) {
 		pr_info(KERN_ERR"create %s error.\n", path);
 		return;
 	}
-	if ((devp->cma_config_flag == 1) &&
+	if ((devp->cma_config_flag & 0x1) &&
 		(devp->cma_mem_alloc == 0)) {
 		pr_info("%s:no cma alloc mem!!!\n", __func__);
 		return;
 	}
-
 	for (i = 0; i < devp->canvas_max_num; i++) {
 		pos = devp->canvas_max_size * i;
-		if (devp->cma_config_flag == 1)
+		if (devp->cma_config_flag == 0x1)
 			buf = codec_mm_phys_to_virt(devp->mem_start +
 				devp->canvas_max_size*i);
+		else if (devp->cma_config_flag == 0x101)
+			vfbuf[i] = codec_mm_phys_to_virt(
+				devp->vfmem_start[i]);
+		else if (devp->cma_config_flag == 0x100)
+			vfbuf[i] = phys_to_virt(devp->vfmem_start[i]);
 		else
 			buf = phys_to_virt(devp->mem_start +
 				devp->canvas_max_size*i);
-		vfs_write(filp, buf, devp->canvas_max_size, &pos);
+		if (devp->cma_config_flag & 0x100)
+			vfs_write(filp, vfbuf[i], devp->canvas_max_size, &pos);
+		else
+			vfs_write(filp, buf, devp->canvas_max_size, &pos);
+
 		pr_info("write buffer %lld of %2u  to %s.\n",
 				i, devp->canvas_max_num, path);
 	}
@@ -417,8 +432,13 @@ static void vdin_dump_state(struct vdin_dev_s *devp)
 		devp->h_active, devp->v_active);
 	pr_info("canvas_w = %d, canvas_h = %d, canvas_alin_w = %d\n",
 		devp->canvas_w, devp->canvas_h, devp->canvas_alin_w);
-	pr_info("mem_start = %ld, mem_size = %d\n",
-		devp->mem_start, devp->mem_size);
+	if ((devp->cma_config_en != 1) || !(devp->cma_config_flag & 0x1))
+		pr_info("mem_start = %ld, mem_size = %d\n",
+			devp->mem_start, devp->mem_size);
+	else
+		for (i = 0; i < devp->canvas_max_num; i++)
+			pr_info("buf[%d]mem_start = %ld, mem_size = %d\n",
+			i, devp->vfmem_start[i], devp->vfmem_size);
 	pr_info("signal format	= %s(0x%x)\n",
 		tvin_sig_fmt_str(devp->parm.info.fmt),
 		devp->parm.info.fmt);
@@ -446,7 +466,7 @@ static void vdin_dump_state(struct vdin_dev_s *devp)
 	pr_info("color_depth_config:%d\n", devp->color_depth_config);
 	pr_info("color_depth_mode:%d\n", devp->color_depth_mode);
 	pr_info("color_depth_support:0x%x\n", devp->color_depth_support);
-	pr_info("cma_flag:%d\n", devp->cma_config_flag);
+	pr_info("cma_flag:0x%x\n", devp->cma_config_flag);
 	pr_info("auto_cutwindow_en:%d\n", devp->auto_cutwindow_en);
 	pr_info("auto_ratio_en:%d\n", devp->auto_ratio_en);
 	pr_info("cma_mem_alloc:%d\n", devp->cma_mem_alloc);
@@ -495,9 +515,16 @@ static void vdin_dump_state(struct vdin_dev_s *devp)
 		devp->vdin_irq_flag, devp->vdin_reset_flag);
 	pr_info("rdma_enable :  %d\n", devp->rdma_enable);
 	pr_info("dolby_input :  %d\n", devp->dv.dolby_input);
-	pr_info("dolby_mem_start = %ld, dolby_mem_size = %d\n",
-		(devp->mem_start + devp->mem_size -
-		dolby_size_byte*devp->canvas_max_num), dolby_size_byte);
+	if ((devp->cma_config_en != 1) || !(devp->cma_config_flag & 0x100))
+		pr_info("dolby_mem_start = %ld, dolby_mem_size = %d\n",
+			(devp->mem_start +
+			devp->mem_size - devp->canvas_max_num*dolby_size_byte),
+			dolby_size_byte);
+	else
+		for (i = 0; i < devp->canvas_max_num; i++)
+			pr_info("dolby_mem_start[%d] = %ld, dolby_mem_size = %d\n",
+				i, (devp->vfmem_start[i] + devp->vfmem_size -
+				dolby_size_byte), dolby_size_byte);
 	for (i = 0; i < devp->canvas_max_num; i++) {
 		pr_info("dv_mem(%d):0x%x\n",
 			devp->vfp->dv_buf_size[i],
@@ -704,10 +731,7 @@ static void vdin_write_cont_mem(struct vdin_dev_s *devp, char *type,
 
 static void dump_dolby_metadata(struct vdin_dev_s *devp)
 {
-	unsigned *addr;
 	unsigned int i, j;
-	addr = phys_to_virt(devp->mem_start + devp->mem_size -
-		dolby_size_byte*devp->canvas_max_num);
 	pr_info("*****dolby_metadata(%d byte):*****\n", dolby_size_byte);
 	for (i = 0; i < devp->canvas_max_num; i++) {
 		pr_info("*****dolby_metadata(%d)[0x%x](%d byte):*****\n",
