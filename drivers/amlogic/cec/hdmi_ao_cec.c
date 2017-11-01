@@ -2245,7 +2245,7 @@ static long hdmitx_cec_ioctl(struct file *f,
 		break;
 
 	case CEC_IOC_SET_DEV_TYPE:
-		if (arg < DEV_TYPE_TV && arg > DEV_TYPE_VIDEO_PROCESSOR)
+		if (arg > DEV_TYPE_VIDEO_PROCESSOR)
 			return -EINVAL;
 		cec_dev->dev_type = arg;
 		break;
@@ -2351,12 +2351,13 @@ static int aml_cec_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 	pdev->dev.class = &aocec_class;
-	cec_dev->cec_info.dev_no = register_chrdev(0, CEC_DEV_NAME,
+	r = register_chrdev(0, CEC_DEV_NAME,
 					  &hdmitx_cec_fops);
-	if (cec_dev->cec_info.dev_no < 0) {
+	if (r < 0) {
 		CEC_ERR("alloc chrdev failed\n");
 		return -EINVAL;
-	}
+	} else
+		cec_dev->cec_info.dev_no = r;
 	CEC_INFO("alloc chrdev %x\n", cec_dev->cec_info.dev_no);
 	cdev = device_create(&aocec_class, &pdev->dev,
 			     MKDEV(cec_dev->cec_info.dev_no, 0),
