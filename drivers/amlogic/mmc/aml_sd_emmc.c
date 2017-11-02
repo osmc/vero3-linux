@@ -825,7 +825,8 @@ tunning:
 	if ((best_win_size != clk_div)
 		|| (aml_card_type_sdio(pdata)
 			&& ((get_cpu_type() == MESON_CPU_MAJOR_ID_GXM)
-			|| (get_cpu_type() == MESON_CPU_MAJOR_ID_TXL)))) {
+			|| (get_cpu_type() == MESON_CPU_MAJOR_ID_TXL)
+			|| (get_cpu_type() == MESON_CPU_MAJOR_ID_GXL)))) {
 		adj_delay_find = best_win_start + (best_win_size - 1) / 2
 						+ (best_win_size - 1) % 2;
 		adj_delay_find = adj_delay_find % clk_div;
