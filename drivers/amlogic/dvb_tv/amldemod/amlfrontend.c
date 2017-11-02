@@ -1024,7 +1024,7 @@ static int gxtv_demod_atsc_read_status
 		dvbc_status(&demod_sta, &demod_i2c, &demod_sts);
 	} else if ((c->modulation > QAM_AUTO)
 		&& (atsc_flag == VSB_8)) {
-		atsc_thread();
+		/*atsc_thread();*/
 		s = amdemod_atsc_stat_islock(dev);
 	}
 	dvbfe = get_si2177_tuner();
@@ -1108,6 +1108,12 @@ static int gxtv_demod_atsc_read_snr(struct dvb_frontend *fe, u16 *snr)
 
 static int gxtv_demod_atsc_read_ucblocks(struct dvb_frontend *fe, u32 *ucblocks)
 {
+	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	if (!demod_thread)
+		return 0;
+	if ((c->modulation > QAM_AUTO)
+		&& (atsc_flag == VSB_8))
+		atsc_thread();
 	*ucblocks = 0;
 	return 0;
 }

@@ -563,7 +563,8 @@ static int dvb_frontend_swzigzag_autotune(struct dvb_frontend *fe, int check_wra
 	time = jiffies_to_msecs(jiffies)-jiffiestime;
 	dprintk("2---auto tune,time is %d\n", time);
 	if (fe->ops.set_frontend && (time >= LOCK_TIMEOUT)) {
-		fe_set_err = fe->ops.set_frontend(fe);
+		if (!is_meson_txlx_cpu())
+			fe_set_err = fe->ops.set_frontend(fe);
 		jiffiestime = jiffies_to_msecs(jiffies);
 	}
 	fepriv->parameters_out = fepriv->parameters_in;
@@ -614,7 +615,8 @@ static int j83b_speedup_func(fe_status_t s, struct dvb_frontend *fe)
 		j83b_status,
 		fe->dtv_property_cache.modulation);
 	}
-	if (j83b_status < 0x3) {
+	if ((j83b_status < 0x3)
+		&& (s != fepriv->status)) {
 		s = FE_TIMEDOUT;
 		dprintk(
 		"event s=%d,fepriv->status is %d\n",
@@ -634,6 +636,7 @@ static void dvb_frontend_swzigzag(struct dvb_frontend *fe)
 	int retval;
 	int time;
 	int dtmb_status, i, has_singal, atsc_status;
+	unsigned int ucblocks = 0;
 	struct dvb_frontend_private *fepriv = fe->frontend_priv;
 	struct dtv_frontend_properties *c = &fe->dtv_property_cache, tmp;
 #if (((defined CONFIG_AM_SI2176) || (defined CONFIG_AM_SI2177)\
@@ -903,6 +906,8 @@ static void dvb_frontend_swzigzag(struct dvb_frontend *fe)
 		} else if (fe->dtv_property_cache.modulation > QAM_AUTO) {
 			if (is_meson_txlx_cpu()) {
 				LOCK_TIMEOUT = dvb_atsc_timeout;
+				if (fe->ops.read_ucblocks)
+					fe->ops.read_ucblocks(fe, &ucblocks);
 				if (fe->ops.read_status)
 					fe->ops.read_status(fe, &s);
 				if (s != 0x1f) {
@@ -914,7 +919,8 @@ static void dvb_frontend_swzigzag(struct dvb_frontend *fe)
 					atsc_status,
 				fe->dtv_property_cache.modulation,
 				dvb_atsc_timeout);
-					if (atsc_status < 0x60) {
+					if ((atsc_status < 0x60) &&
+						(s != fepriv->status)) {
 						s = FE_TIMEDOUT;
 						dprintk(
 						"event s=%d,fepriv->status is %d\n",

@@ -29,11 +29,17 @@ MODULE_PARM_DESC(cci_enable, "\n\t\t Enable ar");
 static int cci_enable = 1;
 module_param(cci_enable, int, 0644);
 
-MODULE_PARM_DESC(cfo_count, "\n\t\t Enable ar");
+MODULE_PARM_DESC(cfo_count, "\n\t\t cfo_count");
 static int cfo_count;
 module_param(cfo_count, int, 0644);
 
+MODULE_PARM_DESC(field_test_version, "\n\t\t field_test_version");
+static int field_test_version;
+module_param(field_test_version, int, 0644);
 
+MODULE_PARM_DESC(cfo_times, "\n\t\t cfo_times");
+static int cfo_times = 30;
+module_param(cfo_times, int, 0644);
 
 
 static int dagc_switch;
@@ -520,6 +526,7 @@ void set_cr_ck_rate(void)
 	atsc_write_reg(0x545,  0x0);
 	atsc_write_reg(0x546,  0x80);
 
+if (!field_test_version) {
 	/*improve phase nosie 20170820*/
 	atsc_write_reg(0x912,  0x10);
 	atsc_write_reg(0xf55,  0x00);
@@ -543,6 +550,8 @@ void set_cr_ck_rate(void)
 		atsc_set_performance_register(TASK4_TASK5_AWGN);
 	else
 		atsc_set_performance_register(TASK8_R22);
+} else
+	pr_dbg("!!!!!! field test !!!!!!!!!");
 	ar_flag = 0;
 }
 
@@ -851,7 +860,7 @@ int cfo_run(void)
 			read_atsc_fsm(), cfo_sta);
 		/*detec cr peak signal*/
 		if (cfo_sta == Lock) {
-			for (j = 0; j < 20; j++) {
+			for (j = 0; j < cfo_times; j++) {
 				sys_state = read_atsc_fsm();
 				pr_dbg("fsm[%x]in CR LOCK\n", read_atsc_fsm());
 				/*sys_state = (sys_state >> 4) & 0x0f;*/
@@ -1024,7 +1033,8 @@ void atsc_thread(void)
 	time[4] = jiffies_to_msecs(jiffies);
 	fsm_status = read_atsc_fsm();
 	if (atsc_thread_enable) {
-		pr_dbg("awgn_flag is %d\n", awgn_flag);
+		if (!field_test_version)
+			pr_dbg("awgn_flag is %d\n", awgn_flag);
 		if (fsm_status < Atsc_Lock) {
 			/*step1:open dagc*/
 			/*if (dagc_switch == Dagc_Close) {
@@ -1094,6 +1104,7 @@ void atsc_thread(void)
 		fsm_status = read_atsc_fsm();
 		pr_dbg("lock\n");
 		msleep(100);
+	if (!field_test_version) {
 		if (register_set_flag == 0) {
 			snr_now = snr_avg_100_times();
 			pr_dbg("snr_now is %d\n", snr_now);
@@ -1121,6 +1132,7 @@ void atsc_thread(void)
 			pr_dbg("912 is %lx,5bc is %lx\n",
 				atsc_read_reg(0x912), atsc_read_reg(0x5bc));
 		}
+	}
 		/*step5:close dagc*/
 		/*if (dagc_switch == Dagc_Open) {
 			atsc_write_reg(0x716, 0x2);
