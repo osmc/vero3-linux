@@ -29,7 +29,7 @@
 #define LCD_REG_OFFSET_TCON_APB(reg)              ((reg << 2))
 
 /* ********************************
- * PERIPHS: 0xc8834400
+ * PERIPHS:
  * ******************************** */
 #define PREG_PAD_GPIO1_EN_N                        0x0f
 #define PREG_PAD_GPIO1_O                           0x10
@@ -230,8 +230,9 @@
 #endif
 
 /* ********************************
- * Global control:  RESET_CBUS_BASE = 0x11
+ * RESET_CBUS_BASE
  * ******************************** */
+ /* GXBB: 0x11 */
 #define VERSION_CTRL                               0x1100
 #define RESET0_REGISTER                            0x1101
 #define RESET1_REGISTER                            0x1102
@@ -250,6 +251,34 @@
 #define RESET6_MASK                                0x1116
 #define CRT_MASK                                   0x1117
 #define RESET7_MASK                                0x1118
+
+ /* TXLX: 0x04 */
+#define VERSION_CTRL_TXLX                          0x0400
+#define RESET0_REGISTER_TXLX                       0x0401
+#define RESET1_REGISTER_TXLX                       0x0402
+#define RESET2_REGISTER_TXLX                       0x0403
+#define RESET3_REGISTER_TXLX                       0x0404
+#define RESET4_REGISTER_TXLX                       0x0405
+#define RESET5_REGISTER_TXLX                       0x0406
+#define RESET6_REGISTER_TXLX                       0x0407
+#define RESET7_REGISTER_TXLX                       0x0408
+#define RESET0_MASK_TXLX                           0x0410
+#define RESET1_MASK_TXLX                           0x0411
+#define RESET2_MASK_TXLX                           0x0412
+#define RESET3_MASK_TXLX                           0x0413
+#define RESET4_MASK_TXLX                           0x0414
+#define RESET5_MASK_TXLX                           0x0415
+#define RESET6_MASK_TXLX                           0x0416
+#define CRT_MASK_TXLX                              0x0417
+#define RESET7_MASK_TXLX                           0x0418
+#define RESET0_LEVEL_TXLX                          0x0420
+#define RESET1_LEVEL_TXLX                          0x0421
+#define RESET2_LEVEL_TXLX                          0x0422
+#define RESET3_LEVEL_TXLX                          0x0423
+#define RESET4_LEVEL_TXLX                          0x0424
+#define RESET5_LEVEL_TXLX                          0x0425
+#define RESET6_LEVEL_TXLX                          0x0426
+#define RESET7_LEVEL_TXLX                          0x0427
 
 /* ********************************
  * TCON:  VCBUS_BASE = 0x14

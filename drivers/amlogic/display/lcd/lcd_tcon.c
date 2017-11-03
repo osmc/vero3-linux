@@ -21,6 +21,7 @@
 #include <linux/slab.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/io.h>
@@ -32,6 +33,9 @@
 #include <linux/amlogic/vout/lcd_unifykey.h>
 #include "lcd_common.h"
 #include "lcd_reg.h"
+
+#define TCON_INTR_OUT          123
+#define TCON_INTR_MASKN_VAL    0x0  /* default mask all */
 
 static struct reserved_mem tcon_fb_rmem = {.base = 0, .size = 0};
 
@@ -8401,6 +8405,10 @@ int lcd_tcon_sys_regs_update(unsigned char *table, int len)
 
 	LCDPR("%s: finished\n", __func__);
 
+	i = 0x05c;
+	LCDPR("%s: tcon reg readback: 0x%03x = 0x%08x\n",
+		__func__, i, lcd_tcon_read(i + TCON_SYS_REG_START));
+
 	return 0;
 }
 
@@ -8426,6 +8434,7 @@ static int lcd_tcon_top_set(struct mlvds_config_s *mlvds_conf)
 
 	lcd_tcon_write(TCON_CLK_CTRL, 0x001f);
 	lcd_tcon_write(TCON_TOP_CTRL, 0x0199);
+	lcd_tcon_write(TCON_RGB_IN_MUX, 0x24);
 	lcd_tcon_write(TCON_PLLLOCK_CNTL, 0x0037);
 	lcd_tcon_write(TCON_RST_CTRL, 0x003f);
 	lcd_tcon_write(TCON_RST_CTRL, 0x0000);
@@ -8445,10 +8454,16 @@ int lcd_tcon_init(struct lcd_config_s *pconf)
 		return -1;
 	}
 
+	/* reset apb for tcon */
+	lcd_cbus_setb(RESET7_REGISTER_TXLX, 1, 12, 1);
+	udelay(100);
+
 	lcd_tcon_top_set(mlvds_conf);
 	lcd_tcon_sys_regs_update(mlvds_conf->reg_table, LCD_TCON_TABLE_MAX);
 
 	lcd_tcon_top_output_set(mlvds_conf);
+
+	lcd_tcon_write(TCON_INTR_MASKN, TCON_INTR_MASKN_VAL);
 
 	return 0;
 }
@@ -8456,9 +8471,45 @@ int lcd_tcon_init(struct lcd_config_s *pconf)
 void lcd_tcon_disable(void)
 {
 	LCDPR("%s\n", __func__);
+	lcd_tcon_write(TCON_INTR_MASKN, 0);
 	lcd_tcon_write((0x05c + TCON_SYS_REG_START), 0);
 	msleep(100);
 	lcd_tcon_setb(TCON_TOP_CTRL, 0, 4, 1);
+}
+
+static irqreturn_t lcd_tcon_isr(int irq, void *dev_id)
+{
+	struct aml_lcd_drv_s *lcd_drv = aml_lcd_get_driver();
+	struct mlvds_config_s *mlvds_conf;
+	unsigned int temp;
+
+	if (lcd_drv->lcd_status == 0)
+		return IRQ_HANDLED;
+
+	mlvds_conf = lcd_drv->lcd_config->lcd_control.mlvds_config;
+	temp = lcd_tcon_read(TCON_INTR);
+
+	if (temp & 0x2) {
+		LCDPR("%s: tcon sw_reset triggered\n", __func__);
+		lcd_tcon_sys_regs_update(mlvds_conf->reg_table,
+			LCD_TCON_TABLE_MAX);
+	}
+	if (temp & 0x40)
+		LCDPR("%s: tcon ddr interface error triggered\n", __func__);
+
+	return IRQ_HANDLED;
+}
+
+static void lcd_tcon_intr_init(void)
+{
+	if (request_irq(TCON_INTR_OUT, &lcd_tcon_isr,
+		IRQF_SHARED, "lcd_tcon", (void *)"lcd_tcon")) {
+		LCDERR("can't request lcd_tcon irq\n");
+	} else {
+		LCDPR("request lcd_tcon irq successful\n");
+	}
+
+	lcd_tcon_write(TCON_INTR_MASKN, TCON_INTR_MASKN_VAL);
 }
 
 int lcd_tcon_probe(struct device *dev)
@@ -8502,22 +8553,25 @@ int lcd_tcon_probe(struct device *dev)
 		GFP_KERNEL);
 	if (!para) {
 		LCDERR("%s: Not enough memory\n", __func__);
-		return -1;
+		ret = -1;
+		goto lcd_tcon_probe_intr;
 	}
 	key_len = LCD_UKEY_TCON_SIZE;
 	ret = lcd_unifykey_get_no_header("lcd_tcon", para, &key_len);
 	if (ret) {
-		kfree(para);
 		LCDERR("%s: !!!!!!!!!!!!tcon unifykey load error!!!!!!!!!!!!\n",
 			__func__);
-		return -1;
+	} else {
+		memcpy(mlvds_conf->reg_table, para,
+			(sizeof(unsigned char) * LCD_UKEY_TCON_SIZE));
+		LCDPR("tcon: load key len: %d\n", key_len);
 	}
-	memcpy(mlvds_conf->reg_table, para,
-		(sizeof(unsigned char) * LCD_UKEY_TCON_SIZE));
 	kfree(para);
-	LCDPR("tcon: load key len: %d\n", key_len);
 
-	return 0;
+lcd_tcon_probe_intr:
+	lcd_tcon_intr_init();
+
+	return ret;
 }
 
 static int rmem_tcon_fb_device_init(struct reserved_mem *rmem,

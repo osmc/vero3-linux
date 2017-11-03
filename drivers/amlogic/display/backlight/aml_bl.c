@@ -3237,7 +3237,7 @@ static int aml_bl_probe(struct platform_device *pdev)
 	brightness_bypass = 0;
 	bl_pwm_bypass = 0;
 	bl_pwm_duty_free = 0;
-	bl_step_on_flag = 1;
+	bl_step_on_flag = 0;
 
 	bl_chip_type = aml_bl_check_chip();
 	bl_drv = kzalloc(sizeof(struct aml_bl_drv_s), GFP_KERNEL);

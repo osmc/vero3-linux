@@ -1084,6 +1084,22 @@ static int lcd_config_load_from_unifykey(struct lcd_config_s *pconf)
 	pconf->lcd_timing.fr_adjust_type = *(p + LCD_UKEY_FR_ADJ_TYPE);
 	pconf->lcd_timing.ss_level = *(p + LCD_UKEY_SS_LEVEL);
 	pconf->lcd_timing.clk_auto = *(p + LCD_UKEY_CLK_AUTO_GEN);
+	pconf->lcd_basic.h_period_min = (*(p + LCD_UKEY_H_PERIOD_MIN) |
+		((*(p + LCD_UKEY_H_PERIOD_MIN + 1)) << 8));
+	pconf->lcd_basic.h_period_max = (*(p + LCD_UKEY_H_PERIOD_MAX) |
+		((*(p + LCD_UKEY_H_PERIOD_MAX + 1)) << 8));
+	pconf->lcd_basic.v_period_min = (*(p + LCD_UKEY_V_PERIOD_MIN) |
+		((*(p + LCD_UKEY_V_PERIOD_MIN + 1)) << 8));
+	pconf->lcd_basic.v_period_max = (*(p + LCD_UKEY_V_PERIOD_MAX) |
+		((*(p + LCD_UKEY_V_PERIOD_MAX + 1)) << 8));
+	pconf->lcd_basic.lcd_clk_min = (*(p + LCD_UKEY_PCLK_MIN) |
+		((*(p + LCD_UKEY_PCLK_MIN + 1)) << 8) |
+		((*(p + LCD_UKEY_PCLK_MIN + 2)) << 16) |
+		((*(p + LCD_UKEY_PCLK_MIN + 3)) << 24));
+	pconf->lcd_basic.lcd_clk_max = (*(p + LCD_UKEY_PCLK_MAX) |
+		((*(p + LCD_UKEY_PCLK_MAX + 1)) << 8) |
+		((*(p + LCD_UKEY_PCLK_MAX + 2)) << 16) |
+		((*(p + LCD_UKEY_PCLK_MAX + 3)) << 24));
 
 	/* interface: 20byte */
 	if (pconf->lcd_basic.lcd_type == LCD_VBYONE) {

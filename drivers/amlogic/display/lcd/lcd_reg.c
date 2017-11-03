@@ -92,9 +92,9 @@ static struct reg_map_s lcd_reg_maps_txlx[] = {
 	},
 	{ /* CBUS */
 		.base_addr = 0xffd00000,
-		.size = 0x10,
+		.size = 0x1800,
 		.flag = 0,
-		.dummy = 1,
+		.dummy = 0,
 	},
 	{ /* TCON_APB */
 		.base_addr = 0xff600000,

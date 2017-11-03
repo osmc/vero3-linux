@@ -32,8 +32,8 @@
 		resets = <&clock GCLK_IDX_VCLK2_ENCL
 			&clock GCLK_IDX_VCLK2_VENCL>;
 		reset-names = "encl","vencl";
-		interrupts = <0 3 1>;
-		interrupt-names = "lcd_vsync";
+		interrupts = <0 3 1 0 91 1>;
+		interrupt-names = "lcd_vsync","lcd_tcon";
 		pinctrl-names = "minilvds_pins";
 		pinctrl-0 = <&lcd_minilvds_pins>;
 		pinctrl_version = <2>;
@@ -86,7 +86,7 @@
 				133940000 156000000>; /* pclk min,max */
 			lcd_timing = <44 148 0  /* hs_width, hs_bp, hs_pol */
 				5 30 0>; /* vs_width, vs_bp, vs_pol */
-			clk_attr = <1 /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range) */
+			clk_attr = <4 /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range, 4=hdmi mode) */
 				0 /* clk_ss_level */
 				1 /* clk_auto_generate */
 				0>; /* pixel_clk(unit in Hz) */

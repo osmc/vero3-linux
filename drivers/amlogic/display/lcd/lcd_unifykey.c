@@ -333,7 +333,6 @@ exit_print_lcd_ext:
 
 exit_print_backlight:
 	kfree(buf);
-
 }
 
 #else
