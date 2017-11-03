@@ -212,14 +212,18 @@ void mc_pre_mv_irq(void)
 	unsigned int val1;
 	val1 = RDMA_RD(MCDI_RO_PD_22_FLG);
 	RDMA_WR(MCDI_PD_22_CHK_FLG_CNT, val1);
-	val1 = RDMA_RD_BITS(MCDI_RO_HIGH_VERT_FRQ_FLG, 0, 16);
-	RDMA_WR_BITS(MCDI_FIELD_HVF_PRDX_CNT, val1, 0, 16);
 
+	val1 = RDMA_RD_BITS(MCDI_RO_HIGH_VERT_FRQ_FLG, 0, 1);
+	RDMA_WR_BITS(MCDI_FIELD_HVF_PRDX_CNT, val1, 0, 1);
+	val1 = RDMA_RD_BITS(MCDI_RO_HIGH_VERT_FRQ_FLG, 1, 2);
+	RDMA_WR_BITS(MCDI_FIELD_HVF_PRDX_CNT, val1, 2, 2);
+	val1 = RDMA_RD_BITS(MCDI_RO_HIGH_VERT_FRQ_FLG, 8, 8);
+	RDMA_WR_BITS(MCDI_FIELD_HVF_PRDX_CNT, val1, 8, 8);
 	val1 = RDMA_RD_BITS(MCDI_RO_MOTION_PARADOX_FLG, 0, 16);
 	RDMA_WR_BITS(MCDI_FIELD_HVF_PRDX_CNT, val1, 16, 16);
 
 	val1 = RDMA_RD_BITS(MCDI_RO_RPT_MV, 0, 6);
-	if (val1 >= 32) {
+	if (val1 == 32) {
 		val1 = 0;
 		RDMA_WR_BITS(MCDI_CTRL_MODE, 0, 15, 1);
 	} else {
@@ -235,7 +239,7 @@ void mc_pre_mv_irq(void)
 	RDMA_WR_BITS(MCDI_FIELD_MV, val1, 16, 8);
 
 	val1 = RDMA_RD_BITS(MCDI_RO_GMV_LOCK_FLG, 2, 6);
-	if (val1 >= 32) {
+	if (val1 == 32) {
 		val1 = 0;
 		RDMA_WR_BITS(MCDI_CTRL_MODE, 0, 14, 1);
 	} else {

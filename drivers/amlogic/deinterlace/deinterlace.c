@@ -3563,13 +3563,15 @@ static void pre_de_process(void)
 	int chan2_field_num = 1;
 	int canvases_idex = di_pre_stru.field_count_for_cont % 2;
 	unsigned short cur_inp_field_type = VIDTYPE_TYPEMASK;
+	bool me_auto_en = true;
 #ifdef NEW_DI_V1
 	int cont_rd = 1;
 #endif
 	di_print("%s: start\n", __func__);
+	if (is_meson_gxlx_cpu() || is_meson_txhd_cpu())
+		me_auto_en = false;
 	di_pre_stru.pre_de_busy = 1;
 	di_pre_stru.pre_de_busy_timer_count = 0;
-
 
 	config_di_mif(&di_pre_stru.di_inp_mif, di_pre_stru.di_inp_buf);
 	/* pr_dbg("set_separate_en=%d vframe->type %d\n",
@@ -3750,8 +3752,10 @@ static void pre_de_process(void)
 			hw issue in mcdi*/
 			/* enable me(mc di) */
 			RDMA_WR_BITS(MCDI_MOTINEN, 3, 0, 2);
-			RDMA_WR(MCDI_CTRL_MODE, 0x1bfe37ff);
-			RDMA_WR_BITS(DI_MTN_CTRL1, (mcpre_en ? 2 : 0), 12, 2);
+			RDMA_WR(MCDI_CTRL_MODE,
+				me_auto_en ? 0x1bfff7ff:0x1bfe37ff);
+			RDMA_WR_BITS(DI_MTN_CTRL1,
+				(me_auto_en ? 3 : 2), 12, 2);
 		} else {
 			RDMA_WR_BITS(MCDI_MOTINEN, 0, 0, 2);
 			RDMA_WR(MCDI_CTRL_MODE, 0);
@@ -6352,7 +6356,9 @@ static irqreturn_t de_irq(int irq, void *dev_instance)
 	if (flag) {
 		if (mcpre_en) {
 			get_mcinfo_from_reg_in_irq();
-			mc_pre_mv_irq();
+			if (is_meson_gxlx_cpu() ||
+				is_meson_txhd_cpu())
+				mc_pre_mv_irq();
 			calc_lmv_base_mcinfo((di_pre_stru.cur_height>>1),
 				di_pre_stru.di_wr_buf->mcinfo_adr);
 		}
@@ -9438,7 +9444,7 @@ unsigned int RDMA_RD_BITS(unsigned int adr, unsigned int start,
 			  unsigned int len)
 {
 
-	if (de_devp->rdma_handle)
+	if (de_devp->rdma_handle && di_pre_rdma_enable)
 		return rdma_read_reg(de_devp->rdma_handle, adr) &
 		       (((1 << len) - 1) << start);
 	else
