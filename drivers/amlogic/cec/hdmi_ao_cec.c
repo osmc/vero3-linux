@@ -78,8 +78,10 @@ static struct early_suspend aocec_suspend_handler;
 #define DEV_TYPE_PURE_CEC_SWITCH	6
 #define DEV_TYPE_VIDEO_PROCESSOR	7
 
+#define CEC_POWER_ON		(0 << 0)
 #define CEC_EARLY_SUSPEND	(1 << 0)
 #define CEC_DEEP_SUSPEND	(1 << 1)
+#define CEC_POWER_RESUME	(1 << 2)
 
 #define HR_DELAY(n)		(ktime_set(0, n * 1000 * 1000))
 #define MAX_INT    0x7ffffff
@@ -449,8 +451,7 @@ void cecrx_irq_handle(void)
 			/* clear start */
 			hdmirx_cec_write(DWC_CEC_TX_CNT, 0);
 			hdmirx_set_bits_dwc(DWC_CEC_CTRL, 0, 0, 3);
-		}
-		else
+		} else
 			cec_tx_result = CEC_FAIL_OTHER;
 		complete(&cec_dev->tx_ok);
 	}
@@ -1475,7 +1476,8 @@ static void cec_rx_process(void)
 
 	case CEC_OC_ROUTING_CHANGE:
 		dest_phy_addr = msg[4] << 8 | msg[5];
-		if (dest_phy_addr == cec_dev->phy_addr) {
+		if ((dest_phy_addr == cec_dev->phy_addr) &&
+			(cec_dev->cec_suspend == CEC_EARLY_SUSPEND)) {
 			CEC_INFO("wake up by ROUTING_CHANGE\n");
 			cec_key_report(0);
 		}
@@ -1514,13 +1516,17 @@ static void cec_rx_process(void)
 		break;
 
 	case CEC_OC_REQUEST_ACTIVE_SOURCE:
-		if (!cec_dev->cec_suspend)
+		if (cec_dev->cec_suspend == CEC_POWER_ON)
 			cec_active_source_smp();
 		break;
 
 	case CEC_OC_GIVE_DEVICE_POWER_STATUS:
-		if (cec_dev->cec_suspend)
+		if (cec_dev->cec_suspend == CEC_DEEP_SUSPEND)
 			cec_report_power_status(initiator, POWER_STANDBY);
+		else if (cec_dev->cec_suspend == CEC_EARLY_SUSPEND)
+			cec_report_power_status(initiator, TRANS_ON_TO_STANDBY);
+		else if (cec_dev->cec_suspend == CEC_POWER_RESUME)
+			cec_report_power_status(initiator, TRANS_STANDBY_TO_ON);
 		else
 			cec_report_power_status(initiator, POWER_ON);
 		break;
@@ -1534,7 +1540,7 @@ static void cec_rx_process(void)
 		break;
 
 	case CEC_OC_MENU_REQUEST:
-		if (cec_dev->cec_suspend)
+		if (cec_dev->cec_suspend != CEC_POWER_ON)
 			cec_menu_status_smp(initiator, DEVICE_MENU_INACTIVE);
 		else
 			cec_menu_status_smp(initiator, DEVICE_MENU_ACTIVE);
@@ -1886,6 +1892,7 @@ static ssize_t fun_cfg_show(struct class *cla,
 static ssize_t cec_version_show(struct class *cla,
 	struct class_attribute *attr, char *buf)
 {
+	CEC_INFO("driver date:%s\n", CEC_DRIVER_VERSION);
 	return sprintf(buf, "%d\n", cec_dev->cec_info.cec_version);
 }
 
@@ -2315,7 +2322,7 @@ static void aocec_early_suspend(struct early_suspend *h)
 
 static void aocec_late_resume(struct early_suspend *h)
 {
-	cec_dev->cec_suspend = 0;
+	cec_dev->cec_suspend = CEC_POWER_ON;
 	CEC_INFO("%s, suspend:%d\n", __func__, cec_dev->cec_suspend);
 
 }
@@ -2567,9 +2574,8 @@ static void aml_cec_pm_complete(struct device *dev)
 		exit = readl(cec_dev->exit_reg);
 		CEC_INFO("wake up flag:%x\n", exit);
 	}
-	if (((exit >> 28) & 0xf) == CEC_WAKEUP) {
+	if (((exit >> 28) & 0xf) == CEC_WAKEUP)
 		cec_key_report(0);
-	}
 }
 
 static int aml_cec_suspend_noirq(struct device *dev)
@@ -2598,6 +2604,7 @@ static int aml_cec_resume_noirq(struct device *dev)
 	struct pinctrl *p;
 	CEC_INFO("cec resume noirq!\n");
 	cec_dev->cec_info.power_status = TRANS_STANDBY_TO_ON;
+	cec_dev->cec_suspend = CEC_POWER_RESUME;
 
 	/* reselect pin mux if resume */
 	if (ee_cec) {
