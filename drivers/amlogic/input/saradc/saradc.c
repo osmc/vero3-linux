@@ -256,21 +256,21 @@ int get_adc_sample_early(int dev_id, int ch, char if_10bit)
 	mem_base = adc->mem_base;
 
 	count = 0;
+	spin_lock_irqsave(&adc->lock, flags);
 	while (getb(mem_base, FLAG_BUSY_BL30) ||
 			(adc->state != SARADC_STATE_IDLE)) {
 		if (++count > 200) {
 			saradc_err("get adc res timeout!\n");
+			spin_unlock_irqrestore(&adc->lock, flags);
 			return -1;
 		}
 		udelay(1);
 	}
-
-	spin_lock_irqsave(&adc->lock, flags);
-	adc->state = SARADC_STATE_BUSY;
 	setb(mem_base, FLAG_BUSY_KERNEL, 1);
 	isb();
 	dsb(sy);
-	udelay(1);
+	udelay(5);
+	adc->state = SARADC_STATE_BUSY;
 	if (getb(mem_base, FLAG_BUSY_BL30)) {
 		value = -1;
 		goto end;
