@@ -710,6 +710,9 @@ to_cma_ahead:
 		del_page_from_lru_list(page, lruvec, page_lru(page));
 
 isolate_success:
+		WARN(PageMovable(page) && !PageIsolated(page),
+			"page:%lx add but not isolated, flags:%lx\n",
+			page_to_pfn(page), page->flags);
 		cc->finished_update_migrate = true;
 		list_add(&page->lru, migratelist);
 		cc->nr_migratepages++;
