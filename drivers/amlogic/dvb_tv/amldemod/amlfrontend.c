@@ -381,11 +381,120 @@ static ssize_t dvbc_reg_store(struct class *cls, struct class_attribute *attr,
 	return 0;
 }
 
+
+static ssize_t info_show(struct class *cls,
+				  struct class_attribute *attr, char *buf)
+{
+	int pos = 0;
+	unsigned int size = PAGE_SIZE;
+
+	int snr, lock_status, bch, agc_if_gain, ser;
+	struct dvb_frontend *dvbfe;
+	int strength = 0;
+
+	pos += snprintf(buf+pos, size-pos, "dtv demod info:\n");
+
+	switch (demod_mode_para) {
+	case AML_DVBC:
+		pos += snprintf(buf+pos, size-pos, "mode:AML_DVBC\n");
+		break;
+
+	case AML_DTMB:
+		pos += snprintf(buf+pos, size-pos, "mode:AML_DTMB\n");
+
+		/* DTMB_READ_STRENGTH */
+		dvbfe = get_si2177_tuner();
+		if (dvbfe != NULL)
+			if (dvbfe->ops.tuner_ops.get_strength) {
+				strength =
+				dvbfe->ops.tuner_ops.get_strength(dvbfe);
+			}
+		if (strength <= -56) {
+			agc_if_gain =
+				((dtmb_read_reg(DTMB_TOP_FRONT_AGC))&0x3ff);
+			strength = dtmb_get_power_strength(agc_if_gain);
+		}
+		pos += snprintf(buf+pos, size-pos,
+					"strength: %d\n", strength);
+
+		/* DTMB_READ_SNR */
+		snr = dtmb_read_reg(DTMB_TOP_FEC_LOCK_SNR) & 0x3fff;
+		snr = convert_snr(snr);
+		pos += snprintf(buf+pos, size-pos, "snr: %d\n", snr);
+
+		/* DTMB_READ_LOCK */
+		lock_status =
+			(dtmb_read_reg(DTMB_TOP_FEC_LOCK_SNR) >> 14) & 0x1;
+
+		pos += snprintf(buf+pos, size-pos, "lock: %d\n", lock_status);
+
+		/* DTMB_READ_BCH */
+		bch = dtmb_read_reg(DTMB_TOP_FEC_BCH_ACC);
+
+		pos += snprintf(buf+pos, size-pos, "bch: %d\n", bch);
+
+		break;
+	case AML_DVBT:
+		pos += snprintf(buf+pos, size-pos, "mode:AML_DVBT\n");
+		break;
+	case AML_ATSC:
+		pos += snprintf(buf+pos, size-pos, "mode:AML_ATSC\n");
+		if (atsc_mode != VSB_8)
+			return pos;
+
+
+		/* ATSC_READ_STRENGTH */
+		dvbfe = get_si2177_tuner();
+		if (dvbfe != NULL)
+			if (dvbfe->ops.tuner_ops.get_strength) {
+				strength =
+				dvbfe->ops.tuner_ops.get_strength(dvbfe);
+			}
+			strength -= 100;
+		pos += snprintf(buf+pos, size-pos, "strength: %d\n", strength);
+
+
+		/* ATSC_READ_SNR */
+		snr = atsc_read_snr();
+		pos += snprintf(buf+pos, size-pos, "snr: %d\n", snr);
+
+		/* ATSC_READ_LOCK */
+		lock_status = atsc_read_reg(0x0980);
+		pos += snprintf(buf+pos, size-pos, "lock: %d\n", lock_status);
+
+		/* ATSC_READ_SER */
+		ser = atsc_read_ser();
+		pos += snprintf(buf+pos, size-pos, "ser: %d\n", ser);
+
+		/* ATSC_READ_FREQ */
+		pos += snprintf(buf+pos, size-pos, "freq: %d\n", freq_p);
+
+		break;
+	case AML_J83B:
+		pos += snprintf(buf+pos, size-pos, "mode:AML_J83B\n");
+		break;
+	case AML_ISDBT:
+		pos += snprintf(buf+pos, size-pos, "mode:AML_ISDBT\n");
+		break;
+	case AML_DVBT2:
+		pos += snprintf(buf+pos, size-pos, "mode:AML_DVBT2\n");
+		break;
+	default:
+		pos += snprintf(buf+pos, size-pos, "mode:Unknow\n");
+		break;
+	}
+
+	return pos;
+}
+
+
 static CLASS_ATTR(auto_sym, 0644, dvbc_auto_sym_show, dvbc_auto_sym_store);
 static CLASS_ATTR(dtmb_para, 0644, dtmb_para_show, dtmb_para_store);
 static CLASS_ATTR(dvbc_reg, 0666, dvbc_reg_show, dvbc_reg_store);
 static CLASS_ATTR(atsc_para, 0666, atsc_para_show, atsc_para_store);
 static CLASS_ATTR(demod_rate, 0644, demod_para_show, demod_para_store);
+/* DebugInfo */
+static CLASS_ATTR(info, S_IRUGO, info_show, NULL);
 
 
 
@@ -1519,6 +1628,7 @@ static int gxtv_demod_fe_leave_mode(struct aml_fe *fe, int mode)
 	}
 
 	adc_set_pll_cntl(0, 0x04, NULL);
+	demod_mode_para = UNKNOWN;
 	/* should disable the adc ref signal for demod */
 	vdac_enable(0, 0x2);
 	msleep(200);
@@ -1578,6 +1688,10 @@ static int __init gxtvdemodfrontend_init(void)
 	if (ret)
 		pr_error("[gxtv demod]%s create class error.\n", __func__);
 
+	ret = class_create_file(gxtv_clsp, &class_attr_info);
+	if (ret)
+		pr_error("[gxtv demod]%s create class error.\n", __func__);
+
 	return aml_register_fe_drv(AM_DEV_DTV_DEMOD, &gxtv_demod_dtv_demod_drv);
 }
 
@@ -1592,6 +1706,7 @@ static void __exit gxtvdemodfrontend_exit(void)
 	class_remove_file(gxtv_clsp, &class_attr_dvbc_reg);
 	class_remove_file(gxtv_clsp, &class_attr_atsc_para);
 	class_remove_file(gxtv_clsp, &class_attr_demod_rate);
+	class_remove_file(gxtv_clsp, &class_attr_info);
 	class_destroy(gxtv_clsp);
 	aml_unregister_fe_drv(AM_DEV_DTV_DEMOD, &gxtv_demod_dtv_demod_drv);
 }
