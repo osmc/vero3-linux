@@ -46,6 +46,14 @@ MODULE_PARM_DESC(debug_aml, "\n\t\t Enable frontend debug information");
 static int debug_aml = 1;
 module_param(debug_aml, int, 0644);
 
+MODULE_PARM_DESC(auto_search_std, "\n\t\t atsc-c std&hrc search");
+static unsigned int auto_search_std;
+module_param(auto_search_std, int, 0644);
+
+MODULE_PARM_DESC(std_lock_timeout, "\n\t\t atsc-c std lock timeout");
+static unsigned int std_lock_timeout = 1000;
+module_param(std_lock_timeout, int, 0644);
+
 #define pr_dbg(a ...) \
 	do { \
 		if (debug_aml) { \
@@ -1129,7 +1137,7 @@ static int gxtv_demod_atsc_set_frontend(struct dvb_frontend *fe)
 	struct aml_demod_i2c demod_i2c;
 	struct aml_fe *afe = fe->demodulator_priv;
 	struct aml_fe_dev *dev = afe->dtv_demod;
-
+	int temp_freq = 0;
 	demod_i2c.tuner = dev->drv->id;
 	demod_i2c.addr = dev->i2c_addr;
 
@@ -1168,6 +1176,74 @@ static int gxtv_demod_atsc_set_frontend(struct dvb_frontend *fe)
 		param_atsc.ch_freq = c->frequency / 1000;
 		param_atsc.mode = c->modulation;
 		atsc_set_ch(&demod_status, &demod_i2c, &param_atsc);
+	}
+	if ((auto_search_std == 1) && ((c->modulation <= QAM_AUTO)
+	&& (c->modulation != QPSK))) {
+		unsigned char s = 0;
+		msleep(std_lock_timeout);
+		s = amdemod_dvbc_stat_islock(dev);
+		if (s == 1) {
+			pr_dbg("atsc std mode is %d locked\n" , atsc_mode);
+			afe->params = *c;
+			return 0;
+		}
+		if ((c->frequency == 79000000) || (c->frequency == 85000000)) {
+			temp_freq = (c->frequency + 2000000) / 1000;
+			param_j83b.ch_freq = temp_freq;
+			pr_dbg("irc fre:%d\n" , param_j83b.ch_freq);
+			c->frequency = param_j83b.ch_freq * 1000;
+			afe->params.frequency = param_j83b.ch_freq * 1000;
+			aml_fe_analog_set_frontend(fe);
+			demod_set_mode_ts(Gxtv_Dvbc);
+			param_j83b.mode = amdemod_qam(c->modulation);
+			if (c->modulation == QAM_64)
+				param_j83b.symb_rate = 5057;
+			else if (c->modulation == QAM_256)
+				param_j83b.symb_rate = 5361;
+			else
+				param_j83b.symb_rate = 5361;
+			dvbc_set_ch(&demod_status, &demod_i2c,
+			&param_j83b);
+
+			msleep(std_lock_timeout);
+			s = amdemod_dvbc_stat_islock(dev);
+			if (s == 1) {
+				pr_dbg("irc mode is %d locked\n" , atsc_mode);
+			} else {
+				temp_freq = (c->frequency - 1250000) / 1000;
+				param_j83b.ch_freq = temp_freq;
+				pr_dbg("hrc fre:%d\n" , param_j83b.ch_freq);
+				c->frequency = param_j83b.ch_freq * 1000;
+				afe->params.frequency = temp_freq * 1000;
+				aml_fe_analog_set_frontend(fe);
+				demod_set_mode_ts(Gxtv_Dvbc);
+				param_j83b.mode = amdemod_qam(c->modulation);
+				if (c->modulation == QAM_64)
+					param_j83b.symb_rate = 5057;
+				else if (c->modulation == QAM_256)
+					param_j83b.symb_rate = 5361;
+				else
+					param_j83b.symb_rate = 5361;
+				dvbc_set_ch(&demod_status, &demod_i2c,
+				&param_j83b);
+			}
+		} else {
+			param_j83b.ch_freq = (c->frequency - 1250000) / 1000;
+			pr_dbg("hrc fre:%d\n" , param_j83b.ch_freq);
+			c->frequency = param_j83b.ch_freq * 1000;
+			afe->params.frequency = param_j83b.ch_freq * 1000;
+			aml_fe_analog_set_frontend(fe);
+			demod_set_mode_ts(Gxtv_Dvbc);
+			param_j83b.mode = amdemod_qam(c->modulation);
+			if (c->modulation == QAM_64)
+				param_j83b.symb_rate = 5057;
+			else if (c->modulation == QAM_256)
+				param_j83b.symb_rate = 5361;
+			else
+				param_j83b.symb_rate = 5361;
+			dvbc_set_ch(&demod_status, &demod_i2c,
+			&param_j83b);
+		}
 	}
 	afe->params = *c;
 	pr_dbg("atsc_mode is %d\n", atsc_mode);
@@ -1392,7 +1468,7 @@ static int gxtv_demod_fe_get_ops(struct aml_fe_dev *dev, int mode, void *ops)
 		return -1;
 	if (mode == AM_FE_OFDM) {
 		fe_ops->info.frequency_min = 51000000;
-		fe_ops->info.frequency_max = 858000000;
+		fe_ops->info.frequency_max = 900000000;
 		fe_ops->info.frequency_stepsize = 0;
 		fe_ops->info.frequency_tolerance = 0;
 		fe_ops->info.caps =
@@ -1417,7 +1493,7 @@ static int gxtv_demod_fe_get_ops(struct aml_fe_dev *dev, int mode, void *ops)
 		Gxtv_Demod_Dvbt_Init(dev);
 	} else if (mode == AM_FE_QAM) {
 		fe_ops->info.frequency_min = 51000000;
-		fe_ops->info.frequency_max = 858000000;
+		fe_ops->info.frequency_max = 900000000;
 		fe_ops->info.frequency_stepsize = 0;
 		fe_ops->info.frequency_tolerance = 0;
 		fe_ops->info.caps =
@@ -1445,7 +1521,7 @@ static int gxtv_demod_fe_get_ops(struct aml_fe_dev *dev, int mode, void *ops)
 		Gxtv_Demod_Dvbc_Init(dev, Adc_mode);
 	} else if (mode == AM_FE_ATSC) {
 		fe_ops->info.frequency_min = 51000000;
-		fe_ops->info.frequency_max = 858000000;
+		fe_ops->info.frequency_max = 900000000;
 		fe_ops->info.frequency_stepsize = 0;
 		fe_ops->info.frequency_tolerance = 0;
 		fe_ops->info.caps =
