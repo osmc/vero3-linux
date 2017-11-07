@@ -607,8 +607,6 @@ static void vdin_set_display_ratio(struct vdin_dev_s *devp,
 		vf->ratio_control = 0xc0 << DISP_RATIO_ASPECT_RATIO_BIT;
 	else if (aspect_ratio == TVIN_ASPECT_16x9)
 		vf->ratio_control = 0x90 << DISP_RATIO_ASPECT_RATIO_BIT;
-	else
-		vf->ratio_control = 0x0 << DISP_RATIO_ASPECT_RATIO_BIT;
 }
 
 /*function:set source bitdepth
