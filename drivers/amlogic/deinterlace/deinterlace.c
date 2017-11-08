@@ -3557,6 +3557,9 @@ static void config_di_mif(struct DI_MIF_s *di_mif, struct di_buf_s *di_buf)
 static void di_pre_size_change(unsigned short width,
 	unsigned short height, unsigned short vf_type);
 
+#ifdef CONFIG_MULTI_DEC
+static void pre_inp_canvas_config(struct vframe_s *vf);
+#endif
 static void pre_de_process(void)
 {
 	unsigned short pre_width = 0, pre_height = 0;
@@ -3572,6 +3575,9 @@ static void pre_de_process(void)
 		me_auto_en = false;
 	di_pre_stru.pre_de_busy = 1;
 	di_pre_stru.pre_de_busy_timer_count = 0;
+	#ifdef CONFIG_MULTI_DEC
+	pre_inp_canvas_config(di_pre_stru.di_inp_buf->vframe);
+	#endif
 
 	config_di_mif(&di_pre_stru.di_inp_mif, di_pre_stru.di_inp_buf);
 	/* pr_dbg("set_separate_en=%d vframe->type %d\n",
@@ -5508,9 +5514,6 @@ static unsigned char pre_de_buf_config(void)
 		if (vframe == NULL)
 			return 0;
 		else {
-			#ifdef CONFIG_MULTI_DEC
-			pre_inp_canvas_config(vframe);
-			#endif
 			di_print("DI: get %dth vf[0x%p] from frontend %u ms.\n",
 			di_pre_stru.in_seq, vframe,
 jiffies_to_msecs(jiffies_64 - vframe->ready_jiffies64));
@@ -5597,7 +5600,6 @@ jiffies_to_msecs(jiffies_64 - vframe->ready_jiffies64));
 		}
 #endif
 		memcpy(di_buf->vframe, vframe, sizeof(vframe_t));
-
 		di_buf->vframe->private_data = di_buf;
 		vframe_in[di_buf->index] = vframe;
 		di_buf->seq = di_pre_stru.in_seq;
