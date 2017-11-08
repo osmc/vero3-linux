@@ -54,7 +54,7 @@ int atsc_read_ser(void);
 
 void atsc_thread(void);
 
-void atsc_set_performance_register(int flag);
+void atsc_set_performance_register(int flag, int init);
 
 int snr_avg_100_times(void);
 

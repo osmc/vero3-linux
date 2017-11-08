@@ -547,9 +547,9 @@ if (!field_test_version) {
 	atsc_write_reg(0xf6e, 0x09);
 	atsc_write_reg(0x562, 0x08);
 	if (awgn_flag == TASK4_TASK5_AWGN)
-		atsc_set_performance_register(TASK4_TASK5_AWGN);
+		atsc_set_performance_register(TASK4_TASK5_AWGN, 1);
 	else
-		atsc_set_performance_register(TASK8_R22);
+		atsc_set_performance_register(TASK8_R22, 1);
 } else
 	pr_dbg("!!!!!! field test !!!!!!!!!");
 	ar_flag = 0;
@@ -1004,7 +1004,7 @@ void atsc_set_r22_register(int flag)
 	}
 }
 
-void atsc_set_performance_register(int flag)
+void atsc_set_performance_register(int flag, int init)
 {
 	if (flag == TASK4_TASK5_AWGN) {
 		atsc_write_reg(0x912, 0x00);
@@ -1012,10 +1012,15 @@ void atsc_set_performance_register(int flag)
 		awgn_flag = TASK4_TASK5_AWGN;
 	} else {
 		atsc_write_reg(0x912, 0x50);
-		atsc_write_reg(0x5bc, 0x08);
+		if (init == 0) {
+			atsc_write_reg(0x5bc, 0x07);
+			atsc_write_reg(0xf6e, 0xaf);
+		} else {
+			atsc_write_reg(0x5bc, 0x8);
+			atsc_write_reg(0xf6e, 0x09);
+		}
 		awgn_flag = TASK8_R22;
 	}
-
 }
 
 void atsc_thread(void)
@@ -1110,19 +1115,19 @@ void atsc_thread(void)
 			pr_dbg("snr_now is %d\n", snr_now);
 			if ((snr_now <= 16) && snr_now >= 10) {
 				atsc_set_performance_register
-				(TASK4_TASK5_AWGN);
+				(TASK4_TASK5_AWGN, 0);
 			} else if (snr_now < 10) {
 				atsc_set_performance_register
-				(TASK4_TASK5_AWGN);
+				(TASK4_TASK5_AWGN, 0);
 			} else {
-				if (snr_now > 25) {
+				if (snr_now > 23) {
 					atsc_set_performance_register
-					(TASK4_TASK5_AWGN);
-					pr_dbg("snr(25)\n");
-				} else if ((snr_now > 16) && (snr_now <= 25)) {
+					(TASK4_TASK5_AWGN, 0);
+					pr_dbg("snr(23)\n");
+				} else if ((snr_now > 16) && (snr_now <= 23)) {
 					atsc_set_performance_register
-					(TASK8_R22);
-					pr_dbg("snr(16,25)\n");
+					(TASK8_R22, 0);
+					pr_dbg("snr(16,23)\n");
 				} else {
 					awgn_flag = TASK8_R22;
 				}
