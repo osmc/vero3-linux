@@ -451,7 +451,8 @@
 /** Register address: audio FIFO control */
 #define DWC_AUD_FIFO_CTRL        (0x240UL)
 /** Audio FIFO reset */
-#define		AFIF_INIT				_BIT(0)
+#define AFIF_INIT                 _BIT(0)
+#define AFIF_SUBPACKETS           _BIT(16)
 /** Register address: audio FIFO threshold */
 #define DWC_AUD_FIFO_TH          (0x244UL)
 /** Register address: audio FIFO fill */
