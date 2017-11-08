@@ -85,7 +85,7 @@ static struct fun_symbol common_func[] __initdata = {
 	{}		/* tail */
 };
 
-static int early_page_trace_param(char *buf)
+static int __init early_page_trace_param(char *buf)
 {
 	if (!buf)
 		return -EINVAL;
