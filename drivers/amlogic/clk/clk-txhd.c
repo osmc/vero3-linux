@@ -309,7 +309,7 @@ static struct amlogic_clk_branch clk_branches[] __initdata = {
 		   HHI_TCON_CLK_CNTL, 6, 0),
 	/* cts_ts_clk*/
 	COMPOSITE(CLK_TS, "cts_ts_clk", cts_ts_p,
-		   CLK_SET_RATE_NO_REPARENT,
+		   CLK_SET_RATE_NO_REPARENT | CLK_IGNORE_UNUSED,
 		   HHI_TS_CLK_CNTL, 8, 2, 0,
 		   HHI_TS_CLK_CNTL, 0, 7,
 		   CLK_DIVIDER_ROUND_CLOSEST,
