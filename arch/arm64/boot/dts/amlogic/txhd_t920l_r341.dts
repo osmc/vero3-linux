@@ -1006,7 +1006,7 @@
 
 	aml_sensor0: aml-sensor@0 {
 		compatible = "amlogic, aml-thermal";
-		status = "disabled";
+		status = "okay";
 		device_name = "thermal";
 		#thermal-sensor-cells = <1>;
 		cooling_devices {
