@@ -491,15 +491,16 @@ static int pwm_aml_config(struct pwm_chip *chip,
 		return -EINVAL;
 	}
 	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXTVBB) && (id > PWM_AO_B)
-		&& id < PWM_AO_B2)
-		pwm_meson_config_ext(our_chip, our_chan, id);/*double pwm*/
-	else {
-		if (id == PWM_AO_C || id == PWM_AO_D)
+		&& id <= PWM_AO_B2)/*double pwm*/
+			pwm_meson_config_ext(our_chip, our_chan, id);
+	else if (id <= PWM_AO_B && id >= PWM_A)
 			pwm_meson_config(our_chip, our_chan, id);/*single pwm*/
-		else
+	else if (id == PWM_AO_C || id == PWM_AO_D)
+			pwm_meson_config(our_chip, our_chan, id);/*single pwm*/
+	else if (id == PWM_AO_C2 || id == PWM_AO_D2)
 			pwm_meson_config_ext(our_chip, our_chan, id);
 			/*double pwm for pwm ao cd*/
-	}
+
 	our_chan->period_ns = period_ns;
 	our_chan->duty_ns = duty_ns;
 
