@@ -4601,6 +4601,14 @@ static void config_hdmi20_tx(enum hdmi_vic vic,
 		}
 	}
 
+	if (hdev->flag_3dfp) {
+		hdmitx_set_reg_bits(HDMITX_DWC_FC_DATAUTO0, 1, 3, 1);
+		hdmitx_set_reg_bits(HDMITX_DWC_FC_PACKET_TX_EN, 1, 4, 1);
+	 } else {
+		hdmitx_set_reg_bits(HDMITX_DWC_FC_DATAUTO0, 0, 3, 1);
+		hdmitx_set_reg_bits(HDMITX_DWC_FC_PACKET_TX_EN, 0, 4, 1);
+	}
+
 	hdmitx_wr_reg(HDMITX_DWC_FC_RDRB0,  0);
 	hdmitx_wr_reg(HDMITX_DWC_FC_RDRB1,  0);
 	hdmitx_wr_reg(HDMITX_DWC_FC_RDRB2,  0);
