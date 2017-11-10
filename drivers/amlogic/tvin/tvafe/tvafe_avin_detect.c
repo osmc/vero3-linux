@@ -30,6 +30,8 @@
 #include <linux/uaccess.h>
 #include <linux/delay.h>
 #include "tvafe_avin_detect.h"
+#include "tvafe.h"
+#include "tvafe_regs.h"
 #include "../tvin_global.h"
 
 
@@ -326,22 +328,6 @@ void tvafe_cha2_SYNCTIP_close_config(void)
 		AFE_CH2_SYNC_HYS_ADJ_BIT, AFE_CH2_SYNC_HYS_ADJ_WIDTH);
 }
 
-void tvafe_cha1_2_SYNCTIP_close_config(void)
-{
-	W_HIU_BIT(HHI_CVBS_DETECT_CNTL, 1, AFE_CH1_EN_SYNC_TIP_BIT,
-		AFE_CH1_EN_SYNC_TIP_WIDTH);
-	W_HIU_BIT(HHI_CVBS_DETECT_CNTL, avplay_sync_level,
-		AFE_CH1_SYNC_LEVEL_ADJ_BIT, AFE_CH1_SYNC_LEVEL_ADJ_WIDTH);
-	W_HIU_BIT(HHI_CVBS_DETECT_CNTL, 1,
-		AFE_CH1_SYNC_HYS_ADJ_BIT, AFE_CH1_SYNC_HYS_ADJ_WIDTH);
-	W_HIU_BIT(HHI_CVBS_DETECT_CNTL, 1, AFE_CH2_EN_SYNC_TIP_BIT,
-		AFE_CH2_EN_SYNC_TIP_WIDTH);
-	W_HIU_BIT(HHI_CVBS_DETECT_CNTL, avplay_sync_level,
-		AFE_CH2_SYNC_LEVEL_ADJ_BIT, AFE_CH2_SYNC_LEVEL_ADJ_WIDTH);
-	W_HIU_BIT(HHI_CVBS_DETECT_CNTL, 0,
-		AFE_CH2_SYNC_HYS_ADJ_BIT, AFE_CH2_SYNC_HYS_ADJ_WIDTH);
-}
-
 /*After the CVBS is unplug,the EN_SYNC_TIP need be set to "1"*/
 /*to sense the plug in operation*/
 void tvafe_cha1_detect_restart_config(void)
@@ -571,6 +557,8 @@ static ssize_t tvafe_avin_detect_store(struct device *dev,
 		tvafe_avin_detect_enable(avdev);
 	} else if (!strcmp(parm[0], "disable")) {
 		tvafe_avin_detect_disable(avdev);
+		av1_plugin_state = 0;
+		av2_plugin_state = 0;
 	} else if (!strcmp(parm[0], "status")) {
 		tvafe_avin_detect_state(avdev);
 	} else
@@ -583,7 +571,6 @@ static void tvafe_avin_detect_timer_handler(unsigned long arg)
 	unsigned int state_changed;
 	struct tvafe_avin_det_s *avdev = (struct tvafe_avin_det_s *)arg;
 
-	mutex_lock(&avdev->lock);
 	if (avdev->dts_param.device_mask == TVAFE_AVIN_CH1_MASK)
 		avdev->irq_counter[0] = aml_read_cbus(CVBS_IRQ0_COUNTER);
 	else if (avdev->dts_param.device_mask == TVAFE_AVIN_CH2_MASK)
@@ -601,7 +588,15 @@ static void tvafe_avin_detect_timer_handler(unsigned long arg)
 					avdev->report_data_s[1].status =
 							TVAFE_AVIN_STATUS_IN;
 					state_changed = 1;
+					av2_plugin_state = 0;
 					pr_info("avin[1].status IN.\n");
+				/*port opened and plug in,enable clamp*/
+				/*sync tip close*/
+				if (avport_opened == TVAFE_PORT_AV2) {
+					W_APB_BIT(TVFE_CLAMP_INTF, 1,
+					CLAMP_EN_BIT, CLAMP_EN_WID);
+					tvafe_cha2_SYNCTIP_close_config();
+				}
 				}
 				s_irq_counter1_time = 0;
 			}
@@ -616,9 +611,15 @@ static void tvafe_avin_detect_timer_handler(unsigned long arg)
 					avdev->report_data_s[1].status =
 						TVAFE_AVIN_STATUS_OUT;
 					state_changed = 1;
+					av2_plugin_state = 1;
 					pr_info("avin[1].status OUT.\n");
-
+				/*port opened but plug out,need disable clamp*/
+				if (avport_opened == TVAFE_PORT_AV2) {
+					W_APB_BIT(TVFE_CLAMP_INTF, 0,
+						CLAMP_EN_BIT, CLAMP_EN_WID);
+					/*restart in tvafe port close*/
 					tvafe_cha2_detect_restart_config();
+				}
 				}
 				s_irq_counter1_time = 0;
 			}
@@ -638,7 +639,15 @@ static void tvafe_avin_detect_timer_handler(unsigned long arg)
 				avdev->report_data_s[0].status =
 					TVAFE_AVIN_STATUS_IN;
 				state_changed = 1;
+				av1_plugin_state = 0;
 				pr_info("avin[0].status IN.\n");
+				/*port opened and plug in then enable clamp*/
+				/*sync tip close*/
+				if (avport_opened == TVAFE_PORT_AV1) {
+					W_APB_BIT(TVFE_CLAMP_INTF, 1,
+						CLAMP_EN_BIT, CLAMP_EN_WID);
+					tvafe_cha1_SYNCTIP_close_config();
+				}
 			}
 			s_irq_counter0_time = 0;
 		}
@@ -653,19 +662,24 @@ static void tvafe_avin_detect_timer_handler(unsigned long arg)
 				avdev->report_data_s[0].status =
 						TVAFE_AVIN_STATUS_OUT;
 				state_changed = 1;
+				av1_plugin_state = 1;
 				pr_info("avin[0].status OUT.\n");
 
 			/*After the CVBS is unplug,*/
 			/*the EN_SYNC_TIP need be set to "1"*/
 			/*to sense the plug in operation*/
-				tvafe_cha1_detect_restart_config();
+			/*port opened but plug out,need disable clamp*/
+				if (avport_opened == TVAFE_PORT_AV1) {
+					W_APB_BIT(TVFE_CLAMP_INTF, 0,
+						CLAMP_EN_BIT, CLAMP_EN_WID);
+					tvafe_cha1_detect_restart_config();
+				}
 			}
 			s_irq_counter0_time = 0;
 		}
 		s_counter0_last_state = 0;
 	}
 	s_irq_counter0 = avdev->irq_counter[0];
-	mutex_unlock(&avdev->lock);
 
 	if (state_changed)
 		wake_up_interruptible(&tvafe_avin_waitq);
@@ -712,7 +726,6 @@ int tvafe_avin_detect_probe(struct platform_device *pdev)
 		goto get_dts_dat_fail;
 	}
 
-	mutex_init(&avdev->lock);
 	/* register char device */
 	ret = tvafe_register_avin_dev(avdev);
 	/* create class attr file */

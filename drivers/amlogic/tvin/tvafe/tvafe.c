@@ -103,6 +103,14 @@ bool tvafe_snow_function_flag;
 read write cvd acd reg will crash when clk disabled*/
 bool tvafe_clk_status;
 
+#ifdef CONFIG_TVIN_AVIN_DETECT
+/*opened port,1:av1, 2:av2, 0:none av*/
+unsigned int avport_opened;
+/*0:in, 1:out*/
+unsigned int av1_plugin_state;
+unsigned int av2_plugin_state;
+#endif
+
 static unsigned int tvafe_ratio_cnt = 50;
 module_param(tvafe_ratio_cnt, uint, 0644);
 MODULE_PARM_DESC(tvafe_ratio_cnt, "tvafe aspect ratio valid cnt");
@@ -909,21 +917,7 @@ int tvafe_dec_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		mutex_unlock(&devp->afe_mutex);
 		return 1;
 	}
-#ifdef CONFIG_TVIN_AVIN_DETECT
-	/*only txlx chip enabled*/
-	if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
-		/*synctip set to 0 when tvafe working*/
-		if (port == TVIN_PORT_CVBS1) {
-			/*channel1*/
-			tvafe_cha1_SYNCTIP_close_config();
-		} else if (port == TVIN_PORT_CVBS2) {
-			/*channel2*/
-			tvafe_cha2_SYNCTIP_close_config();
-		} else {
-			tvafe_cha1_2_SYNCTIP_close_config();
-		}
-	}
-#endif
+
 #ifdef CONFIG_CMA
 	tvafe_cma_alloc(devp);
 #endif
@@ -941,6 +935,41 @@ int tvafe_dec_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	/* init tvafe registers */
 	tvafe_init_reg(&tvafe->cvd2, &devp->mem, port, devp->pinmux);
 
+#ifdef CONFIG_TVIN_AVIN_DETECT
+	/*only txlx chip enabled*/
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
+		/*synctip set to 0 when tvafe working&&av connected*/
+		/*enable clamp if av connected*/
+		if (port == TVIN_PORT_CVBS1) {
+			avport_opened = TVAFE_PORT_AV1;
+			if (av1_plugin_state == 0) {
+				W_APB_BIT(TVFE_CLAMP_INTF, 1,
+						CLAMP_EN_BIT, CLAMP_EN_WID);
+				/*channel1*/
+				tvafe_cha1_SYNCTIP_close_config();
+			} else
+				W_APB_BIT(TVFE_CLAMP_INTF, 0,
+						CLAMP_EN_BIT, CLAMP_EN_WID);
+		} else if (port == TVIN_PORT_CVBS2) {
+			avport_opened = TVAFE_PORT_AV2;
+			if (av2_plugin_state == 0) {
+				W_APB_BIT(TVFE_CLAMP_INTF, 1,
+						CLAMP_EN_BIT, CLAMP_EN_WID);
+				/*channel2*/
+				tvafe_cha2_SYNCTIP_close_config();
+			} else
+				W_APB_BIT(TVFE_CLAMP_INTF, 0,
+						CLAMP_EN_BIT, CLAMP_EN_WID);
+		} else {
+			avport_opened = 0;
+			W_APB_BIT(TVFE_CLAMP_INTF, 1,
+					CLAMP_EN_BIT, CLAMP_EN_WID);
+		}
+	}
+#else
+	W_APB_BIT(TVFE_CLAMP_INTF, 1,
+					CLAMP_EN_BIT, CLAMP_EN_WID);
+#endif
 	tvafe->parm.port = port;
 #if 0
 	/* timer */
@@ -1134,9 +1163,11 @@ void tvafe_dec_close(struct tvin_frontend_s *fe)
 	if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 		/*avsync tip set 1 to resume av detect*/
 		if (tvafe->parm.port == TVIN_PORT_CVBS1) {
+			avport_opened = 0;
 			/*channel1*/
 			tvafe_cha1_detect_restart_config();
 		} else if (tvafe->parm.port == TVIN_PORT_CVBS2) {
+			avport_opened = 0;
 			/*channel2*/
 			tvafe_cha2_detect_restart_config();
 		} else {
@@ -2577,6 +2608,11 @@ static int tvafe_drv_probe(struct platform_device *pdev)
 	/*init tvafe param*/
 	tdevp->frame_skip_enable = 1;
 
+#ifdef CONFIG_TVIN_AVIN_DETECT
+	avport_opened = 0;
+	av1_plugin_state = 0;
+	av2_plugin_state = 0;
+#endif
 	pr_info("tvafe: driver probe ok\n");
 	return 0;
 
