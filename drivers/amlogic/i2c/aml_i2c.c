@@ -59,7 +59,6 @@
 #include <mach/gpio_data.h>
 #endif
 int aml_i2c_device_num = 0;
-static struct aml_i2c_platform *aml_i2c_properties_list;
 static int i2c_speed[] = {AML_I2C_SPEED_50K, AML_I2C_SPEED_100K,
 	AML_I2C_SPEED_200K, AML_I2C_SPEED_300K, AML_I2C_SPEED_400K};
 
@@ -964,13 +963,6 @@ static int aml_i2c_probe(struct platform_device *pdev)
 		aml_i2c_property->master_state_name  = NULL;
 	}
 
-	if (aml_i2c_device_num == 0) {
-		aml_i2c_properties_list = aml_i2c_property;
-		INIT_LIST_HEAD(&aml_i2c_properties_list->list);
-	} else{
-		list_add_tail(&aml_i2c_property->list ,
-			&aml_i2c_properties_list->list);
-	}
 	aml_i2c_device_num++;
 
 	plat = (struct aml_i2c_platform *)aml_i2c_property;
