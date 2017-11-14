@@ -5851,7 +5851,8 @@ static int init_buf_spec(struct hevc_state_s *hevc)
 	return 0;
 }
 
-static int parse_sei(struct hevc_state_s *hevc, char *sei_buf, uint32_t size)
+static int parse_sei(struct hevc_state_s *hevc,
+	struct PIC_s *pic, char *sei_buf, uint32_t size)
 {
 	char *p = sei_buf;
 	char *p_sei;
@@ -5874,6 +5875,17 @@ static int parse_sei(struct hevc_state_s *hevc, char *sei_buf, uint32_t size)
 		payload_size = *p++;
 		if (p+payload_size <= sei_buf+size) {
 			switch (payload_type) {
+			case SEI_PicTiming:
+				p_sei = p;
+				hevc->curr_pic_struct = (*p_sei >> 4)&0x0f;
+				pic->pic_struct = hevc->curr_pic_struct;
+				if (get_dbg_flag(hevc) &
+					H265_DEBUG_PIC_STRUCT) {
+					hevc_print(hevc, 0,
+					"parse result pic_struct = %d\n",
+					hevc->curr_pic_struct);
+				}
+				break;
 			case SEI_MasteringDisplayColorVolume:
 				/*hevc_print(hevc, 0,
 					"sei type: primary display color volume %d, size %d\n",
@@ -6075,7 +6087,7 @@ static void set_frame_info(struct hevc_state_s *hevc, struct vframe_s *vf,
 			if (type == 0x02000000) {
 				/* hevc_print(hevc, 0,
 				"sei(%d)\n", size); */
-				parse_sei(hevc, p, size);
+				parse_sei(hevc, pic, p, size);
 			}
 			p += size;
 		}
@@ -6871,7 +6883,7 @@ static int prepare_display_buf(struct hevc_state_s *hevc, struct PIC_s *pic)
 			/* process current vf */
 			kfifo_put(&hevc->pending_q,
 			(const struct vframe_s *)vf);
-			vf->height <<= 1;
+			/* vf->height <<= 1; */
 			if (pic->pic_struct == 9) {
 				vf->type = VIDTYPE_INTERLACE_TOP
 				| VIDTYPE_VIU_NV21 | VIDTYPE_VIU_FIELD;
@@ -6904,7 +6916,7 @@ static int prepare_display_buf(struct hevc_state_s *hevc, struct PIC_s *pic)
 			(pic->pic_struct == 11));
 
 			/* put current into pending q */
-			vf->height <<= 1;
+			/* vf->height <<= 1; */
 			if (pic->pic_struct == 11)
 				vf->type = VIDTYPE_INTERLACE_TOP |
 				VIDTYPE_VIU_NV21 | VIDTYPE_VIU_FIELD;
