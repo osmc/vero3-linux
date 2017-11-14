@@ -2544,7 +2544,7 @@ void vdin_hw_disable(unsigned int offset)
 	/* mux null input */
 	/* [ 3: 0]  top.mux  = 0/(null, mpeg, 656, tvfe, cvd2, hdmi, dvin) */
 	wr_bits(offset, VDIN_COM_CTRL0, 0, VDIN_SEL_BIT, VDIN_SEL_WID);
-	wr(offset, VDIN_COM_CTRL0, 0x00000910);
+	/*wr(offset, VDIN_COM_CTRL0, 0x00000910);*/
 	vdin_delay_line(delay_line_num, offset);
 	if (enable_reset)
 		wr(offset, VDIN_WR_CTRL, 0x0b401000);
@@ -2675,6 +2675,7 @@ void vdin_enable_module(unsigned int offset, bool enable)
 		/* else */
 		/* aml_write_cbus(HHI_VDIN_MEAS_CLK_CNTL, 0x00000000); */
 		vdin_hw_disable(offset);
+		vdin_dobly_mdata_write_en(offset, 0);
 	}
 }
 #if 0
@@ -3511,7 +3512,11 @@ void vdin_dolby_config(struct vdin_dev_s *devp)
 		wr_bits(offset, VDIN_DOLBY_AXI_CTRL0, 1, 5, 1);
 		wr_bits(offset, VDIN_DOLBY_AXI_CTRL0, 0, 5, 1);
 		wr_bits(offset, VDIN_DOLBY_AXI_CTRL0, 0, 4, 1);
+		/*enable wr memory*/
+		vdin_dobly_mdata_write_en(offset, 1);
 	} else {
+		/*disable wr memory*/
+		vdin_dobly_mdata_write_en(offset, 0);
 		wr(offset, VDIN_DOLBY_DSC_CTRL2, 0x5180c0d5);
 		wr(offset, VDIN_DOLBY_DSC_CTRL3, 0x0);
 	}
@@ -3585,3 +3590,20 @@ int vdin_event_cb(int type, void *data, void *op_arg)
 	}
 	return 0;
 }
+
+void vdin_dobly_mdata_write_en(unsigned int offset, unsigned int en)
+{
+	/*printk("=========>> wr memory %d\n", en);*/
+	if (en) {
+		/*enable write metadate to memory*/
+		wr_bits(offset, VDIN_DOLBY_AXI_CTRL0, 1, 30, 1);
+		/*vdin0 dolby meta write enable*/
+		/*W_VCBUS_BIT(0x27af, 1, 2, 1);*/
+	} else {
+		/*disable write metadate to memory*/
+		wr_bits(offset, VDIN_DOLBY_AXI_CTRL0, 0, 30, 1);
+		/*vdin0 dolby meta write disable*/
+		/*W_VCBUS_BIT(0x27af, 0, 2, 1);*/
+	}
+}
+

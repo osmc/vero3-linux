@@ -181,5 +181,7 @@ extern void vdin_set_wr_ctrl_vsync(struct vdin_dev_s *devp,
 	unsigned int rdma_enable);
 
 extern void vdin_urgent_patch_resume(unsigned int offset);
+extern void vdin_dobly_mdata_write_en(unsigned int offset, unsigned int en);
+
 #endif
 

@@ -886,6 +886,8 @@ void vdin_start_dec(struct vdin_dev_s *devp)
 		vdin_dolby_config(devp);
 		if (vdin_dbg_en)
 			pr_info("vdin start dec dv input config\n");
+	} else {
+		vdin_dobly_mdata_write_en(devp->addr_offset, 0);
 	}
 
 	devp->abnormal_cnt = 0;
