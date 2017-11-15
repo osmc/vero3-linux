@@ -39,7 +39,7 @@
 #define RX_VER1 "Ref.2017/11/01"
 /*------------------------------*/
 
-#define RX_VER2 "Ref.2017/11/08"
+#define RX_VER2 "Ref.2017/11/15"
 /*------------------------------*/
 
 #define RX_VER3 "Ref.2017/10/12"
@@ -608,6 +608,28 @@ struct aud_info_s {
 	int real_sample_rate;
 };
 
+struct rx_audio_stat_s {
+	/*audio packets received*/
+	bool aud_rcv_flag;
+	/*audio stable status*/
+	bool aud_stb_flag;
+	/*audio sample rate*/
+	int aud_sr;
+	/**audio channel count
+	*0: refer to stream header,
+	*1: 2ch, 2: 3ch, 3: 4ch, 4: 5ch,
+	*5: 6ch, 6: 7ch, 7: 8ch*/
+	int aud_channel_cnt;
+	/**audio coding type
+	*0: refer to stream header, 1: IEC60958 PCM,
+	*2: AC-3, 3: MPEG1 (Layers 1 and 2),
+	*4: MP3 (MPEG1 Layer 3), 5: MPEG2 (multichannel),
+	*6: AAC, 7: DTS, 8: ATRAC, 9: One Bit Audio,
+	*10: Dolby Digital Plus, 11: DTS-HD,
+	*12: MAT (MLP), 13: DST, 14: WMA Pro*/
+	int aud_type;
+};
+
 #if 0
 enum packet_type_e {
 	ACR_PACKET = 0x01,
@@ -993,6 +1015,8 @@ extern void hdmi_rx_ctrl_hdcp_config(const struct hdmi_rx_ctrl_hdcp *hdcp);
 extern void hdmirx_audio_pll_sw_update(void);
 extern bool is_afifo_error(void);
 extern bool is_aud_pll_error(void);
+extern void rx_get_audio_status(struct rx_audio_stat_s *aud_sts);
+
 /* vdac ctrl,adc/dac ref signal,cvbs out signal
  * module index: atv demod:0x01; dtv demod:0x02;
  * tvafe:0x4; dac:0x8, audio pll:0x10

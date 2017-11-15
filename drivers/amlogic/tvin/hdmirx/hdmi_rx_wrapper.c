@@ -1744,6 +1744,25 @@ void packet_update(void)
 	hdmirx_dv_packet_stop();
 }
 
+/*
+ * rx_get_audio_status - interface for audio module
+ */
+void rx_get_audio_status(struct rx_audio_stat_s *aud_sts)
+{
+	if (FSM_SIG_READY == rx.state) {
+		aud_sts->aud_rcv_flag =
+			(rx.aud_info.aud_packet_received == 0) ? false : true;
+		aud_sts->aud_stb_flag = true;
+		aud_sts->aud_sr = rx.aud_info.real_sample_rate;
+		aud_sts->aud_channel_cnt = rx.aud_info.coding_type;
+		aud_sts->aud_type = rx.aud_info.channel_count;
+	} else {
+		memset(aud_sts, 0,
+			sizeof(struct rx_audio_stat_s));
+	}
+}
+EXPORT_SYMBOL(rx_get_audio_status);
+
 /* ---------------------------------------------------------- */
 /* func:         port A,B,C,D  hdmitx-5v monitor & HPD control */
 /* note:         G9TV portD no used */
