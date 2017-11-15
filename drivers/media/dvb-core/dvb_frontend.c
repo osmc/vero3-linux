@@ -563,9 +563,10 @@ static int dvb_frontend_swzigzag_autotune(struct dvb_frontend *fe, int check_wra
 	time = jiffies_to_msecs(jiffies)-jiffiestime;
 	dprintk("2---auto tune,time is %d\n", time);
 	if (fe->ops.set_frontend && (time >= LOCK_TIMEOUT)) {
-		if (!is_meson_txlx_cpu())
+		if (!is_meson_txlx_cpu()) {
 			fe_set_err = fe->ops.set_frontend(fe);
-		jiffiestime = jiffies_to_msecs(jiffies);
+			jiffiestime = jiffies_to_msecs(jiffies);
+		}
 	}
 	fepriv->parameters_out = fepriv->parameters_in;
 	*c = tmp;
