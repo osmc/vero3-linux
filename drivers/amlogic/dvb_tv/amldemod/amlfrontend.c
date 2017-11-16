@@ -5,16 +5,20 @@
 **        Filename : amlfrontend.c
 **
 **  comment:
-**        Driver for m6_demod demodulator
+**        Driver for
+**		m2/m6tv/g9tv/gxtvbb/txl/
+**		txlx/gxlx/txhd demodulator
 **  author :
-**	    Shijie.Rong@amlogic
+**	    Shijie.Rong@amlogic.com
 **  version :
 **	    v1.0	 12/3/13
-**          v2.0     15/10/12
+**       v2.0   15/10/12
+**	    v3.0	 17/11/15
 *****************************************************************/
 
 /*
- *  Driver for gxtv_demod demodulator
+ *  Driver for m2/m6tv/g9tv/gxtvbb/txl/
+ *		txlx/gxlx/txhd demodulator
  */
 
 #include <linux/init.h>
@@ -53,6 +57,8 @@ module_param(auto_search_std, int, 0644);
 MODULE_PARM_DESC(std_lock_timeout, "\n\t\t atsc-c std lock timeout");
 static unsigned int std_lock_timeout = 1000;
 module_param(std_lock_timeout, int, 0644);
+/*0.001for field,0.002 for performance*/
+static char *demod_version = "V0.01";
 
 #define pr_dbg(a ...) \
 	do { \
@@ -531,6 +537,35 @@ static irqreturn_t amdemod_isr(int irq, void *data)
 	return IRQ_HANDLED;
 }
 #endif
+
+static void dtvdemod_version(struct aml_fe_dev *dev)
+{
+	char soc_version[20];
+	char *atsc_version = "1";
+	if (dev->atsc_version == 1)
+		atsc_version = "1";
+	else if (dev->atsc_version == 2)
+		atsc_version = "2";
+	else
+		atsc_version = "1";
+	atsc_set_version(dev->atsc_version);
+	if (is_meson_gxtvbb_cpu())
+		strcpy(soc_version, "gxtvbb-");
+	else if (is_meson_txl_cpu())
+		strcpy(soc_version, "txl-");
+	else if (is_meson_txlx_cpu())
+		strcpy(soc_version, "txlx-");
+	else if (is_meson_gxlx_cpu())
+		strcpy(soc_version, "gxlx-");
+	else if (is_meson_txhd_cpu())
+		strcpy(soc_version, "txhd-");
+	else
+		strcpy(soc_version, "other-");
+	strcat(soc_version, demod_version);
+	strcat(soc_version, atsc_version);
+	pr_dbg("[dtvdemod_version] [%s]\n", soc_version);
+}
+
 
 static int install_isr(struct aml_fe_dev *state)
 {
@@ -1458,7 +1493,7 @@ int Gxtv_Demod_Dtmb_Init(struct aml_fe_dev *dev)
 static int gxtv_demod_fe_get_ops(struct aml_fe_dev *dev, int mode, void *ops)
 {
 	struct dvb_frontend_ops *fe_ops = (struct dvb_frontend_ops *)ops;
-
+	dtvdemod_version(dev);
 	if ((is_meson_txlx_cpu() || is_meson_gxlx_cpu())
 		&& (mode == AM_FE_DTMB))
 		return -1;

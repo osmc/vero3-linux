@@ -58,4 +58,6 @@ void atsc_set_performance_register(int flag, int init);
 
 int snr_avg_100_times(void);
 
+void atsc_set_version(int version);
+
 #endif

@@ -331,6 +331,15 @@ unsigned int SNR_dB_table[56] = {
 			12, 10, 4, 2, 0
 };
 
+void atsc_set_version(int version)
+{
+	if (version == 1)
+		field_test_version = 1;
+	else if (version == 2)
+		field_test_version = 0;
+	else
+		field_test_version = 1;
+}
 
 void atsc_write_reg(int reg_addr, int reg_data)
 {

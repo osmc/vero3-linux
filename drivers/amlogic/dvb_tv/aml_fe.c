@@ -1930,6 +1930,26 @@ static int aml_fe_dev_init(struct aml_dvb *dvb, struct platform_device *pdev,
 	dev->mem_start = memstart;
 #endif
 
+		snprintf(buf, sizeof(buf), "%s%d_atsc_version", name, id);
+#ifdef CONFIG_OF
+		ret = of_property_read_u32(pdev->dev.of_node, buf, &value);
+		if (!ret) {
+			dev->atsc_version = value;
+			pr_inf("%s: %d\n", buf, value);
+		} else {
+			dev->atsc_version = 0;
+		}
+#else /*CONFIG_OF */
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, buf);
+		if (res) {
+			int atsc_version = res->start;
+			dev->atsc_version = atsc_version;
+		} else {
+			dev->atsc_version = 0;
+		}
+#endif
+
+
 		if (dev->drv->init) {
 			ret = dev->drv->init(dev);
 			if (ret != 0) {

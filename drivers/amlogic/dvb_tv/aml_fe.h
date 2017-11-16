@@ -154,6 +154,8 @@ struct aml_fe_dev {
 
 	/*for dtv spectrum*/
 	int			spectrum;
+	/*for atsc version*/
+	int			atsc_version;
 };
 struct aml_demod_param {
 	/*for tuner video if to amlatvdemod*/

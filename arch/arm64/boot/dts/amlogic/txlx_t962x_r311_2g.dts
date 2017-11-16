@@ -1131,6 +1131,7 @@
 		dtv_demod0_spectrum = <1>;
 		dtv_demod0_cma_flag = <1>;
 		dtv_demod0_cma_mem_size = <8>;
+		dtv_demod0_atsc_version = <1>;//1 field 2 performance
 		memory-region = <&demod_cma_reserved>;//<&demod_reserved>;
 		tuner0 = "mxl661_tuner";
 		tuner0_i2c_adap_id = <2>;
