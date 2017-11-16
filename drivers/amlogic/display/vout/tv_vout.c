@@ -1088,6 +1088,7 @@ static int tv_module_disable(enum vmode_e cur_vmod)
 	tv_out_vpu_gate_ctrl(0);
 #endif
 	/* video_dac_disable(); */
+	cvbs_cntl_output(0);
 	return 0;
 }
 
