@@ -842,5 +842,9 @@ int m3_nand_boot_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 
 void m3_nand_boot_erase_cmd(struct mtd_info *mtd, int page);
 
+int aml_nand_get_fbb_issue(void);
+
+void aml_nand_check_fbb_issue(u8 *dev_id);
+
 #endif
 
