@@ -55,7 +55,7 @@ void dump_di_reg(void)
 		0x17ec, 0x17ed, 0x2012,
 		0x2013, 0x2014, 0x2015
 	};
-	if (is_meson_txlx_cpu())
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 		base_addr = 0xff900000;
 	else
 		base_addr = 0xd0100000;
@@ -65,7 +65,7 @@ void dump_di_reg(void)
 	for (i = 0; i < 57; i++)
 		pr_info("[0x%x][0x%x]=0x%x\n",
 			base_addr + ((size_reg_addr[i]) << 2),
-			0x2010 + i, RDMA_RD(size_reg_addr[i]));
+		size_reg_addr[i], RDMA_RD(size_reg_addr[i]));
 	for (i = 0; i < 255; i++) {
 		if (i == 0x45)
 			pr_info("----nr reg----");
@@ -106,6 +106,10 @@ void dump_di_reg(void)
 	pr_info("[0x%x][0x%x]=0x%x\n",
 		base_addr + (0x1aa7 << 2),
 		0x1aa7, RDMA_RD(0x1aa7));
+	pr_info("[0x%x][0x%x]=0x%x\n",
+		base_addr + (0x2fff << 2),
+		0x2fff, RDMA_RD(0x2fff));
+
 	pr_info("----dump dnr reg----\n");
 	for (i = 0; i < 29; i++)
 		pr_info("[0x%x][0x%x]=0x%x\n",

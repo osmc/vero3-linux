@@ -804,7 +804,7 @@ static ssize_t dnr_param_show(struct device *dev,
 	return len;
 }
 
-static nr4_param_t nr4_params[30];
+static nr4_param_t nr4_params[26];
 static void nr4_params_init(struct NR4_PARM_s *nr4_parm_p)
 {
 	nr4_params[0].name = "prm_nr4_srch_stp";
@@ -823,50 +823,42 @@ static void nr4_params_init(struct NR4_PARM_s *nr4_parm_p)
 	nr4_params[6].addr = &(nr4_parm_p->sw_nr4_scene_change_flg[2]);
 	nr4_params[7].name = "sw_nr4_scene_change_flg[3]";
 	nr4_params[7].addr = &(nr4_parm_p->sw_nr4_scene_change_flg[3]);
-	nr4_params[8].name = "sw_nr4_scene_change_flg[4]";
-	nr4_params[8].addr = &(nr4_parm_p->sw_nr4_scene_change_flg[4]);
-	nr4_params[9].name = "sw_nr4_scene_change_flg[5]";
-	nr4_params[9].addr = &(nr4_parm_p->sw_nr4_scene_change_flg[5]);
-	nr4_params[10].name = "sw_nr4_scene_change_flg[6]";
-	nr4_params[10].addr = &(nr4_parm_p->sw_nr4_scene_change_flg[6]);
-	nr4_params[11].name = "sw_nr4_scene_change_flg[7]";
-	nr4_params[11].addr = &(nr4_parm_p->sw_nr4_scene_change_flg[7]);
-	nr4_params[12].name = "sw_nr4_sad2gain_en";
-	nr4_params[12].addr = &(nr4_parm_p->sw_nr4_sad2gain_en);
-	nr4_params[13].name = "sw_nr4_sad2gain_lut[0]";
-	nr4_params[13].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[0]);
-	nr4_params[14].name = "sw_nr4_sad2gain_lut[1]";
-	nr4_params[14].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[1]);
-	nr4_params[15].name = "sw_nr4_sad2gain_lut[2]";
-	nr4_params[15].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[2]);
-	nr4_params[16].name = "sw_nr4_sad2gain_lut[3]";
-	nr4_params[16].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[3]);
-	nr4_params[17].name = "sw_nr4_sad2gain_lut[4]";
-	nr4_params[17].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[4]);
-	nr4_params[18].name = "sw_nr4_sad2gain_lut[5]";
-	nr4_params[18].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[5]);
-	nr4_params[19].name = "sw_nr4_sad2gain_lut[6]";
-	nr4_params[19].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[6]);
-	nr4_params[20].name = "sw_nr4_sad2gain_lut[7]";
-	nr4_params[20].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[7]);
-	nr4_params[21].name = "sw_nr4_sad2gain_lut[8]";
-	nr4_params[21].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[8]);
-	nr4_params[22].name = "sw_nr4_sad2gain_lut[9]";
-	nr4_params[22].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[9]);
-	nr4_params[23].name = "sw_nr4_sad2gain_lut[10]";
-	nr4_params[23].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[10]);
-	nr4_params[24].name = "sw_nr4_sad2gain_lut11]";
-	nr4_params[24].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[11]);
-	nr4_params[25].name = "sw_nr4_sad2gain_lut[12]";
-	nr4_params[25].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[12]);
-	nr4_params[26].name = "sw_nr4_sad2gain_lut13]";
-	nr4_params[26].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[13]);
-	nr4_params[27].name = "sw_nr4_sad2gain_lut[14]";
-	nr4_params[27].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[14]);
-	nr4_params[28].name = "sw_nr4_sad2gain_lut[15]";
-	nr4_params[28].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[15]);
-	nr4_params[29].name = "nr4_debug";
-	nr4_params[29].addr = &(nr4_parm_p->nr4_debug);
+	nr4_params[8].name = "sw_nr4_sad2gain_en";
+	nr4_params[8].addr = &(nr4_parm_p->sw_nr4_sad2gain_en);
+	nr4_params[9].name = "sw_nr4_sad2gain_lut[0]";
+	nr4_params[9].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[0]);
+	nr4_params[10].name = "sw_nr4_sad2gain_lut[1]";
+	nr4_params[10].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[1]);
+	nr4_params[11].name = "sw_nr4_sad2gain_lut[2]";
+	nr4_params[11].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[2]);
+	nr4_params[12].name = "sw_nr4_sad2gain_lut[3]";
+	nr4_params[12].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[3]);
+	nr4_params[13].name = "sw_nr4_sad2gain_lut[4]";
+	nr4_params[13].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[4]);
+	nr4_params[14].name = "sw_nr4_sad2gain_lut[5]";
+	nr4_params[14].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[5]);
+	nr4_params[15].name = "sw_nr4_sad2gain_lut[6]";
+	nr4_params[15].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[6]);
+	nr4_params[16].name = "sw_nr4_sad2gain_lut[7]";
+	nr4_params[16].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[7]);
+	nr4_params[17].name = "sw_nr4_sad2gain_lut[8]";
+	nr4_params[17].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[8]);
+	nr4_params[18].name = "sw_nr4_sad2gain_lut[9]";
+	nr4_params[18].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[9]);
+	nr4_params[19].name = "sw_nr4_sad2gain_lut[10]";
+	nr4_params[19].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[10]);
+	nr4_params[20].name = "sw_nr4_sad2gain_lut11]";
+	nr4_params[20].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[11]);
+	nr4_params[21].name = "sw_nr4_sad2gain_lut[12]";
+	nr4_params[21].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[12]);
+	nr4_params[22].name = "sw_nr4_sad2gain_lut13]";
+	nr4_params[22].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[13]);
+	nr4_params[23].name = "sw_nr4_sad2gain_lut[14]";
+	nr4_params[23].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[14]);
+	nr4_params[24].name = "sw_nr4_sad2gain_lut[15]";
+	nr4_params[24].addr = &(nr4_parm_p->sw_nr4_sad2gain_lut[15]);
+	nr4_params[25].name = "nr4_debug";
+	nr4_params[25].addr = &(nr4_parm_p->nr4_debug);
 
 };
 
@@ -879,7 +871,7 @@ static ssize_t nr4_param_store(struct device *dev,
 
 	buf_orig = kstrdup(buff, GFP_KERNEL);
 	parse_cmd_params(buf_orig, (char **)(&parm));
-	for (i = 0; i < 30; i++) {
+	for (i = 0; i < 26; i++) {
 		if (!strcmp(parm[0], nr4_params[i].name)) {
 			if (parm[1]) {
 				if (kstrtol(parm[1], 10, &value) < 0)
@@ -899,7 +891,7 @@ static ssize_t nr4_param_show(struct device *dev,
 {
 	ssize_t len = 0;
 	int i = 0;
-	for (i = 0; i < 30; i++)
+	for (i = 0; i < 26; i++)
 		len += sprintf(buff+len, "%s=%d.\n",
 		nr4_params[i].name, *(nr4_params[i].addr));
 	return len;

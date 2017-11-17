@@ -3863,10 +3863,6 @@ static void pre_de_process(void)
 	/* enable pre mif*/
 	enable_di_pre_mif(true);
 	di_pre_stru.irq_time = sched_clock()/NSEC_PER_MSEC;
-	trace_di_pre("PRE-IRQ-1",
-		di_pre_stru.field_count_for_cont,
-		di_pre_stru.irq_time);
-	di_print("DI:buf[%d] irq start.\n", di_pre_stru.di_inp_buf->seq);
 #ifdef CONFIG_AML_RDMA
 	if (di_pre_rdma_enable & 0x2)
 		rdma_config(de_devp->rdma_handle, RDMA_TRIGGER_MANUAL);
@@ -6453,7 +6449,6 @@ static irqreturn_t de_irq(int irq, void *dev_instance)
 #ifdef NEW_DI_V4
 		nr_process_in_irq();
 #endif
-		di_print("DI:buf[%d] irq end.\n", di_pre_stru.di_inp_buf->seq);
 		/* disable mif */
 		enable_di_pre_mif(false);
 		di_pre_stru.pre_de_process_done = 1;
@@ -7442,9 +7437,6 @@ static void di_post_process(void)
 				0, vf_p->height-1, vf_p);
 			di_post_stru.post_de_busy = 1;
 			di_post_stru.irq_time = sched_clock()/NSEC_PER_MSEC;
-			trace_di_post("POST-IRQ-1",
-				di_post_stru.post_wr_cnt,
-				di_post_stru.irq_time);
 		} else {
 			di_post_stru.de_post_process_done = 1;
 		}
@@ -9239,7 +9231,7 @@ get_vframe:
 
 static void di_vf_put(vframe_t *vf, void *arg)
 {
-	struct di_buf_s *di_buf = (struct di_buf_s *)vf->private_data;
+	struct di_buf_s *di_buf = NULL;
 	ulong irq_flag2 = 0;
 
 	if (di_pre_stru.bypass_flag) {
@@ -9252,13 +9244,15 @@ static void di_vf_put(vframe_t *vf, void *arg)
 	}
 /* struct di_buf_s *p = NULL; */
 /* int itmp = 0; */
-	if ((init_flag == 0) || recovery_flag) {
+	if ((init_flag == 0) || recovery_flag ||
+		IS_ERR_OR_NULL(vf)) {
 		di_print("%s: 0x%p\n", __func__, vf);
 		return;
 	}
 	if (di_blocking)
 		return;
 	log_buffer_state("pu_");
+	di_buf = (struct di_buf_s *)vf->private_data;
 	if (IS_ERR_OR_NULL(di_buf)) {
 		pr_info("%s: get vframe %p without di buf\n",
 			__func__, vf);
