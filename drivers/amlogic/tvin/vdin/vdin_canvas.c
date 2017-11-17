@@ -177,28 +177,63 @@ void vdin_canvas_start_config(struct vdin_dev_s *devp)
 	devp->canvas_max_num = min(devp->canvas_max_num, canvas_num);
 	devp->canvas_max_num = min(devp->canvas_max_num, max_buffer_num);
 
-	devp->mem_start = roundup(devp->mem_start, 32);
+	if ((devp->cma_config_en != 1) || !(devp->cma_config_flag & 0x100)) {
+		/*use_reserved_mem or alloc_from_contiguous*/
+		devp->mem_start = roundup(devp->mem_start, 32);
 #ifdef VDIN_DEBUG
-	pr_info("vdin%d cnavas auto configuration table:\n", devp->index);
+		pr_info("vdin%d cnavas start configuration table:\n",
+			devp->index);
 #endif
-	for (i = 0; i < devp->canvas_max_num; i++) {
-		canvas_id = vdin_canvas_ids[devp->index][i*canvas_step];
-		canvas_addr = devp->mem_start + devp->canvas_max_size * i;
-		canvas_config(canvas_id, canvas_addr,
-			devp->canvas_w, devp->canvas_h,
-			CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
-		if (chroma_size)
-			canvas_config(canvas_id+1,
-				canvas_addr+devp->canvas_w*devp->canvas_h,
-				devp->canvas_w,
-				devp->canvas_h/2,
+		for (i = 0; i < devp->canvas_max_num; i++) {
+			canvas_id = vdin_canvas_ids[devp->index][i*canvas_step];
+			canvas_addr = devp->mem_start +
+				devp->canvas_max_size * i;
+			canvas_config(canvas_id, canvas_addr,
+				devp->canvas_w, devp->canvas_h,
 				CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+			if (chroma_size)
+				canvas_config(canvas_id+1,
+					canvas_addr +
+					devp->canvas_w*devp->canvas_h,
+					devp->canvas_w,
+					devp->canvas_h/2,
+					CANVAS_ADDR_NOWRAP,
+					CANVAS_BLKMODE_LINEAR);
 #ifdef VDIN_DEBUG
-		pr_info("\t%3d: 0x%lx-0x%lx %ux%u\n",
-			canvas_id, canvas_addr,
-			canvas_addr + devp->canvas_max_size,
-			devp->canvas_w, devp->canvas_h);
+			pr_info("\t%3d: 0x%lx-0x%lx %ux%u\n",
+				canvas_id, canvas_addr,
+				canvas_addr + devp->canvas_max_size,
+				devp->canvas_w, devp->canvas_h);
 #endif
+		}
+	} else if (devp->cma_config_flag & 0x100) {
+#ifdef VDIN_DEBUG
+		pr_info("vdin%d cnavas start configuration table:\n",
+			devp->index);
+#endif
+		for (i = 0; i < devp->canvas_max_num; i++) {
+			devp->vfmem_start[i] =
+				roundup(devp->vfmem_start[i], 32);
+			canvas_id = vdin_canvas_ids[devp->index][i*canvas_step];
+			canvas_addr = devp->vfmem_start[i];
+			canvas_config(canvas_id, canvas_addr,
+				devp->canvas_w, devp->canvas_h,
+				CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+			if (chroma_size)
+				canvas_config(canvas_id+1,
+					canvas_addr +
+					devp->canvas_w*devp->canvas_h,
+					devp->canvas_w,
+					devp->canvas_h/2,
+					CANVAS_ADDR_NOWRAP,
+					CANVAS_BLKMODE_LINEAR);
+#ifdef VDIN_DEBUG
+			pr_info("\t%3d: 0x%lx-0x%lx %ux%u\n",
+				canvas_id, canvas_addr,
+				canvas_addr + devp->canvas_max_size,
+				devp->canvas_w, devp->canvas_h);
+#endif
+		}
 	}
 }
 
@@ -276,29 +311,63 @@ void vdin_canvas_auto_config(struct vdin_dev_s *devp)
 
 	devp->canvas_max_num = min(devp->canvas_max_num, canvas_num);
 	devp->canvas_max_num = min(devp->canvas_max_num, max_buffer_num);
-
-	devp->mem_start = roundup(devp->mem_start, 32);
+	if ((devp->cma_config_en != 1) || !(devp->cma_config_flag & 0x100)) {
+		/*use_reserved_mem or alloc_from_contiguous*/
+		devp->mem_start = roundup(devp->mem_start, 32);
 #ifdef VDIN_DEBUG
-	pr_info("vdin%d cnavas auto configuration table:\n", devp->index);
+		pr_info("vdin%d cnavas auto configuration table:\n",
+			devp->index);
 #endif
-	for (i = 0; i < devp->canvas_max_num; i++) {
-		canvas_id = vdin_canvas_ids[devp->index][i*canvas_step];
-		canvas_addr = devp->mem_start + devp->canvas_max_size * i;
-		canvas_config(canvas_id, canvas_addr,
-			devp->canvas_w, devp->canvas_h,
-			CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
-		if (chroma_size)
-			canvas_config(canvas_id+1,
-				canvas_addr+devp->canvas_w*devp->canvas_h,
-				devp->canvas_w,
-				devp->canvas_h/2,
+		for (i = 0; i < devp->canvas_max_num; i++) {
+			canvas_id = vdin_canvas_ids[devp->index][i*canvas_step];
+			canvas_addr = devp->mem_start +
+				devp->canvas_max_size * i;
+			canvas_config(canvas_id, canvas_addr,
+				devp->canvas_w, devp->canvas_h,
 				CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+			if (chroma_size)
+				canvas_config(canvas_id+1,
+					canvas_addr +
+					devp->canvas_w*devp->canvas_h,
+					devp->canvas_w,
+					devp->canvas_h/2,
+					CANVAS_ADDR_NOWRAP,
+					CANVAS_BLKMODE_LINEAR);
 #ifdef VDIN_DEBUG
-		pr_info("\t%3d: 0x%lx-0x%lx %ux%u\n",
-			canvas_id, canvas_addr,
-			canvas_addr + devp->canvas_max_size,
-			devp->canvas_w, devp->canvas_h);
+			pr_info("\t%3d: 0x%lx-0x%lx %ux%u\n",
+				canvas_id, canvas_addr,
+				canvas_addr + devp->canvas_max_size,
+				devp->canvas_w, devp->canvas_h);
 #endif
+		}
+	} else if (devp->cma_config_flag & 0x100) {
+#ifdef VDIN_DEBUG
+		pr_info("vdin%d cnavas auto configuration table:\n",
+			devp->index);
+#endif
+		for (i = 0; i < devp->canvas_max_num; i++) {
+			devp->vfmem_start[i] =
+				roundup(devp->vfmem_start[i], 32);
+			canvas_id = vdin_canvas_ids[devp->index][i*canvas_step];
+			canvas_addr = devp->vfmem_start[i];
+			canvas_config(canvas_id, canvas_addr,
+				devp->canvas_w, devp->canvas_h,
+				CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+			if (chroma_size)
+				canvas_config(canvas_id+1,
+					canvas_addr +
+					devp->canvas_w*devp->canvas_h,
+					devp->canvas_w,
+					devp->canvas_h/2,
+					CANVAS_ADDR_NOWRAP,
+					CANVAS_BLKMODE_LINEAR);
+#ifdef VDIN_DEBUG
+			pr_info("\t%3d: 0x%lx-0x%lx %ux%u\n",
+				canvas_id, canvas_addr,
+				canvas_addr + devp->canvas_max_size,
+				devp->canvas_w, devp->canvas_h);
+#endif
+		}
 	}
 }
 
@@ -311,6 +380,8 @@ unsigned int vdin_cma_alloc(struct vdin_dev_s *devp)
 	int flags = CODEC_MM_FLAGS_CMA_FIRST|CODEC_MM_FLAGS_CMA_CLEAR|
 		CODEC_MM_FLAGS_CPU;
 	unsigned int max_buffer_num = min_buf_num;
+	unsigned int i;
+
 	if (devp->rdma_enable && (devp->game_mode == 0))
 		max_buffer_num++;
 	/*todo: need update if vf_skip_cnt used by other port*/
@@ -322,6 +393,7 @@ unsigned int vdin_cma_alloc(struct vdin_dev_s *devp)
 		max_buffer_num += devp->vfp->skip_vf_num;
 	if (max_buffer_num > max_buf_num)
 		max_buffer_num = max_buf_num;
+	devp->vfmem_max_cnt = max_buffer_num;
 
 	if ((devp->cma_config_en == 0) ||
 		(devp->cma_mem_alloc == 1)) {
@@ -390,16 +462,38 @@ unsigned int vdin_cma_alloc(struct vdin_dev_s *devp)
 	if ((devp->format_convert >= VDIN_FORMAT_CONVERT_YUV_NV12) &&
 		(devp->format_convert <= VDIN_FORMAT_CONVERT_RGB_NV21))
 		mem_size = (mem_size * 3)/2;
+	devp->vfmem_size = PAGE_ALIGN(mem_size) + dolby_size_byte;
+	devp->vfmem_size = (devp->vfmem_size/PAGE_SIZE + 1)*PAGE_SIZE;
+
 	mem_size = PAGE_ALIGN(mem_size) * max_buffer_num +
 		dolby_size_byte * max_buffer_num;
 	mem_size = (mem_size/PAGE_SIZE + 1)*PAGE_SIZE;
 	if (mem_size > devp->cma_mem_size)
 		mem_size = devp->cma_mem_size;
-	if (devp->cma_config_flag == 1) {
-		if (devp->index == 0)
-			strcpy(vdin_name, "vdin0");
-		else if (devp->index == 1)
-			strcpy(vdin_name, "vdin1");
+	if (devp->index == 0)
+		strcpy(vdin_name, "vdin0");
+	else if (devp->index == 1)
+		strcpy(vdin_name, "vdin1");
+
+	if (devp->cma_config_flag == 0x101) {
+		for (i = 0; i < max_buffer_num; i++) {
+			devp->vfmem_start[i] = codec_mm_alloc_for_dma(vdin_name,
+				devp->vfmem_size/PAGE_SIZE, 0, flags);
+			if (devp->vfmem_start[i] == 0) {
+				pr_err(KERN_ERR "\nvdin%d buf[%d]codec alloc fail!!!\n",
+					devp->index, i);
+				devp->cma_mem_alloc = 0;
+				return 1;
+			} else {
+				devp->cma_mem_alloc = 1;
+				pr_info("vdin%d buf[%d] mem_start = 0x%lx, mem_size = 0x%x\n",
+					devp->index, i,
+					devp->vfmem_start[i], devp->vfmem_size);
+			}
+		}
+		pr_info("vdin%d codec cma alloc ok!\n", devp->index);
+		devp->mem_size = mem_size;
+	} else if (devp->cma_config_flag == 0x1) {
 		devp->mem_start = codec_mm_alloc_for_dma(vdin_name,
 			mem_size/PAGE_SIZE, 0, flags);
 		devp->mem_size = mem_size;
@@ -414,7 +508,28 @@ unsigned int vdin_cma_alloc(struct vdin_dev_s *devp)
 				devp->index, devp->mem_start, devp->mem_size);
 			pr_info("vdin%d codec cma alloc ok!\n", devp->index);
 		}
-	} else if (devp->cma_config_flag == 0) {
+	} else if (devp->cma_config_flag == 0x100) {
+		for (i = 0; i < max_buffer_num; i++) {
+			devp->vfvenc_pages[i] = dma_alloc_from_contiguous(
+				&(devp->this_pdev->dev),
+				devp->vfmem_size >> PAGE_SHIFT, 0);
+			if (devp->vfvenc_pages[i]) {
+				devp->vfmem_start[i] =
+					page_to_phys(devp->vfvenc_pages[i]);
+				pr_info("vdin%d buf[%d]mem_start = 0x%lx, mem_size = 0x%x\n",
+					devp->index, i,
+					devp->vfmem_start[i], devp->vfmem_size);
+			} else {
+				devp->cma_mem_alloc = 0;
+				pr_err(KERN_ERR "\nvdin%d cma mem undefined2.\n",
+					devp->index);
+				return 1;
+			}
+		}
+		devp->cma_mem_alloc = 1;
+		devp->mem_size  = mem_size;
+		pr_info("vdin%d cma alloc ok!\n", devp->index);
+	} else {
 		devp->venc_pages = dma_alloc_from_contiguous(
 			&(devp->this_pdev->dev),
 			devp->cma_mem_size >> PAGE_SHIFT, 0);
@@ -444,6 +559,7 @@ unsigned int vdin_cma_alloc(struct vdin_dev_s *devp)
 void vdin_cma_release(struct vdin_dev_s *devp)
 {
 	char vdin_name[6];
+	unsigned int i;
 	if ((devp->cma_config_en == 0) ||
 		(devp->cma_mem_alloc == 0)) {
 		pr_err(KERN_ERR "\nvdin%d %s fail for (%d,%d)!!!\n",
@@ -451,13 +567,25 @@ void vdin_cma_release(struct vdin_dev_s *devp)
 			devp->cma_mem_alloc);
 		return;
 	}
-	if ((devp->cma_config_flag == 1) && devp->mem_start) {
-		if (devp->index == 0)
-			strcpy(vdin_name, "vdin0");
-		else if (devp->index == 1)
-			strcpy(vdin_name, "vdin1");
+	if (devp->index == 0)
+		strcpy(vdin_name, "vdin0");
+	else if (devp->index == 1)
+		strcpy(vdin_name, "vdin1");
+
+	if (devp->cma_config_flag == 0x101) {
+		for (i = 0; i < devp->vfmem_max_cnt; i++)
+			codec_mm_free_for_dma(vdin_name, devp->vfmem_start[i]);
+		pr_info("vdin%d codec cma release ok!\n", devp->index);
+	} else if (devp->cma_config_flag == 0x1) {
 		codec_mm_free_for_dma(vdin_name, devp->mem_start);
 		pr_info("vdin%d codec cma release ok!\n", devp->index);
+	} else if (devp->cma_config_flag == 0x100) {
+		for (i = 0; i < devp->vfmem_max_cnt; i++)
+			dma_release_from_contiguous(
+				&(devp->this_pdev->dev),
+				devp->vfvenc_pages[i],
+				devp->vfmem_size >> PAGE_SHIFT);
+		pr_info("vdin%d cma release ok!\n", devp->index);
 	} else if (devp->venc_pages
 		&& devp->cma_mem_size
 		&& (devp->cma_config_flag == 0)) {
@@ -467,7 +595,7 @@ void vdin_cma_release(struct vdin_dev_s *devp)
 			devp->cma_mem_size >> PAGE_SHIFT);
 		pr_info("vdin%d cma release ok!\n", devp->index);
 	} else {
-		pr_err(KERN_ERR "\nvdin%d %s fail for (%d,%d,0x%lx)!!!\n",
+		pr_err(KERN_ERR "\nvdin%d %s fail for (%d,0x%x,0x%lx)!!!\n",
 			devp->index, __func__, devp->cma_mem_size,
 			devp->cma_config_flag, devp->mem_start);
 	}

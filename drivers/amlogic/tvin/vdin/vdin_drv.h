@@ -43,8 +43,9 @@
 #include "../tvin_frontend.h"
 #include "vdin_vf.h"
 #include "vdin_regs.h"
+/*#include "vdin_canvas.h"*/
 
-#define VDIN_VER "Ref.2017/09/05"
+#define VDIN_VER "Ref.2017/011/17"
 
 /*the counter of vdin*/
 #define VDIN_MAX_DEVS			2
@@ -83,7 +84,7 @@
 #define VDIN_BYPASS_CYC_CHECK           0x00000002
 #define VDIN_BYPASS_VSYNC_CHECK         0x00000004
 #define VDIN_BYPASS_VGA_CHECK           0x00000008
-
+#define VDIN_CANVAS_MAX_CNT				9
 
 /*flag for flush vdin buff*/
 #define VDIN_FLAG_BLACK_SCREEN_ON	1
@@ -99,6 +100,7 @@
 #define VDIN_WR_COLOR_DEPTH_12BIT	(1 << 3)
 /*TXL new add*/
 #define VDIN_WR_COLOR_DEPTH_10BIT_FULL_PCAK_MODE	(1 << 4)
+
 
 static inline const char *vdin_fmt_convert_str(
 		enum vdin_format_convert_e fmt_cvt)
@@ -197,6 +199,10 @@ struct vdin_dev_s {
 
 	unsigned long mem_start;
 	unsigned int mem_size;
+	unsigned long vfmem_start[VDIN_CANVAS_MAX_CNT];
+	struct page *vfvenc_pages[VDIN_CANVAS_MAX_CNT];
+	unsigned int vfmem_size;
+	unsigned int vfmem_max_cnt;
 
 	unsigned int h_active;
 	unsigned int v_active;
@@ -226,7 +232,9 @@ struct vdin_dev_s {
 	int rdma_handle;
 
 	bool cma_config_en;
-	/*cma_config_flag:1:share with codec_mm;0:cma alone*/
+	/*cma_config_flag:
+	*bit0: (1:share with codec_mm;0:cma alone)
+	*bit8: (1:discontinuous alloc way;0:continuous alloc way)*/
 	unsigned int cma_config_flag;
 #ifdef CONFIG_CMA
 	struct platform_device	*this_pdev;

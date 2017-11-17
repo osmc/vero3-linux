@@ -2767,7 +2767,7 @@ static int vdin_drv_probe(struct platform_device *pdev)
 			pr_err("don't find  match flag_cma\n");
 			vdevp->cma_config_flag = 0;
 		}
-		if (vdevp->cma_config_flag == 1) {
+		if (vdevp->cma_config_flag & 0x1) {
 			ret = of_property_read_u32(pdev->dev.of_node,
 				"cma_size",
 				&(vdevp->cma_mem_size));
@@ -2775,7 +2775,7 @@ static int vdin_drv_probe(struct platform_device *pdev)
 				pr_err("don't find  match cma_size\n");
 			else
 				vdevp->cma_mem_size *= SZ_1M;
-		} else if (vdevp->cma_config_flag == 0)
+		} else
 			vdevp->cma_mem_size =
 				dma_get_cma_size_int_byte(&pdev->dev);
 		vdevp->this_pdev = pdev;

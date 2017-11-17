@@ -3229,9 +3229,16 @@ void vdin_dolby_addr_alloc(struct vdin_dev_s *devp, unsigned int size)
 			dolby_size_byte * index;
 		devp->vfp->dv_buf_vmem[index] = devp->dv.dv_dma_vaddr +
 			dolby_size_byte * index;
-		devp->vfp->dv_buf_ori[index] =
-			phys_to_virt(devp->mem_start + devp->mem_size -
-			dolby_size_byte * (devp->canvas_max_num - index));
+		if ((devp->cma_config_flag & 0x100) && devp->cma_config_en)
+			devp->vfp->dv_buf_ori[index] =
+				phys_to_virt(devp->vfmem_start[index] +
+				devp->vfmem_size -
+				dolby_size_byte);
+		else
+			devp->vfp->dv_buf_ori[index] =
+				phys_to_virt(devp->mem_start + devp->mem_size -
+				dolby_size_byte *
+				(devp->canvas_max_num - index));
 		pr_info("%s:dv_buf[%d]=0x%p(0x%x,0x%p)\n", __func__, index,
 			devp->vfp->dv_buf_ori[index],
 			devp->vfp->dv_buf_mem[index],
