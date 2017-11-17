@@ -1306,6 +1306,7 @@ RESTART:
 		/* avoid mif set wrong or di out size overflow */
 		next_frame_par->VPP_hd_start_lines_ = 0;
 		next_frame_par->VPP_hd_end_lines_ = 0;
+		next_frame_par->VPP_line_in_length_ = 0;
 	} else {
 		next_frame_par->VPP_hsc_startp = start;
 
