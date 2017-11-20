@@ -306,7 +306,8 @@ static uint coeff(uint *settings, uint ratio, uint phase,
 	coeff_type = settings[coeff_select];
 	/* TODO: add future TV chips */
 	if (is_meson_gxtvbb_cpu() || is_meson_txl_cpu() ||
-		is_meson_txlx_cpu()) {
+		is_meson_txlx_cpu() || is_meson_txhd_cpu() ||
+		is_meson_gxlx_cpu()) {
 		if (coeff_type == COEF_BICUBIC_SHARP)
 			coeff_type = COEF_BICUBIC;
 	} else {
@@ -837,7 +838,7 @@ vpp_set_filters2(u32 process_3d_type, u32 width_in,
 		}
 	}
 
-	if (is_meson_txlx_cpu()) {
+	if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 		next_frame_par->vpp_postblend_out_width = vinfo->width;
 		next_frame_par->vpp_postblend_out_height = vinfo->height;
 	}

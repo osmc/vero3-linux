@@ -2861,7 +2861,7 @@ static void viu_set_dcu(struct vpp_frame_par_s *frame_par, struct vframe_s *vf)
 				VFORMATTER_EN));
 			pr_debug("\tvd1 set fmt(dovi tv)\n");
 		} else if (is_meson_gxtvbb_cpu() || is_meson_txl_cpu() ||
-			is_meson_txlx_cpu()) {
+			is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 			if ((vf->width >= 3840) &&
 			(vf->height >= 2160) &&
 			(type & VIDTYPE_VIU_422)) {
@@ -3338,7 +3338,7 @@ static void vd2_set_dcu(struct vpp_frame_par_s *frame_par, struct vframe_s *vf)
 				VFORMATTER_EN);
 			pr_debug("\tvd2 set fmt(dovi tv)\n");
 		} else if (is_meson_gxtvbb_cpu() || is_meson_txl_cpu() ||
-		is_meson_txlx_cpu()) {
+		is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
 			if ((vf->width >= 3840) &&
 				(vf->height >= 2160) &&
 				(type & VIDTYPE_VIU_422)) {
