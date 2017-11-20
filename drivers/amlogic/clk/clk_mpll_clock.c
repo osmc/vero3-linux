@@ -50,6 +50,7 @@ static int mpll_enable(struct clk_hw *hw)
 {
 	struct mpll_clk *mpll = to_clk_pll(hw);
 	unsigned int val;
+	unsigned int soc_id = get_cpu_type();
 
 	if (strncmp(hw->clk->name, "mpll_clk_out0", 13) == 0) {
 		val = readl(mpll->con_reg2);
@@ -61,9 +62,16 @@ static int mpll_enable(struct clk_hw *hw)
 		writel(val, mpll->con_reg2);
 	}
 
-	val = readl(mpll->con_reg);
-	val = val | (1 << SDM_EN) | (1 << EN_DDS);
-	writel(val, mpll->con_reg);
+	if ((strcmp(hw->clk->name, "mpll_clk_out3") == 0)
+	 && (soc_id == MESON_CPU_MAJOR_ID_TXLX || MESON_CPU_MAJOR_ID_TXHD)) {
+		val = readl(mpll->con_reg);
+		val = val | (1 << 0) | (1 << 11);
+		writel(val, mpll->con_reg);
+	} else {
+		val = readl(mpll->con_reg);
+		val = val | (1 << SDM_EN) | (1 << EN_DDS);
+		writel(val, mpll->con_reg);
+	}
 	return 0;
 }
 
@@ -71,6 +79,8 @@ static void mpll_disable(struct clk_hw *hw)
 {
 	struct mpll_clk *mpll = to_clk_pll(hw);
 	unsigned int val;
+	unsigned int soc_id = get_cpu_type();
+
 	if (strncmp(hw->clk->name, "mpll_clk_out0", 13) == 0) {
 		val = readl(mpll->con_reg2);
 		if (!is_meson_txlx_cpu())
@@ -81,9 +91,16 @@ static void mpll_disable(struct clk_hw *hw)
 		writel(val, mpll->con_reg2);
 	}
 
-	val = readl(mpll->con_reg);
-	val = val & (~((1 << SDM_EN) | (1 << EN_DDS)));
-	writel(val, mpll->con_reg);
+	if ((strcmp(hw->clk->name, "mpll_clk_out3") == 0)
+	 && (soc_id == MESON_CPU_MAJOR_ID_TXLX || MESON_CPU_MAJOR_ID_TXHD)) {
+		val = readl(mpll->con_reg);
+		val = val & (~((1 << 0) | (1 << 11)));
+		writel(val, mpll->con_reg);
+	} else {
+		val = readl(mpll->con_reg);
+		val = val & (~((1 << SDM_EN) | (1 << EN_DDS)));
+		writel(val, mpll->con_reg);
+	}
 }
 
 static unsigned long mpll_recalc_rate(struct clk_hw *hw,
@@ -188,6 +205,13 @@ void __init mpll_clk_register(void __iomem *base, struct mpll_clk_tab *tab)
 	pll->sdm_in_width = 14;
 	pll->n_in_shift = 16;
 	pll->n_in_width = 9;
+	/*for txlx mpl3 is deferent with mpll0/1/2*/
+	if (tab->misc_offset == 3) {
+		pll->sdm_in_shift = 12;
+		pll->sdm_in_width = 14;
+		pll->n_in_shift = 2;
+		pll->n_in_width = 9;
+	}
 	if (!is_meson_txlx_cpu())
 			/* txlx should not enable mpll2 SSG func
 			 * HI_MPLL_CNTL bit25
