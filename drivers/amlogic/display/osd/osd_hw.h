@@ -108,12 +108,12 @@ extern void osd_setpal_hw(u32 index, unsigned regno, unsigned red,
 extern void osd_enable_hw(u32 index, u32 enable);
 extern void osd_pan_display_hw(u32 index, unsigned int xoffset,
 			       unsigned int yoffset);
-extern int osd_sync_request(u32 index, u32 yres, u32 xoffset, u32 yoffset,
-			    s32 in_fence_fd);
+extern int osd_sync_request(u32 index, u32 yres,
+		struct fb_sync_request_s *request);
 extern int osd_sync_request_render(u32 index, u32 yres,
-	struct fb_sync_request_render_s *request,
+	struct sync_req_render_s *request,
 	u32 phys_addr);
-extern s32  osd_wait_vsync_event(void);
+extern s64  osd_wait_vsync_event(void);
 #if defined(CONFIG_FB_OSD2_CURSOR)
 extern void osd_cursor_hw(u32 index, s16 x, s16 y, s16 xstart, s16 ystart,
 			  u32 osd_w, u32 osd_h);

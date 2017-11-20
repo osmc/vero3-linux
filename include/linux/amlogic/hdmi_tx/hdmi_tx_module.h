@@ -26,6 +26,7 @@
 #include <linux/clk-provider.h>
 #include <linux/device.h>
 #include <linux/amlogic/vout/vinfo.h>
+#include <linux/switch.h>
 /* #include <linux/amlogic/aml_gpio_consumer.h> */
 
 /*****************************
@@ -557,7 +558,7 @@ void __attribute__((weak))rx_set_receive_hdcp(unsigned char *data, int len,
 }
 
 extern int hdmitx_set_display(struct hdmitx_dev *hdmitx_device,
-	enum hdmi_vic VideoCode);
+	enum hdmi_vic VideoCode, struct switch_dev *sd);
 
 extern int hdmi_set_3d(struct hdmitx_dev *hdmitx_device, int type,
 	unsigned int param);

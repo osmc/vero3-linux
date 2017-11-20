@@ -989,7 +989,8 @@ void hdmitx_output_rgb(void)
 	hdmi_output_rgb = 1;
 }
 
-int hdmitx_set_display(struct hdmitx_dev *hdev, enum hdmi_vic VideoCode)
+int hdmitx_set_display(struct hdmitx_dev *hdev,
+		enum hdmi_vic VideoCode, struct switch_dev *sd)
 {
 	struct hdmitx_vidpara *param = NULL;
 	enum hdmi_vic vic;
@@ -1001,6 +1002,8 @@ int hdmitx_set_display(struct hdmitx_dev *hdev, enum hdmi_vic VideoCode)
 	AVI_HB[2] = AVI_INFOFRAMES_LENGTH;
 	for (i = 0; i < 32; i++)
 		AVI_DB[i] = 0;
+
+	switch_set_state(sd, 0);
 
 	vic = hdev->HWOp.GetState(hdev, STAT_VIDEO_VIC, 0);
 	hdmi_print(IMP, SYS "already init VIC = %d  Now VIC = %d\n",
@@ -1080,6 +1083,7 @@ int hdmitx_set_display(struct hdmitx_dev *hdev, enum hdmi_vic VideoCode)
 			else /* nothing */
 				;
 			ret = 0;
+			switch_set_state(sd, 1);
 		}
 	}
 	hdmitx_set_spd_info(hdev);

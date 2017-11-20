@@ -642,10 +642,12 @@ static int osd_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 	s32 osd_dst_axis[4] = {0};
 	u32 block_windows[8] = {0};
 	u32 block_mode;
-	unsigned long ret;
+	unsigned long ret = 0;
+	s64 vsync_timestamp;
 	u32 flush_rate;
+	int out_fen_fd;
+	int xoffset, yoffset;
 	struct fb_sync_request_s sync_request;
-	struct fb_sync_request_render_s sync_request_render;
 	struct fb_dmabuf_export dmaexp;
 
 	switch (cmd) {
@@ -662,14 +664,16 @@ static int osd_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		ret = copy_from_user(&osd_axis, argp, 4 * sizeof(s32));
 		break;
 	case FBIOPUT_OSD_SYNC_ADD:
+	case FBIOPUT_OSD_SYNC_RENDER_ADD:
 		ret = copy_from_user(&sync_request, argp,
 				sizeof(struct fb_sync_request_s));
 		break;
+	#if 0
 	case FBIOPUT_OSD_SYNC_RENDER_ADD:
 		ret = copy_from_user(&sync_request_render, argp,
 				sizeof(struct fb_sync_request_render_s));
 		break;
-	case FBIO_WAITFORVSYNC:
+	#endif
 	case FBIOGET_OSD_SCALE_AXIS:
 	case FBIOPUT_OSD_ORDER:
 	case FBIOGET_OSD_ORDER:
@@ -703,6 +707,10 @@ static int osd_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		break;
 	case FBIOPUT_OSD_WINDOW_AXIS:
 		ret = copy_from_user(&osd_dst_axis, argp, 4 * sizeof(s32));
+		break;
+	case FBIO_WAITFORVSYNC:
+		vsync_timestamp = osd_wait_vsync_event();
+		ret = copy_to_user(argp, &vsync_timestamp, sizeof(s64));
 		break;
 	default:
 		osd_log_err("command 0x%x not supported (%s)\n",
@@ -843,19 +851,28 @@ static int osd_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 			osd_dst_axis[1], osd_dst_axis[2], osd_dst_axis[3]);
 		break;
 	case FBIOPUT_OSD_SYNC_ADD:
-		sync_request.out_fen_fd =
+		out_fen_fd =
 			osd_sync_request(info->node, info->var.yres,
-					sync_request.xoffset,
-					sync_request.yoffset,
-					sync_request.in_fen_fd);
-		ret = copy_to_user(argp, &sync_request,
+					&sync_request);
+		if (sync_request.sync_req.magic == FB_SYNC_REQUEST_MAGIC) {
+			sync_request.sync_req.out_fen_fd = out_fen_fd;
+			xoffset = sync_request.sync_req.xoffset;
+			yoffset = sync_request.sync_req.yoffset;
+			ret = copy_to_user(argp, &sync_request,
 				sizeof(struct fb_sync_request_s));
-		if (sync_request.out_fen_fd  < 0) {
+		} else {
+			sync_request.sync_req_old.out_fen_fd = out_fen_fd;
+			xoffset = sync_request.sync_req_old.xoffset;
+			yoffset = sync_request.sync_req_old.yoffset;
+			ret = copy_to_user(argp, &sync_request,
+				sizeof(struct fb_sync_request_s));
+		}
+		if (out_fen_fd  < 0) {
 			/* fence create fail. */
 			ret = -1;
 		} else {
-			info->var.xoffset = sync_request.xoffset;
-			info->var.yoffset = sync_request.yoffset;
+			info->var.xoffset = xoffset;
+			info->var.yoffset = yoffset;
 		}
 		break;
 	case FBIOPUT_OSD_SYNC_RENDER_ADD:
@@ -864,34 +881,44 @@ static int osd_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 			size_t len;
 			u32 phys_addr;
 
-			ret = meson_ion_share_fd_to_phys(fb_ion_client,
-				sync_request_render.shared_fd, &addr, &len);
-			if (ret == 0) {
-				if (sync_request_render.type ==
-					GE2D_COMPOSE_MODE) {
-					phys_addr = addr +
-						sync_request_render.yoffset
-						* info->fix.line_length;
-				} else
-					phys_addr = addr;
-			} else
-				phys_addr = 0;
+			if (sync_request.sync_req_render.magic ==
+				FB_SYNC_REQUEST_RENDER_MAGIC) {
+				struct sync_req_render_s *sync_request_render;
 
-			sync_request_render.out_fen_fd =
-				osd_sync_request_render(info->node,
-				info->var.yres,
-				&sync_request_render, phys_addr);
-			osd_restore_screen_info(info->node,
-				&info->screen_base, &info->screen_size);
-			ret = copy_to_user(argp,
-				&sync_request_render,
-				sizeof(struct fb_sync_request_render_s));
-			if (sync_request_render.out_fen_fd  < 0) {
-				/* fence create fail. */
-				ret = -1;
-			} else {
-				info->var.xoffset = sync_request_render.xoffset;
-				info->var.yoffset = sync_request_render.yoffset;
+				sync_request_render =
+					&sync_request.sync_req_render;
+				ret = meson_ion_share_fd_to_phys(fb_ion_client,
+					sync_request_render->shared_fd,
+					&addr, &len);
+				if (ret == 0) {
+					if (sync_request_render->type ==
+						GE2D_COMPOSE_MODE) {
+						phys_addr = addr +
+						sync_request_render->yoffset
+							* info->fix.line_length;
+					} else
+						phys_addr = addr;
+				} else
+					phys_addr = 0;
+
+				sync_request_render->out_fen_fd =
+					osd_sync_request_render(info->node,
+					info->var.yres,
+					sync_request_render, phys_addr);
+				osd_restore_screen_info(info->node,
+					&info->screen_base, &info->screen_size);
+				ret = copy_to_user(argp,
+					&sync_request,
+					sizeof(struct fb_sync_request_s));
+				if (sync_request_render->out_fen_fd  < 0) {
+					/* fence create fail. */
+					ret = -1;
+				} else {
+					info->var.xoffset =
+						sync_request_render->xoffset;
+					info->var.yoffset =
+						sync_request_render->yoffset;
+				}
 			}
 		}
 		break;
@@ -915,10 +942,6 @@ static int osd_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 				? -EFAULT : 0;
 			break;
 		}
-	case FBIO_WAITFORVSYNC:
-		osd_wait_vsync_event();
-		ret = copy_to_user(argp, &ret, sizeof(u32));
-		break;
 	default:
 		break;
 	}

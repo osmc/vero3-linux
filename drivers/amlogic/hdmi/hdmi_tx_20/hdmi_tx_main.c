@@ -135,6 +135,9 @@ static struct switch_dev hdmi_power = { /* android ics switch device */
 static struct switch_dev hdmi_hdr = {
 	.name = "hdmi_hdr",
 };
+static struct switch_dev hdmi_mode = {
+	.name = "mode_hdmi",
+};
 static struct switch_dev hdmi_rxsense = {
 	.name = "hdmi_rxsense",
 };
@@ -424,7 +427,7 @@ static  int  set_disp_mode(const char *mode)
 	set_vmode_enc_hw(vic);
 #endif
 	hdmitx_device.cur_VIC = HDMI_Unkown;
-	ret = hdmitx_set_display(&hdmitx_device, vic);
+	ret = hdmitx_set_display(&hdmitx_device, vic, &hdmi_mode);
 	if (ret >= 0) {
 		hdmitx_device.HWOp.Cntl(&hdmitx_device,
 			HDMITX_AVMUTE_CNTL, AVMUTE_CLEAR);
@@ -651,7 +654,7 @@ static int set_disp_mode_auto(void)
 	hdev->cur_VIC = HDMI_Unkown;
 /* if vic is HDMI_Unkown, hdmitx_set_display will disable HDMI */
 	mutex_lock(&getedid_mutex);
-	ret = hdmitx_set_display(hdev, vic);
+	ret = hdmitx_set_display(hdev, vic, &hdmi_mode);
 	mutex_unlock(&getedid_mutex);
 	pr_info("%s %d %d\n", info->name, info->sync_duration_num,
 		info->sync_duration_den);
@@ -3925,6 +3928,8 @@ static int amhdmitx_probe(struct platform_device *pdev)
 	switch_dev_register(&hdmi_power);
 	switch_dev_register(&hdmi_hdr);
 	switch_dev_register(&hdmi_rxsense);
+	switch_dev_register(&hdmi_mode);
+	switch_set_state(&hdmi_mode, 1);
 
 	switch_dev_register(&hdmi_delay);
 
@@ -3956,6 +3961,7 @@ static int amhdmitx_remove(struct platform_device *pdev)
 	switch_dev_unregister(&hdmi_hdr);
 	switch_dev_unregister(&hdmi_rxsense);
 	switch_dev_unregister(&hdmi_delay);
+	switch_dev_unregister(&hdmi_mode);
 	cancel_work_sync(&hdmitx_device.work_hdr);
 
 	if (hdmitx_device.HWOp.UnInit)

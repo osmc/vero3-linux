@@ -29,6 +29,7 @@
 #include <linux/file.h>
 #include <linux/list.h>
 #include <linux/kthread.h>
+#include <linux/ktime.h>
 /* Android Headers */
 #include <sw_sync.h>
 #include <sync.h>
@@ -79,11 +80,11 @@ static DEFINE_MUTEX(osd_mutex);
 static DECLARE_WAIT_QUEUE_HEAD(osd_vsync_wq);
 
 static bool vsync_hit;
+static bool user_vsync_hit;
 static bool osd_update_window_axis;
 static int osd_afbc_dec_enable;
 static void osd_clone_pan(u32 index, u32 yoffset, int debug_flag);
 static void osd_set_dummy_data(u32 alpha);
-
 #ifdef CONFIG_FB_OSD_SUPPORT_SYNC_FENCE
 /* sync fence relative varible. */
 static int timeline_created;
@@ -99,6 +100,8 @@ static void osd_pan_display_fence(struct osd_fence_map_s *fence_map);
 #endif
 
 static int pxp_mode;
+
+s64 timestamp;
 
 static __nosavedata int use_h_filter_mode = -1;
 static __nosavedata int use_v_filter_mode = -1;
@@ -357,38 +360,62 @@ error_ret:
 	return -1;
 }
 
-int osd_sync_request(u32 index, u32 yres, u32 xoffset, u32 yoffset,
-		     s32 in_fence_fd)
+int osd_sync_request(u32 index, u32 yres, struct fb_sync_request_s *request)
 {
 	int out_fence_fd = -1;
 	int buf_num = 0;
 	struct osd_fence_map_s *fence_map =
 		kzalloc(sizeof(struct osd_fence_map_s), GFP_KERNEL);
-	buf_num = find_buf_num(yres, yoffset);
-	if (!fence_map) {
-		osd_log_err("could not allocate osd_fence_map\n");
-		return -ENOMEM;
+
+	if (request->sync_req.magic == FB_SYNC_REQUEST_MAGIC) {
+		buf_num = find_buf_num(yres, request->sync_req.yoffset);
+		if (!fence_map) {
+			osd_log_err("could not allocate osd_fence_map\n");
+			return -ENOMEM;
+		}
+		mutex_lock(&post_fence_list_lock);
+		fence_map->op = 0xffffffff;
+		fence_map->fb_index = index;
+		fence_map->buf_num = buf_num;
+		fence_map->yoffset = request->sync_req.yoffset;
+		fence_map->xoffset = request->sync_req.xoffset;
+		fence_map->yres = yres;
+		fence_map->format = request->sync_req.format;
+		fence_map->in_fd = request->sync_req.in_fen_fd;
+		fence_map->in_fence = sync_fence_fdget(
+				request->sync_req.in_fen_fd);
+		fence_map->out_fd =
+			out_fence_create(&out_fence_fd,
+					&fence_map->val, buf_num);
+	} else {
+		buf_num = find_buf_num(yres, request->sync_req_old.yoffset);
+		if (!fence_map) {
+			osd_log_err("could not allocate osd_fence_map\n");
+			return -ENOMEM;
+		}
+		mutex_lock(&post_fence_list_lock);
+		fence_map->op = 0xffffffff;
+		fence_map->fb_index = index;
+		fence_map->buf_num = buf_num;
+		fence_map->yoffset = request->sync_req_old.yoffset;
+		fence_map->xoffset = request->sync_req_old.xoffset;
+		fence_map->yres = yres;
+		fence_map->in_fd = request->sync_req_old.in_fen_fd;
+		fence_map->in_fence = sync_fence_fdget(
+				request->sync_req_old.in_fen_fd);
+		fence_map->out_fd =
+			out_fence_create(&out_fence_fd,
+					&fence_map->val, buf_num);
 	}
-	mutex_lock(&post_fence_list_lock);
-	fence_map->op = 0xffffffff;
-	fence_map->fb_index = index;
-	fence_map->buf_num = buf_num;
-	fence_map->yoffset = yoffset;
-	fence_map->xoffset = xoffset;
-	fence_map->yres = yres;
-	fence_map->in_fd = in_fence_fd;
-	fence_map->in_fence = sync_fence_fdget(in_fence_fd);
-	fence_map->out_fd =
-		out_fence_create(&out_fence_fd, &fence_map->val, buf_num);
 	list_add_tail(&fence_map->list, &post_fence_list);
 	mutex_unlock(&post_fence_list_lock);
 	queue_kthread_work(&buffer_toggle_worker, &buffer_toggle_work);
-	__close_fd(current->files, in_fence_fd);
+	__close_fd(current->files, fence_map->in_fd);
 	return  out_fence_fd;
 }
 
 int osd_sync_request_render(u32 index, u32 yres,
-	struct fb_sync_request_render_s *request,
+	struct sync_req_render_s *request,
 	u32 phys_addr)
 {
 	int out_fence_fd = -1;
@@ -416,7 +443,6 @@ int osd_sync_request_render(u32 index, u32 yres,
 	fence_map->in_fd = in_fence_fd;
 	fence_map->ext_addr = phys_addr;
 	if (fence_map->ext_addr) {
-		fence_map->format = request->format;
 		fence_map->width = request->width;
 		fence_map->height = request->height;
 		fence_map->dst_x = request->dst_x;
@@ -427,6 +453,7 @@ int osd_sync_request_render(u32 index, u32 yres,
 		fence_map->pxiel_stride = request->pxiel_stride;
 		fence_map->reserve = request->reserve;
 	}
+	fence_map->format = request->format;
 	fence_map->compose_type = request->type;
 	fence_map->op = request->op;
 	fence_map->in_fence = sync_fence_fdget(in_fence_fd);
@@ -466,8 +493,7 @@ static int osd_wait_buf_ready(struct osd_fence_map_s *fence_map)
 }
 
 #else
-int osd_sync_request(u32 index, u32 yres, u32 xoffset, u32 yoffset,
-		     s32 in_fence_fd)
+int osd_sync_request(u32 index, u32 yres, struct fb_sync_request_s *request)
 {
 	osd_log_err("osd_sync_request not supported\n");
 	return -5566;
@@ -475,7 +501,7 @@ int osd_sync_request(u32 index, u32 yres, u32 xoffset, u32 yoffset,
 
 
 int osd_sync_request_render(u32 index, u32 yres,
-	struct fb_sync_request_render_s *request,
+	struct sync_req_render_s *request,
 	u32 phys_addr)
 {
 	osd_log_err("osd_sync_request_render not supported\n");
@@ -494,19 +520,22 @@ void osd_update_3d_mode(void)
 
 static inline void wait_vsync_wakeup(void)
 {
-	vsync_hit = true;
-	wake_up_interruptible(&osd_vsync_wq);
+	user_vsync_hit = vsync_hit = true;
+
+	wake_up_interruptible_all(&osd_vsync_wq);
 }
 
 void osd_update_vsync_hit(void)
 {
-	if (!vsync_hit) {
+	ktime_t stime;
+
+	stime = ktime_get();
+	timestamp = stime.tv64;
 #ifdef FIQ_VSYNC
 		fiq_bridge_pulse_trigger(&osd_hw.fiq_handle_item);
 #else
 		wait_vsync_wakeup();
 #endif
-	}
 }
 
 static void osd_update_interlace_mode(int index)
@@ -804,16 +833,20 @@ void osd_wait_vsync_hw(void)
 	wait_event_interruptible_timeout(osd_vsync_wq, vsync_hit, timeout);
 }
 
-s32 osd_wait_vsync_event(void)
+s64 osd_wait_vsync_event(void)
 {
 	unsigned long timeout;
+	user_vsync_hit = false;
 
-	vsync_hit = false;
-	/* waiting for 1000ms. */
-	timeout = msecs_to_jiffies(1000);
-	wait_event_interruptible_timeout(osd_vsync_wq, vsync_hit, timeout);
+	if (pxp_mode)
+		timeout = msecs_to_jiffies(50);
+	else
+		timeout = msecs_to_jiffies(1000);
 
-	return 0;
+	/* waiting for 10ms. */
+	wait_event_interruptible_timeout(osd_vsync_wq, user_vsync_hit, timeout);
+
+	return timestamp;
 }
 
 int osd_set_scan_mode(u32 index)
@@ -1963,6 +1996,7 @@ static bool osd_ge2d_compose_pan_display(struct osd_fence_map_s *fence_map)
 {
 	u32 index = fence_map->fb_index;
 	bool free_scale_set = false;
+	void *vaddr = NULL;
 
 	canvas_config(osd_hw.fb_gem[index].canvas_idx,
 		fence_map->ext_addr,
@@ -1970,11 +2004,56 @@ static bool osd_ge2d_compose_pan_display(struct osd_fence_map_s *fence_map)
 		osd_hw.color_info[index]->bpp),
 		fence_map->height,
 		CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+	vaddr = phys_to_virt(fence_map->ext_addr);
+	osd_hw.screen_base[index] = vaddr;
+	osd_hw.screen_size[index] =
+		CANVAS_ALIGNED(fence_map->width *
+		osd_hw.color_info[index]->bpp) * fence_map->height;
 
 	osd_hw.pandata[index].x_start = 0;
 	osd_hw.pandata[index].x_end = fence_map->width - 1;
 	osd_hw.pandata[index].y_start = 0;
 	osd_hw.pandata[index].y_end = fence_map->height - 1;
+
+	if ((memcmp(&osd_hw.dispdata[index],
+		&osd_hw.dispdata_backup[index],
+		sizeof(struct pandata_s)) != 0) ||
+		(memcmp(&osd_hw.free_src_data[index],
+		&osd_hw.free_src_data_backup[index],
+		sizeof(struct pandata_s)) != 0) ||
+		(memcmp(&osd_hw.free_dst_data[index],
+		&osd_hw.free_dst_data_backup[index],
+		sizeof(struct pandata_s)) != 0)) {
+		memcpy(&osd_hw.dispdata[index],
+			&osd_hw.dispdata_backup[index],
+			sizeof(struct pandata_s));
+		memcpy(&osd_hw.free_src_data[index],
+			&osd_hw.free_src_data_backup[index],
+			sizeof(struct pandata_s));
+		memcpy(&osd_hw.free_dst_data[index],
+			&osd_hw.free_dst_data_backup[index],
+			sizeof(struct pandata_s));
+		free_scale_set = true;
+	}
+
+	if ((osd_hw.free_scale[index].h_enable !=
+		osd_hw.free_scale_backup[index].h_enable) ||
+		(osd_hw.free_scale[index].v_enable !=
+		osd_hw.free_scale_backup[index].v_enable) ||
+		(osd_hw.free_scale_enable[index] !=
+		osd_hw.free_scale_enable_backup[index]) ||
+		(osd_hw.free_scale_mode[index] !=
+		osd_hw.free_scale_mode_backup[index])) {
+		osd_hw.free_scale[index].h_enable =
+			osd_hw.free_scale_backup[index].h_enable;
+		osd_hw.free_scale[index].v_enable =
+			osd_hw.free_scale_backup[index].v_enable;
+		osd_hw.free_scale_enable[index] =
+			osd_hw.free_scale_enable_backup[index];
+		osd_hw.free_scale_mode[index] =
+			osd_hw.free_scale_mode_backup[index];
+		free_scale_set = true;
+	}
 	return free_scale_set;
 }
 
@@ -2301,9 +2380,6 @@ static void osd_pan_display_fence(struct osd_fence_map_s *fence_map)
 					osd_hw.dispdata_backup[index].y_start,
 					osd_hw.dispdata_backup[index].y_end);
 
-				osd_hw.color_info[index] =
-					osd_hw.color_backup[index];
-
 				canvas_config(osd_hw.fb_gem[0].canvas_idx,
 					osd_hw.fb_gem[0].addr,
 					osd_hw.fb_gem[0].width,
@@ -2337,6 +2413,19 @@ static void osd_pan_display_fence(struct osd_fence_map_s *fence_map)
 					[osd_hw.pandata[index].y_start /
 					osd_hw.osd_afbcd[index].frame_height];
 			}
+
+			color = convert_hal_format(fence_map->format);
+			if (color) {
+				if (color != osd_hw.color_backup[index]) {
+					color_mode = true;
+					osd_hw.color_backup[index] = color;
+				}
+				osd_hw.color_info[index] = color;
+			} else {
+				osd_log_err("fence color format error %d\n",
+					fence_map->format);
+			}
+
 			if (color_mode)
 				osd_hw.reg[index][OSD_COLOR_MODE].update_func();
 			osd_hw.reg[index][DISP_GEOMETRY].update_func();

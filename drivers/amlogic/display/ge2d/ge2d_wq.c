@@ -1139,6 +1139,9 @@ int ge2d_context_config_ex(struct ge2d_context_s *context,
 		dp_gen_cfg->src1_vsc_rpt_ctrl = 1;
 	}
 
+	dp_gen_cfg->src1_gb_alpha = 0xff;
+	dp_gen_cfg->src1_gb_alpha_en = 0;
+
 	dp_gen_cfg->src2_key_en = ge2d_config->src2_key.key_enable;
 	dp_gen_cfg->src2_key_mode = ge2d_config->src2_key.key_mode;
 	dp_gen_cfg->src2_key =   ge2d_config->src2_key.key_color;
@@ -1429,6 +1432,9 @@ int ge2d_context_config_ex_ion(struct ge2d_context_s *context,
 		/* 1bit, 0: using minus  1: using repeat data */
 		dp_gen_cfg->src1_vsc_rpt_ctrl = 1;
 	}
+
+	dp_gen_cfg->src1_gb_alpha = ge2d_config->src1_gb_alpha & 0xff;
+	dp_gen_cfg->src1_gb_alpha_en = ge2d_config->src1_gb_alpha_en & 1;
 
 	dp_gen_cfg->src2_key_en = ge2d_config->src2_key.key_enable;
 	dp_gen_cfg->src2_key_mode = ge2d_config->src2_key.key_mode;

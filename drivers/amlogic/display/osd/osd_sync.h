@@ -25,14 +25,33 @@ enum {
 	GE2D_COMPOSE_MODE = 2,
 };
 
-struct fb_sync_request_s {
+#define FB_SYNC_REQUEST_MAGIC  0x54376812
+#define FB_SYNC_REQUEST_RENDER_MAGIC  0x55386816
+
+
+
+struct sync_req_old_s {
 	unsigned int xoffset;
 	unsigned int yoffset;
 	int in_fen_fd;
 	int out_fen_fd;
 };
 
-struct fb_sync_request_render_s {
+struct sync_req_s {
+	int magic;
+	int len;
+	unsigned int xoffset;
+	unsigned int yoffset;
+	int in_fen_fd;
+	int out_fen_fd;
+	int format;
+	int reserved[3];
+};
+
+
+struct sync_req_render_s {
+	int magic;
+	int len;
 	unsigned int    xoffset;
 	unsigned int    yoffset;
 	int             in_fen_fd;
@@ -50,5 +69,14 @@ struct fb_sync_request_render_s {
 	int				byte_stride;
 	int				pxiel_stride;
 	unsigned int    reserve;
+};
+
+
+struct fb_sync_request_s {
+	union {
+		struct sync_req_old_s sync_req_old;
+		struct sync_req_s sync_req;
+		struct sync_req_render_s sync_req_render;
+	};
 };
 #endif
