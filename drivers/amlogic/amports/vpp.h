@@ -122,17 +122,17 @@ struct vpp_frame_par_s {
 
 	bool supsc0_enable;
 	bool supsc1_enable;
+	bool supsc0_hori_ratio;
+	bool supsc1_hori_ratio;
+	bool supsc0_vert_ratio;
+	bool supsc1_vert_ratio;
 	u32 supscl_path;
-	u32 supsc0_hori_ratio;
-	u32 supsc1_hori_ratio;
-	u32 supsc0_vert_ratio;
-	u32 supsc1_vert_ratio;
 	u32 spsc0_w_in;
 	u32 spsc0_h_in;
 	u32 spsc1_w_in;
 	u32 spsc1_h_in;
-	u32 vpp_postblend_out_width;
-	u32 vpp_postblend_out_height;
+	u32 video_input_w;
+	u32 video_input_h;
 
 	bool nocomp;
 
@@ -172,6 +172,8 @@ enum select_scaler_path_e {
 */
 #define SUPER_CORE0_WIDTH_MAX  2048
 #define SUPER_CORE1_WIDTH_MAX  4096
+#define SUPER_CORE0_SUPPORT  (1 << 0)
+#define SUPER_CORE1_SUPPORT  (1 << 1)
 
 
 #ifdef TV_3D_FUNCTION_OPEN

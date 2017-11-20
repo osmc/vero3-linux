@@ -2894,7 +2894,7 @@ static int vdin_drv_probe(struct platform_device *pdev)
 	/*enable auto cutwindow for atv*/
 	if (vdevp->index == 0) {
 		vdevp->auto_cutwindow_en = 1;
-		vdevp->auto_ratio_en = 1;
+		vdevp->auto_ratio_en = 0;
 		#ifdef CONFIG_CMA
 		vdevp->cma_mem_mode = 1;
 		#endif

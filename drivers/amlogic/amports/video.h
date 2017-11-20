@@ -38,7 +38,7 @@ enum {
 };
 
 extern bool pre_scaler_en;
-extern unsigned int super_scaler;
+extern bool super_scaler;
 #define VIDEO_NOTIFY_TRICK_WAIT   0x01
 #define VIDEO_NOTIFY_PROVIDER_GET 0x02
 #define VIDEO_NOTIFY_PROVIDER_PUT 0x04
