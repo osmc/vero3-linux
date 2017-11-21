@@ -644,6 +644,12 @@ static void tvafe_cvd2_write_mode_reg(struct tvafe_cvd2_s *cvd2,
 	W_APB_REG(ACD_REG_22, 0x82080000);
 	W_APB_REG(ACD_REG_22, 0x04080000);
 #endif
+	/*for palm moonoscope pattern color flash*/
+	if (cvd2->config_fmt == TVIN_SIG_FMT_CVBS_PAL_M) {
+		W_APB_REG(ACD_REG_22, 0x2020000);
+		W_APB_REG(CVD2_NOISE_THRESHOLD, 0xff);
+		W_APB_REG(CVD2_NON_STANDARD_SIGNAL_THRESHOLD, 0x20);
+	}
 
 	/*set for wipe off vertical stripes*/
 	if ((cvd2->vd_port > TVIN_PORT_CVBS0) &&
