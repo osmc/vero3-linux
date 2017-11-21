@@ -647,6 +647,7 @@ static int osd_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 	u32 flush_rate;
 	int out_fen_fd;
 	int xoffset, yoffset;
+	u32 osd_reverse;
 	struct fb_sync_request_s sync_request;
 	struct fb_dmabuf_export dmaexp;
 
@@ -674,6 +675,9 @@ static int osd_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 				sizeof(struct fb_sync_request_render_s));
 		break;
 	#endif
+	case FBIOPUT_OSD_REVERSE:
+		ret = copy_from_user(&osd_reverse, argp, sizeof(u32));
+		break;
 	case FBIOGET_OSD_SCALE_AXIS:
 	case FBIOPUT_OSD_ORDER:
 	case FBIOGET_OSD_ORDER:
@@ -688,7 +692,6 @@ static int osd_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 	case FBIOGET_OSD_BLOCK_MODE:
 	case FBIOGET_OSD_FREE_SCALE_AXIS:
 	case FBIOGET_OSD_WINDOW_AXIS:
-	case FBIOPUT_OSD_REVERSE:
 	case FBIOPUT_OSD_ROTATE_ON:
 	case FBIOPUT_OSD_ROTATE_ANGLE:
 		break;
