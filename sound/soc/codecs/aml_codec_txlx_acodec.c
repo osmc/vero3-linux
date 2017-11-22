@@ -49,7 +49,7 @@ struct txlx_acodec_priv {
 };
 
 static const struct reg_default txlx_acodec_init_list[] = {
-	{AUDIO_CONFIG_BLOCK_ENABLE, 0x1403BFFF},
+	{AUDIO_CONFIG_BLOCK_ENABLE, 0x3403BFFF},
 	{ADC_VOL_CTR_PGA_IN_CONFIG, 0x50502929},
 	{DAC_VOL_CTR_DAC_SOFT_MUTE, 0xFBFB0000},
 	{LINE_OUT_CONFIG, 0x00002222},

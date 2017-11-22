@@ -338,6 +338,8 @@ static int hardware_resample_enable(int input_sr)
 static int hardware_resample_disable(void)
 {
 	aml_audin_write(AUD_RESAMPLE_CTRL0, 0);
+	aml_audin_update_bits(AUD_RESAMPLE_CTRL2,
+			0 << 25, 0 << 25);
 	return 0;
 }
 
