@@ -278,6 +278,8 @@ struct dvb_frontend *get_si2177_tuner(void)
 			return dev->fe->fe;
 		if (!strcmp(dev->drv->name, "mxl661_tuner"))
 			return dev->fe->fe;
+		if (!strcmp(dev->drv->name, "si2151_tuner"))
+			return dev->fe->fe;
 		return dev->fe->fe;
 	}
 	pr_error("can not find out tuner drv\n");
@@ -1897,6 +1899,25 @@ static int aml_fe_dev_init(struct aml_dvb *dvb, struct platform_device *pdev,
 			dev->cma_flag = 0;
 		}
 #endif
+	snprintf(buf, sizeof(buf), "%s%d_atsc_version", name, id);
+#ifdef CONFIG_OF
+	ret = of_property_read_u32(pdev->dev.of_node, buf, &value);
+	if (!ret) {
+		dev->atsc_version = value;
+		pr_inf("%s: %d\n", buf, value);
+	} else {
+		dev->atsc_version = 0;
+	}
+#else /*CONFIG_OF */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, buf);
+	if (res) {
+		int atsc_version = res->start;
+		dev->atsc_version = atsc_version;
+	} else {
+		dev->atsc_version = 0;
+	}
+#endif
+
 	if (dev->cma_flag == 1) {
 		snprintf(buf, sizeof(buf), "%s%d_cma_mem_size", name, id);
 #ifdef CONFIG_CMA
@@ -1929,37 +1950,15 @@ static int aml_fe_dev_init(struct aml_dvb *dvb, struct platform_device *pdev,
 #ifdef CONFIG_OF
 	dev->mem_start = memstart;
 #endif
-
-		snprintf(buf, sizeof(buf), "%s%d_atsc_version", name, id);
-#ifdef CONFIG_OF
-		ret = of_property_read_u32(pdev->dev.of_node, buf, &value);
-		if (!ret) {
-			dev->atsc_version = value;
-			pr_inf("%s: %d\n", buf, value);
-		} else {
-			dev->atsc_version = 0;
-		}
-#else /*CONFIG_OF */
-		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, buf);
-		if (res) {
-			int atsc_version = res->start;
-			dev->atsc_version = atsc_version;
-		} else {
-			dev->atsc_version = 0;
-		}
-#endif
-
-
-		if (dev->drv->init) {
-			ret = dev->drv->init(dev);
-			if (ret != 0) {
-				dev->drv = NULL;
-				pr_error("[aml_fe..]%s error.\n", __func__);
-				return ret;
-			}
+	}
+	if (dev->drv->init) {
+		ret = dev->drv->init(dev);
+		if (ret != 0) {
+			dev->drv = NULL;
+			pr_error("[aml_fe..]%s error.\n", __func__);
+			return ret;
 		}
 	}
-
 	return 0;
 }
 
