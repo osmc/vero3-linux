@@ -775,28 +775,6 @@ void rx_hpd_to_esm_handle(struct work_struct *work)
 
 void hdmirx_dv_packet_stop(void)
 {
-	struct vsi_infoframe_st *pkt;
-
-	if (is_meson_txhd_cpu())
-		return;
-
-	if (rx.vsi_info.dolby_vision_sts == DOLBY_VERSION_START) {
-		/*if (((hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD0) & 0xFF) != 0)
-		|| ((hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD0) & 0xFF00) != 0))*/
-		pkt = (struct vsi_infoframe_st *)&(rx.vs_info);
-		if ((pkt->sbpkt.payload.data[0] & 0xFFFF) != 0)
-			return;
-		if (rx.vsi_info.dolby_vision) {
-			rx.vsi_info.dolby_vision = FALSE;
-			rx.vsi_info.packet_stop = 0;
-		} else
-			rx.vsi_info.packet_stop++;
-		if (rx.vsi_info.packet_stop > DV_STOP_PACKET_MAX) {
-			rx.vsi_info.dolby_vision_sts =
-							DOLBY_VERSION_STOP;
-				rx_pr("no dv packet receive stop\n");
-			}
-	}
 }
 
 void rx_getaudinfo(struct aud_info_s *audio_info)
@@ -2411,7 +2389,7 @@ void hdmirx_hw_monitor(void)
 				#endif
 				memset(&rx.pre, 0,
 					sizeof(struct rx_video_info));
-				memset(&rx.vsi_info,
+				memset(&rx.vs_info_details,
 					0,
 					sizeof(struct vsi_info_s));
 				rx_pr("READY->wait_clk\n");
@@ -3175,7 +3153,8 @@ int hdmirx_show_info(unsigned char *buf, int size)
 		pos += snprintf(buf+pos, size-pos,
 		"HDR EOTF: %s\n", "SMPTE_ST_2048");
 	pos += snprintf(buf+pos, size-pos,
-		"Dolby Vision: %s\n", (rx.vsi_info.dolby_vision?"on":"off"));
+		"Dolby Vision: %s\n",
+		(rx.vs_info_details.dolby_vision?"on":"off"));
 
 	pos += snprintf(buf+pos, size-pos,
 		"\n\nAudio info\n\n");
@@ -4085,7 +4064,7 @@ void hdmirx_hw_init(enum tvin_port_e port)
 		memcpy(rx.hdcp.keys, init_hdcp_data.keys,
 			sizeof(init_hdcp_data.keys));
 		rx.hdcp.hdcp_version = HDCP_VER_NONE;
-		memset(&rx.vsi_info, 0,
+		memset(&rx.vs_info_details, 0,
 			sizeof(struct vsi_info_s));
 		#ifdef HDCP22_ENABLE
 		if (hdcp22_on) {

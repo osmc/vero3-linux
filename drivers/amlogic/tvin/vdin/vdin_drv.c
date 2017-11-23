@@ -1623,13 +1623,15 @@ irqreturn_t vdin_isr(int irq, void *dev_id)
 			schedule_delayed_work(&devp->dv.dv_dwork,
 				dv_work_delby);
 		} else if (((dv_dbg_mask & DV_UPDATE_DATA_MODE_DELBY_WORK) == 0)
-			&& devp->dv.dv_config) {
+			&& devp->dv.dv_config && !devp->dv.low_latency) {
 			vdin_dolby_buffer_update(devp,
 				devp->last_wr_vfe->vf.index);
 			vdin_dolby_addr_update(devp,
 				devp->curr_wr_vfe->vf.index);
 		} else
 			devp->dv.dv_crc_check = true;
+		if (devp->dv.low_latency != devp->vfp->low_latency)
+			devp->vfp->low_latency = devp->dv.low_latency;
 		if ((devp->dv.dv_crc_check == true) ||
 			(!(dv_dbg_mask & DV_CRC_CHECK)))
 			provider_vf_put(devp->last_wr_vfe, devp->vfp);

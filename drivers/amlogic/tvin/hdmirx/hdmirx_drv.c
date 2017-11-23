@@ -694,7 +694,7 @@ int hdmirx_hw_get_dvi_info(void)
 int hdmirx_hw_get_3d_structure(void)
 {
 	uint8_t ret = 0;
-	if (VSI_FORMAT_3D_FORMAT == rx.vsi_info.vd_fmt)
+	if (VSI_FORMAT_3D_FORMAT == rx.vs_info_details.vd_fmt)
 		ret = 1;
 	return ret;
 }
@@ -706,27 +706,27 @@ void hdmirx_get_vsi_info(struct tvin_sig_property_s *prop)
 	prop->trans_fmt = TVIN_TFMT_2D;
 	prop->dolby_vision = FALSE;
 	if (hdmirx_hw_get_3d_structure() == 1) {
-		if (rx.vsi_info._3d_structure == 0x1) {
+		if (rx.vs_info_details._3d_structure == 0x1) {
 			/* field alternative */
 			prop->trans_fmt = TVIN_TFMT_3D_FA;
-		} else if (rx.vsi_info._3d_structure == 0x2) {
+		} else if (rx.vs_info_details._3d_structure == 0x2) {
 			/* line alternative */
 			prop->trans_fmt = TVIN_TFMT_3D_LA;
-		} else if (rx.vsi_info._3d_structure == 0x3) {
+		} else if (rx.vs_info_details._3d_structure == 0x3) {
 			/* side-by-side full */
 			prop->trans_fmt = TVIN_TFMT_3D_LRF;
-		} else if (rx.vsi_info._3d_structure == 0x4) {
+		} else if (rx.vs_info_details._3d_structure == 0x4) {
 			/* L + depth */
 			prop->trans_fmt = TVIN_TFMT_3D_LD;
-		} else if (rx.vsi_info._3d_structure == 0x5) {
+		} else if (rx.vs_info_details._3d_structure == 0x5) {
 			/* L + depth + graphics + graphics-depth */
 			prop->trans_fmt = TVIN_TFMT_3D_LDGD;
-		} else if (rx.vsi_info._3d_structure == 0x6) {
+		} else if (rx.vs_info_details._3d_structure == 0x6) {
 			/* top-and-bot */
 			prop->trans_fmt = TVIN_TFMT_3D_TB;
-		} else if (rx.vsi_info._3d_structure == 0x8) {
+		} else if (rx.vs_info_details._3d_structure == 0x8) {
 			/* Side-by-Side half */
-			switch (rx.vsi_info._3d_ext_data) {
+			switch (rx.vs_info_details._3d_ext_data) {
 			case 0x5:
 				/*Odd/Left picture, Even/Right picture*/
 				prop->trans_fmt = TVIN_TFMT_3D_LRH_OLER;
@@ -751,14 +751,21 @@ void hdmirx_get_vsi_info(struct tvin_sig_property_s *prop)
 		else if (is_alternative())
 			prop->trans_fmt = TVIN_TFMT_3D_LA;
 	} else {
-		if (rx.vsi_info.dolby_vision_sts ==
-			DOLBY_VERSION_START)
-			prop->dolby_vision = TRUE;
-		else if (rx.vsi_info.dolby_vision_sts ==
-			DOLBY_VERSION_STOP)
-			prop->dolby_vision = FALSE;
-		if (log_level & VSI_LOG)
+		prop->dolby_vision = rx.vs_info_details.dolby_vision;
+		prop->low_latency = rx.vs_info_details.low_latency;
+		if ((rx.vs_info_details.dolby_vision == TRUE) &&
+			(rx.vs_info_details.dolby_timeout <=
+				dv_nopacket_timeout) &&
+			(rx.vs_info_details.dolby_timeout != 0))
+			rx.vs_info_details.dolby_timeout--;
+		if (rx.vs_info_details.dolby_timeout == 0) {
+			rx.vs_info_details.dolby_vision = FALSE;
+			rx_pr("dv timeout\n");
+		}
+		if (log_level & VSI_LOG) {
 			rx_pr("prop->dolby_vision:%d\n", prop->dolby_vision);
+			rx_pr("prop->low_latency:%d\n", prop->low_latency);
+		}
 	}
 }
 

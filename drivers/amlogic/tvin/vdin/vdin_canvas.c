@@ -129,9 +129,7 @@ void vdin_canvas_start_config(struct vdin_dev_s *devp)
 		(devp->format_convert == VDIN_FORMAT_CONVERT_RGB_YUV444) ||
 		(devp->format_convert == VDIN_FORMAT_CONVERT_RGB_RGB) ||
 		(devp->format_convert == VDIN_FORMAT_CONVERT_YUV_GBR) ||
-
-		(devp->format_convert == VDIN_FORMAT_CONVERT_YUV_BRG) ||
-		(devp->force_yuv444_malloc == 1)) {
+		(devp->format_convert == VDIN_FORMAT_CONVERT_YUV_BRG)) {
 		if (devp->source_bitdepth > VDIN_MIN_SOURCE_BITDEPTH)
 			devp->canvas_w = max_buf_width *
 				VDIN_YUV444_10BIT_PER_PIXEL_BYTE;
@@ -162,6 +160,14 @@ void vdin_canvas_start_config(struct vdin_dev_s *devp)
 	}
 	/*backup before roundup*/
 	devp->canvas_active_w = devp->canvas_w;
+	if (devp->force_yuv444_malloc == 1) {
+		if (devp->source_bitdepth > VDIN_MIN_SOURCE_BITDEPTH)
+			devp->canvas_w = devp->h_active *
+				VDIN_YUV444_10BIT_PER_PIXEL_BYTE;
+		else
+			devp->canvas_w = devp->h_active *
+				VDIN_YUV444_8BIT_PER_PIXEL_BYTE;
+	}
 	/*canvas_w must ensure divided exact by 256bit(32byte)*/
 	devp->canvas_w = roundup(devp->canvas_w, 32);
 	devp->canvas_h = devp->v_active;
@@ -263,9 +269,7 @@ void vdin_canvas_auto_config(struct vdin_dev_s *devp)
 		(devp->format_convert == VDIN_FORMAT_CONVERT_RGB_YUV444) ||
 		(devp->format_convert == VDIN_FORMAT_CONVERT_RGB_RGB) ||
 		(devp->format_convert == VDIN_FORMAT_CONVERT_YUV_GBR) ||
-
-		(devp->format_convert == VDIN_FORMAT_CONVERT_YUV_BRG) ||
-		(devp->force_yuv444_malloc == 1)) {
+		(devp->format_convert == VDIN_FORMAT_CONVERT_YUV_BRG)) {
 		if (devp->source_bitdepth > VDIN_MIN_SOURCE_BITDEPTH)
 			devp->canvas_w = devp->h_active *
 				VDIN_YUV444_10BIT_PER_PIXEL_BYTE;
@@ -297,6 +301,14 @@ void vdin_canvas_auto_config(struct vdin_dev_s *devp)
 	}
 	/*backup before roundup*/
 	devp->canvas_active_w = devp->canvas_w;
+	if (devp->force_yuv444_malloc == 1) {
+		if (devp->source_bitdepth > VDIN_MIN_SOURCE_BITDEPTH)
+			devp->canvas_w = devp->h_active *
+				VDIN_YUV444_10BIT_PER_PIXEL_BYTE;
+		else
+			devp->canvas_w = devp->h_active *
+				VDIN_YUV444_8BIT_PER_PIXEL_BYTE;
+	}
 	/*canvas_w must ensure divided exact by 256bit(32byte)*/
 	devp->canvas_w = roundup(devp->canvas_w, 32);
 	devp->canvas_h = devp->v_active;
@@ -387,9 +399,9 @@ unsigned int vdin_cma_alloc(struct vdin_dev_s *devp)
 	/*todo: need update if vf_skip_cnt used by other port*/
 	if (devp->vfp->skip_vf_num &&
 		(((devp->parm.port >= TVIN_PORT_HDMI0) &&
-			(devp->parm.port <= TVIN_PORT_HDMI7)) ||
-			((devp->parm.port >= TVIN_PORT_CVBS0) &&
-			(devp->parm.port <= TVIN_PORT_CVBS7))))
+		(devp->parm.port <= TVIN_PORT_HDMI7)) ||
+		((devp->parm.port >= TVIN_PORT_CVBS0) &&
+		(devp->parm.port <= TVIN_PORT_CVBS7))))
 		max_buffer_num += devp->vfp->skip_vf_num;
 	if (max_buffer_num > max_buf_num)
 		max_buffer_num = max_buf_num;

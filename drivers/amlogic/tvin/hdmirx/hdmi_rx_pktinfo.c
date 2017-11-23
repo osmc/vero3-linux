@@ -35,6 +35,10 @@ module_param(hdr_enable, bool, 0664);
 */
 static struct rxpkt_st rxpktsts;
 
+int dv_nopacket_timeout = 30;
+MODULE_PARM_DESC(dv_nopacket_timeout, "\n dv_nopacket_timeout\n");
+module_param(dv_nopacket_timeout, int, 0664);
+
 uint32_t gpkt_fifo_pri = 0;
 /*struct mutex pktbuff_lock;*/
 
@@ -1178,65 +1182,71 @@ static int vsi_handler(struct hdmi_rx_ctrl *ctx)
 }
 #endif
 
+/*  version2.86 ieee-0x00d046, length 0x1B
+ *	pb4 bit[0]: Low_latency
+ *	pb4 bit[1]: Dolby_vision_signal
+ *	pb5 bit[7]: Backlt_Ctrl_MD_Present
+ *	pb5 bit[3:0] | pb6 bit[7:0]: Eff_tmax_PQ
+ *
+ *	version2.6 ieee-0x000c03,
+ *	start: lenght 0x18
+ *	stop: 0x05,0x04
+ *
+ */
 void rx_get_vsi_info(void)
 {
-	/*struct vsi_infoframe_st pktinfo;*/
 	struct vsi_infoframe_st *pkt;
-	struct vsi_info_s *vs;
+	unsigned int tmp;
 
 	pkt = (struct vsi_infoframe_st *)&(rx.vs_info);
-	/*vsi run status structure*/
-	vs = &rx.vsi_info;
 
-	vs->identifier = pkt->ieee;
-	vs->vd_fmt = pkt->sbpkt.vsi.vdfmt;
-	if (log_level & VSI_LOG)
-		rx_pr("vsi_info.vid_format:%d,vsi_info.length:%d\n",
-		vs->vd_fmt, pkt->length);
-
-	if (pkt->length == DOLBY_VERSION_START_LENGTH) {
-		/*dolby version start VSI*/
-		vs->dolby_vision = TRUE;
-		/*length = 0x18,PB6-PB24 = 0x00*/
-		if (!(pkt->sbpkt.payload.data[0] & 0xFFFF0000) &&
-			!pkt->sbpkt.payload.data[1] &&
-			!pkt->sbpkt.payload.data[2] &&
-			!pkt->sbpkt.payload.data[3] &&
-			!pkt->sbpkt.payload.data[4] &&
-			!(pkt->sbpkt.payload.data[5] & 0xFFFFFF)) {
-			if (log_level & VSI_LOG)
-				if (vs->dolby_vision_sts != DOLBY_VERSION_START)
-					rx_pr("dolby vision start\n");
-			vs->dolby_vision_sts = DOLBY_VERSION_START;
+	rx.vs_info_details._3d_structure = 0;
+	rx.vs_info_details._3d_ext_data = 0;
+	rx.vs_info_details.low_latency = FALSE;
+	rx.vs_info_details.backlt_md_bit = FALSE;
+	rx.vs_info_details.dolby_timeout = 0xffff;
+	if ((pkt->length == E_DV_LENTH_27) &&
+		(pkt->ieee == 0x00d046)) {
+		/* dolby1.5 */
+		tmp = pkt->sbpkt.payload.data[0] & _BIT(1);
+		rx.vs_info_details.dolby_vision = tmp ? TRUE : FALSE;
+		tmp = pkt->sbpkt.payload.data[0] & _BIT(0);
+		rx.vs_info_details.low_latency = tmp ? TRUE : FALSE;
+		tmp = pkt->sbpkt.payload.data[0] >> 15 & 0x01;
+		rx.vs_info_details.backlt_md_bit = tmp ? TRUE : FALSE;
+		if (tmp) {
+			tmp = (pkt->sbpkt.payload.data[0] >> 16 & 0x0f) |
+				(pkt->sbpkt.payload.data[0] & 0xf00);
+			rx.vs_info_details.eff_tmax_pq = tmp;
 		}
-	} else if (((pkt->length == 0x04) || (pkt->length == 0x05)) &&
-		(vs->vd_fmt != VSI_FORMAT_3D_FORMAT)) {
-		/*dolby version exit VSI*/
-		vs->dolby_vision = TRUE;
-		if (log_level & VSI_LOG)
-			rx_pr("dolby vision stop\n");
-		vs->dolby_vision_sts = DOLBY_VERSION_STOP;
+	} else if (pkt->ieee == 0x000c03) {
+		/* dobly10 */
+		if (pkt->length == E_DV_LENTH_24) {
+			rx.vs_info_details.dolby_vision = TRUE;
+			if ((pkt->sbpkt.payload.data[0] & 0xffff) == 0)
+				rx.vs_info_details.dolby_timeout =
+					dv_nopacket_timeout;
+		} else if ((pkt->length == E_DV_LENTH_5) &&
+			(pkt->sbpkt.payload.data[0] & 0xffff)) {
+			rx.vs_info_details.dolby_vision = FALSE;
+		} else if ((pkt->length == E_DV_LENTH_4) &&
+			((pkt->sbpkt.payload.data[0] & 0xff) == 0)) {
+			rx.vs_info_details.dolby_vision = FALSE;
+		}
 	} else {
 		/*3d VSI*/
-		vs->dolby_vision = FALSE;
-		if ((0x000c03 == vs->identifier) &&
-			(vs->vd_fmt == VSI_FORMAT_3D_FORMAT)) {
-			vs->_3d_structure =
-				pkt->sbpkt.vsi_3Dext.threeD_st;
-			vs->_3d_ext_data =
+		if (pkt->sbpkt.vsi_3Dext.vdfmt == VSI_FORMAT_3D_FORMAT) {
+			rx.vs_info_details._3d_structure =
+				rx.vs_info_details._3d_structure;
+			rx.vs_info_details._3d_ext_data =
 				pkt->sbpkt.vsi_3Dext.threeD_ex;
-		} else {
-			vs->_3d_structure = 0;
-			vs->_3d_ext_data = 0;
+			if (log_level & VSI_LOG)
+				rx_pr("struct_3d:%d, struct_3d_ext:%d\n",
+					pkt->sbpkt.vsi_3Dext.threeD_st,
+					pkt->sbpkt.vsi_3Dext.threeD_ex);
 		}
-		if (log_level & VSI_LOG)
-			rx_pr("struct_3d:%d, struct_3d_ext:%d\n",
-				pkt->sbpkt.vsi_3Dext.threeD_st,
-				pkt->sbpkt.vsi_3Dext.threeD_ex);
+		rx.vs_info_details.dolby_vision = FALSE;
 	}
-
-	if (log_level & VSI_LOG)
-		rx_pr("dolby vision:%d\n", vs->dolby_vision);
 }
 
 #if 0

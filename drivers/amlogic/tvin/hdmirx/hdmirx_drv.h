@@ -87,6 +87,7 @@
 #define HDCP_AUTH_HOLD_TIME 500
 #define HHI_REG_ADDR_TXLX 0xff63c000
 #define HHI_REG_ADDR_TXL 0xc883c000
+
 #define DOLBY_VERSION_START_LENGTH 0x18
 #define VSI_3D_FORMAT_INDEX	7
 #define ESM_KILL_WAIT_TIMES 250
@@ -333,6 +334,13 @@ enum hdmi_mode_e {
 	E_DVI,
 };
 
+enum dolbyvision_lenth_e {
+	E_DV_LENTH_4 = 0x04,
+	E_DV_LENTH_5 = 0x05,
+	E_DV_LENTH_24 = 0x18,
+	E_DV_LENTH_27 = 0x1B
+};
+
 enum port_sts {
 	E_PORT0,
 	E_PORT1,
@@ -566,8 +574,10 @@ struct vsi_info_s {
 	unsigned char _3d_structure;
 	unsigned char _3d_ext_data;
 	bool dolby_vision;
-	enum dolby_vision_sts_e dolby_vision_sts;
-	unsigned char packet_stop;/*dv packet stop count*/
+	bool low_latency;
+	bool backlt_md_bit;
+	unsigned int dolby_timeout;
+	unsigned int eff_tmax_pq;
 };
 
 
@@ -706,7 +716,7 @@ struct rx_s {
 	struct rx_video_info pre;
 	struct rx_video_info cur;
 	struct aud_info_s aud_info;
-	struct vsi_info_s vsi_info;
+	struct vsi_info_s vs_info_details;
 	struct tvin_hdr_info_s hdr_info;
 	enum dolby_vision_sts_e dolby_vision_sts;
 	unsigned int pwr_sts;
@@ -891,7 +901,7 @@ extern char pre_eq_freq;
 extern int en_4k_timing;
 extern unsigned int last_clk_rate;
 extern int pdec_ists_en;
-
+extern int dv_nopacket_timeout;
 
 void wr_reg_hhi(unsigned int offset, unsigned int val);
 unsigned int rd_reg_hhi(unsigned int offset);

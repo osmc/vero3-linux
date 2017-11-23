@@ -309,13 +309,15 @@ static void vdin_dump_mem(char *path, struct vdin_dev_s *devp)
 {
 	struct file *filp = NULL;
 	loff_t pos = 0;
-	loff_t i = 0;
+	loff_t i = 0, j = 0;
+	unsigned int mem_size = 0;
 	void *buf = NULL;
 	void *vfbuf[VDIN_CANVAS_MAX_CNT];
 	mm_segment_t old_fs = get_fs();
 	set_fs(KERNEL_DS);
 	filp = filp_open(path, O_RDWR|O_CREAT, 0666);
 
+	mem_size = devp->canvas_active_w * devp->canvas_h;
 	for (i = 0; i < VDIN_CANVAS_MAX_CNT; i++)
 			vfbuf[i] = NULL;
 	if (IS_ERR(filp)) {
@@ -328,7 +330,7 @@ static void vdin_dump_mem(char *path, struct vdin_dev_s *devp)
 		return;
 	}
 	for (i = 0; i < devp->canvas_max_num; i++) {
-		pos = devp->canvas_max_size * i;
+		pos = mem_size * i;
 		if (devp->cma_config_flag == 0x1)
 			buf = codec_mm_phys_to_virt(devp->mem_start +
 				devp->canvas_max_size*i);
@@ -340,11 +342,18 @@ static void vdin_dump_mem(char *path, struct vdin_dev_s *devp)
 		else
 			buf = phys_to_virt(devp->mem_start +
 				devp->canvas_max_size*i);
-		if (devp->cma_config_flag & 0x100)
-			vfs_write(filp, vfbuf[i], devp->canvas_max_size, &pos);
-		else
-			vfs_write(filp, buf, devp->canvas_max_size, &pos);
-
+		/*only write active data*/
+		for (j = 0; j < devp->canvas_h; j++) {
+			if (devp->cma_config_flag & 0x100) {
+				vfs_write(filp, vfbuf[i],
+					devp->canvas_active_w, &pos);
+				vfbuf[i] += devp->canvas_w;
+			} else {
+				vfs_write(filp, buf,
+					devp->canvas_active_w, &pos);
+				buf += devp->canvas_w;
+			}
+		}
 		pr_info("write buffer %lld of %2u  to %s.\n",
 				i, devp->canvas_max_num, path);
 	}
@@ -430,8 +439,10 @@ static void vdin_dump_state(struct vdin_dev_s *devp)
 	struct vf_pool *vfp = devp->vfp;
 	pr_info("h_active = %d, v_active = %d\n",
 		devp->h_active, devp->v_active);
-	pr_info("canvas_w = %d, canvas_h = %d, canvas_alin_w = %d\n",
-		devp->canvas_w, devp->canvas_h, devp->canvas_alin_w);
+	pr_info("canvas_w = %d, canvas_h = %d\n",
+		devp->canvas_w, devp->canvas_h);
+	pr_info("canvas_alin_w = %d, canvas_active_w = %d\n",
+		devp->canvas_alin_w, devp->canvas_active_w);
 	if ((devp->cma_config_en != 1) || !(devp->cma_config_flag & 0x1))
 		pr_info("mem_start = %ld, mem_size = %d\n",
 			devp->mem_start, devp->mem_size);
@@ -531,8 +542,10 @@ static void vdin_dump_state(struct vdin_dev_s *devp)
 			devp->vfp->dv_buf_size[i],
 			devp->vfp->dv_buf_mem[i]);
 	}
-	pr_info("dv_flag:%d;dv_config:%d,dolby_vision:%d\n",
-		devp->dv.dv_flag, devp->dv.dv_config, devp->prop.dolby_vision);
+	pr_info("dv_flag:%d;dv_config:%d,dolby_vision:%d,low_latency:(%d,%d,%d)\n",
+		devp->dv.dv_flag, devp->dv.dv_config, devp->prop.dolby_vision,
+		devp->dv.low_latency, devp->prop.low_latency,
+		devp->vfp->low_latency);
 	pr_info("size of struct vdin_dev_s: %d\n", devp->vdin_dev_ssize);
 	pr_info("Vdin driver version :  %s\n", VDIN_VER);
 }

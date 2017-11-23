@@ -160,6 +160,7 @@ struct vdin_dv_s {
 	bool dv_flag;
 	bool dv_config;
 	bool dv_crc_check;/*0:fail;1:ok*/
+	bool low_latency;
 };
 struct vdin_dev_s {
 	struct cdev cdev;

@@ -141,6 +141,7 @@ struct vf_pool {
 	struct isr_log_s isr_log;
 #endif
 	atomic_t buffer_cnt;
+	unsigned int low_latency;
 	unsigned int dv_buf_mem[VDIN_DV_MAX_NUM];
 	void *dv_buf_vmem[VDIN_DV_MAX_NUM];
 	unsigned int dv_buf_size[VDIN_DV_MAX_NUM];
