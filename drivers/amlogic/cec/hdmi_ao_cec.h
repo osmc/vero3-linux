@@ -1,7 +1,7 @@
 #ifndef __AO_CEC_H__
 #define __AO_CEC_H__
 
-#define CEC_DRIVER_VERSION	"2017/11/06"
+#define CEC_DRIVER_VERSION	"Ver 2017/12/08"
 
 #define CEC_FUNC_MASK			0
 #define ONE_TOUCH_PLAY_MASK		1

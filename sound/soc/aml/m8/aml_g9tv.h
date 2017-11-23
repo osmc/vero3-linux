@@ -28,7 +28,6 @@
 #define AML_I2C_BUS_D 4
 
 struct aml_audio_private_data {
-	int clock_en;
 	bool suspended;
 	void *data;
 
@@ -51,8 +50,9 @@ struct aml_audio_private_data {
 	struct clk *clk;
 	int sleep_time;
 	struct work_struct pinmux_work;
-	int aml_EQ_enable;
-	int aml_DRC_enable;
+#ifdef CONFIG_AML_AO_CEC
+	int arc_enable;
+#endif
 };
 
 struct aml_audio_codec_info {

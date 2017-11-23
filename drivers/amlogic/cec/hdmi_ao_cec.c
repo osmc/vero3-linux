@@ -748,6 +748,18 @@ static void cec_clear_logical_addr(void)
 	udelay(100);
 }
 
+void cec_enable_arc_pin(bool enable)
+{
+	/* select arc according arg */
+	if (enable)
+		hdmirx_wr_top(TOP_ARCTX_CNTL, 0x01);
+	else
+		hdmirx_wr_top(TOP_ARCTX_CNTL, 0x00);
+	CEC_INFO("set arc en:%d, reg:%lx\n",
+		 enable, hdmirx_rd_top(TOP_ARCTX_CNTL));
+}
+EXPORT_SYMBOL(cec_enable_arc_pin);
+
 int cec_rx_buf_check(void)
 {
 	unsigned int rx_num_msg;
@@ -2258,13 +2270,8 @@ static long hdmitx_cec_ioctl(struct file *f,
 		break;
 
 	case CEC_IOC_SET_ARC_ENABLE:
-		/* select arc according arg */
-		if (arg)
-			hdmirx_wr_top(TOP_ARCTX_CNTL, 0x01);
-		else
-			hdmirx_wr_top(TOP_ARCTX_CNTL, 0x00);
-		CEC_INFO("set arc en:%ld, reg:%lx\n",
-			 arg, hdmirx_rd_top(TOP_ARCTX_CNTL));
+		CEC_INFO("Ioc set arc pin\n");
+		cec_enable_arc_pin(arg);
 		break;
 
 	default:
@@ -2340,6 +2347,7 @@ static int aml_cec_probe(struct platform_device *pdev)
 	struct resource *res;
 	resource_size_t *base;
 #endif
+	CEC_INFO(CEC_DRIVER_VERSION);
 
 	cec_dev = kzalloc(sizeof(struct ao_cec_dev), GFP_KERNEL);
 	if (!cec_dev) {

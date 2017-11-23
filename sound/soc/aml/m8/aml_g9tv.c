@@ -46,6 +46,9 @@
 #include <linux/amlogic/cpu_version.h>
 #include <linux/amlogic/sound/aiu_regs.h>
 #include <linux/amlogic/sound/aml_snd_iomap.h>
+#ifdef CONFIG_AML_AO_CEC
+#include <linux/amlogic/hdmi_tx/hdmi_tx_cec_20.h>
+#endif
 
 #include "aml_i2s.h"
 #include "aml_audio_hw.h"
@@ -480,6 +483,38 @@ static int set_internal_EQ_volume(unsigned master_volume,
 	return 0;
 }
 
+#ifdef CONFIG_AML_AO_CEC
+/* call HDMI CEC API to enable arc audio */
+static void aml_switch_arc_audio(bool enable)
+{
+	cec_enable_arc_pin(enable);
+}
+
+static int aml_get_arc_audio(struct snd_kcontrol *kcontrol,
+			  struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_card *card = snd_kcontrol_chip(kcontrol);
+	struct aml_audio_private_data *p_aml_audio;
+
+	p_aml_audio = snd_soc_card_get_drvdata(card);
+	ucontrol->value.integer.value[0] = p_aml_audio->arc_enable;
+	return 0;
+}
+
+static int aml_set_arc_audio(struct snd_kcontrol *kcontrol,
+			  struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_card *card = snd_kcontrol_chip(kcontrol);
+	struct aml_audio_private_data *p_aml_audio;
+	bool enable = ucontrol->value.integer.value[0];
+
+	p_aml_audio = snd_soc_card_get_drvdata(card);
+	aml_switch_arc_audio(enable);
+	p_aml_audio->arc_enable = enable;
+	return 0;
+}
+#endif
+
 static const struct snd_kcontrol_new av_controls[] = {
 	SOC_ENUM_EXT("AudioIn Switch",
 			 audio_in_switch_enum,
@@ -507,7 +542,11 @@ static const struct snd_kcontrol_new aml_g9tv_controls[] = {
 		     hardware_resample_enum,
 		     aml_hardware_resample_get_enum,
 		     aml_hardware_resample_set_enum),
-
+#ifdef CONFIG_AML_AO_CEC
+	SOC_SINGLE_BOOL_EXT("HDMI ARC Switch", 0,
+				aml_get_arc_audio,
+				aml_set_arc_audio),
+#endif
 };
 
 static int aml_get_eqdrc_reg(struct snd_kcontrol *kcontrol,
@@ -1639,6 +1678,10 @@ static int aml_g9tv_audio_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+#ifdef CONFIG_AML_AO_CEC
+	/* since HDMI CEC doesn't export get() API, default set it to enable */
+	p_aml_audio->arc_enable = 1;
+#endif
 	p_aml_audio->data = (void *)card;
 	INIT_WORK(&p_aml_audio->pinmux_work, aml_pinmux_work_func);
 	schedule_work(&p_aml_audio->pinmux_work);

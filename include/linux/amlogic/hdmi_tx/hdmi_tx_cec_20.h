@@ -346,5 +346,6 @@ extern bool cec_msg_dbg_en;
 extern struct cec_global_info_t cec_info;
 extern void cec_rx_buf_clear(void);
 extern int get_cec_tx_fail(void);
+extern void cec_enable_arc_pin(bool enable);
 #endif
 
