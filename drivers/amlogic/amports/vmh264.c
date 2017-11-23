@@ -5074,8 +5074,8 @@ static bool run_ready(struct vdec_s *vdec)
 		&& pre_decode_buf_level != 0) {
 		u32 rp, wp, level;
 
-		rp = READ_MPEG_REG(PARSER_VIDEO_RP);
-		wp = READ_MPEG_REG(PARSER_VIDEO_WP);
+		rp = READ_PARSER_REG(PARSER_VIDEO_RP);
+		wp = READ_PARSER_REG(PARSER_VIDEO_WP);
 		if (wp < rp)
 			level = vdec->input.size + wp - rp;
 		else
