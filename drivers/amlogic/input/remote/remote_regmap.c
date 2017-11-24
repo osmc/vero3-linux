@@ -146,6 +146,20 @@ static struct remote_reg_map regs_default_toshiba[] = {
 	{ REG_REPEAT_DET , (1 << 31) | (0xFA0 << 16) | (10 << 0)},
 };
 
+#define FRAME_MSB_FIRST (1 << 8)
+static struct remote_reg_map regs_default_sharp[] = {
+	{ REG_LDR_ACTIVE ,  0            },
+	{ REG_LDR_IDLE   ,  0            },
+	{ REG_LDR_REPEAT ,  0            },
+	{ REG_BIT_0	 ,  70 << 16 | 25 << 0},
+	{ REG_REG0	 ,  7 << 28 | (3350 << 12) | 0x13},
+	{ REG_STATUS	 ,  (125 << 20) | (75 << 10)},
+	{ REG_REG1	 ,  0x8e00},
+	{ REG_REG2	 , FRAME_MSB_FIRST | 0x01},
+	{ REG_DURATN2	 ,  0x00},
+	{ REG_DURATN3	 ,  0x00}
+};
+
 void set_hardcode(struct remote_chip *chip, int code)
 {
 	remote_dbg(chip->dev, "framecode=0x%x\n", code);
@@ -463,6 +477,64 @@ static u32 ir_toshiba_get_custom_code(struct remote_chip *chip)
 	return custom_code;
 }
 
+static int ir_sharp_get_scancode(struct remote_chip *chip)
+{
+	int code = 0;
+	int status = 0;
+	int decode_status = 0;
+	int key0 = 0, key0_mask;
+
+	remote_reg_read(chip, MULTI_IR_ID, REG_STATUS, &decode_status);
+
+	decode_status &= 0xf;
+	if (decode_status & 0x01)
+		status |= REMOTE_REPEAT;
+	remote_reg_read(chip, MULTI_IR_ID, REG_FRAME, &code);
+	remote_dbg(chip->dev, "rx-data=0x%x, rx_count=%d\n",
+		code, chip->rx_count);
+
+	switch (chip->rx_count) {
+	case 0:
+		chip->rx_buffer[0] = code;
+		chip->rx_count = 1;
+		chip->decode_status = REMOTE_CUSTOM_DATA;
+		return -1;
+	case 1:
+		key0_mask = (~(code >> 2)) & 0xff;
+		key0 = (chip->rx_buffer[0] >> 2) & 0xff;
+		if (key0 != key0_mask) {
+			chip->rx_buffer[0] = code;
+			chip->rx_count = 1;
+			chip->decode_status = REMOTE_CHECKSUM_ERROR;
+			return -1;
+		}
+		chip->rx_count = 0; /*enter new code receive*/
+		break;
+	default:
+		break;
+	}
+	code = chip->rx_buffer[0];
+	remote_dbg(chip->dev, "framecode=0x%x\n", code);
+	chip->r_dev->cur_hardcode = code;
+	code = (code >> 2) & 0xff;
+	chip->decode_status = REMOTE_NORMAL;
+	return code;
+}
+
+static int ir_sharp_get_decode_status(struct remote_chip *chip)
+{
+	int status = chip->decode_status;
+
+	return status;
+}
+
+static u32 ir_sharp_get_custom_code(struct remote_chip *chip)
+{
+	u32 custom_code;
+
+	custom_code = (chip->r_dev->cur_hardcode >> 10) & 0xf;
+	return custom_code;
+}
 
 /*legacy IR controller support protocols*/
 static struct aml_remote_reg_proto reg_legacy_nec = {
@@ -556,6 +628,16 @@ static struct aml_remote_reg_proto reg_toshiba = {
 	.get_custom_code   = ir_toshiba_get_custom_code,
 };
 
+static struct aml_remote_reg_proto reg_sharp = {
+	.protocol = REMOTE_TYPE_SHARP,
+	.name	  = "SHARP",
+	.reg_map      = regs_default_sharp,
+	.reg_map_size = ARRAY_SIZE(regs_default_sharp),
+	.get_scancode	   = ir_sharp_get_scancode,
+	.get_decode_status = ir_sharp_get_decode_status,
+	.get_custom_code   = ir_sharp_get_custom_code,
+};
+
 
 const struct aml_remote_reg_proto *remote_reg_proto[] = {
 	&reg_nec,
@@ -567,6 +649,7 @@ const struct aml_remote_reg_proto *remote_reg_proto[] = {
 	&reg_rc6,
 	&reg_legacy_nec,
 	&reg_toshiba,
+	&reg_sharp,
 	NULL
 };
 
@@ -643,4 +726,3 @@ int ir_register_default_config(struct remote_chip *chip, int type)
 
 }
 EXPORT_SYMBOL(ir_register_default_config);
-

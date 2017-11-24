@@ -22,6 +22,7 @@
 #define     REMOTE_TYPE_RC5         0x04
 #define     REMOTE_TYPE_RC6         0x05
 #define     REMOTE_TYPE_TOSHIBA     0x06
+#define     REMOTE_TYPE_SHARP       0x09
 
 /*hardware decode one protocol by using legacy IR controller*/
 #define     REMOTE_TYPE_LEGACY_NEC  0xff
@@ -42,5 +43,7 @@
 #define REMOTE_TYPE_NEC_RC6  ((REMOTE_TYPE_LEGACY_NEC << 8) | REMOTE_TYPE_RC6)
 #define REMOTE_TYPE_NEC_TOSHIBA ((REMOTE_TYPE_LEGACY_NEC << 8) | \
 	REMOTE_TYPE_TOSHIBA)
+#define REMOTE_TYPE_NEC_SHARP ((REMOTE_TYPE_LEGACY_NEC << 8) | \
+	REMOTE_TYPE_SHARP)
 
 #endif

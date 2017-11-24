@@ -290,16 +290,24 @@ static void amlremote_tasklet(unsigned long data)
 		scancode = chip->ir_contr[chip->ir_work].get_scancode(chip);
 	if (chip->ir_contr[chip->ir_work].get_decode_status)
 		status = chip->ir_contr[chip->ir_work].get_decode_status(chip);
-	if (status == REMOTE_NORMAL) {
+
+	switch (status) {
+	case REMOTE_NORMAL:
 		remote_dbg(chip->dev, "receive scancode=0x%x\n", scancode);
 		remote_keydown(chip->r_dev, scancode, status);
-	} else if (status & REMOTE_REPEAT) {
+	break;
+	case REMOTE_REPEAT:
 		remote_dbg(chip->dev, "receive repeat\n");
 		remote_keydown(chip->r_dev, scancode, status);
-	} else
+	break;
+	case REMOTE_CUSTOM_DATA:
+	case REMOTE_CHECKSUM_ERROR:
+	break;
+	default:
 		dev_err(chip->dev, "receive error %d\n", status);
+	break;
+	}
 	spin_unlock_irqrestore(&chip->slock, flags);
-
 }
 
 static irqreturn_t ir_interrupt(int irq, void *dev_id)
@@ -619,6 +627,7 @@ static int remote_probe(struct platform_device *pdev)
 
 	chip->r_dev = dev;
 	chip->dev = &pdev->dev;
+	chip->rx_count = 0;
 
 	chip->r_dev->dev = &pdev->dev;
 	chip->r_dev->platform_data = (void *)chip;
@@ -764,4 +773,3 @@ module_exit(remote_exit);
 MODULE_AUTHOR("AMLOGIC");
 MODULE_DESCRIPTION("AMLOGIC REMOTE PROTOCOL");
 MODULE_LICENSE("GPL");
-

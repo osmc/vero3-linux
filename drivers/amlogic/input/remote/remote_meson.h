@@ -99,6 +99,7 @@ struct remote_contr_desc {
   *struct remote_chip - describe the common properties and methods
   * for the Legacy IR controller and multi-format IR controller.
   */
+#define RX_BUFFER_MAX_SIZE 8
 struct remote_chip {
 	struct device *dev;
 	struct remote_dev *r_dev;
@@ -112,6 +113,8 @@ struct remote_chip {
 	struct mutex  file_lock;
 	spinlock_t slock;
 
+	unsigned int rx_count;
+	unsigned int rx_buffer[RX_BUFFER_MAX_SIZE];
 	bool debug_enable;
 	bool repeat_enable;
 #define CUSTOM_TABLES_SIZE 20
@@ -206,6 +209,3 @@ struct ir_map_tab_list *seek_map_tab(struct remote_chip *chip, int custom_code);
 void ir_tab_free(struct ir_map_tab_list *ir_map_list);
 
 #endif
-
-
-
