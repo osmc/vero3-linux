@@ -3168,9 +3168,10 @@ static long amstream_do_ioctl(struct port_priv_s *priv,
 		r = amstream_do_ioctl_old(priv, cmd, arg);
 		break;
 	}
+	/*
 	if (r != 0)
 		pr_err("amstream_do_ioctl error :%lx, %x\n", r, cmd);
-
+    */
 	return r;
 }
 static long amstream_ioctl(struct file *file, unsigned int cmd, ulong arg)
