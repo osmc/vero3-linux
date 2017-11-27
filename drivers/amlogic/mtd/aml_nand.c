@@ -557,7 +557,8 @@ retry_status:
 				/* udelay(200); */
 			}
 			status[i] = (int)chip->read_byte(mtd);
-			if ((read_status++ < 3) && (status[i] != 0xe0)) {
+			if ((read_status++ < 3)
+				&& (!(status[i] & NAND_STATUS_READY))) {
 				pr_info("after write,read %d status =%d fail\n",
 					read_status, status[i]);
 				goto retry_status;
@@ -2249,9 +2250,7 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 	slc_program_info = &new_nand_info->slc_program_info;
 
 	chip->IO_ADDR_R = chip->IO_ADDR_W =
-		devm_ioremap_nocache(controller->device,
-			NAND_BASE_APB + P_NAND_BUF,
-			sizeof(int));
+		controller->reg_base + P_NAND_BUF;
 
 	chip->options |= NAND_SKIP_BBTSCAN;
 	chip->options |= NAND_NO_SUBPAGE_WRITE;

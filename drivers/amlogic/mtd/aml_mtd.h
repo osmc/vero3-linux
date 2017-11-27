@@ -586,6 +586,7 @@ struct aml_nand_device {
 	u8 dev_num;
 #ifndef AML_NAND_UBOOT
 	struct notifier_block nb;
+	u32 nand_clk_ctrl;
 #endif
 };
 

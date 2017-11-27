@@ -274,8 +274,9 @@ void get_sys_clk_rate_mtd(struct hw_controller *controller, int *rate)
 	if ((cpu_id.family_id == MESON_CPU_MAJOR_ID_GXBB)
 		|| (cpu_id.family_id == MESON_CPU_MAJOR_ID_GXL)) {
 #else
-	if ((get_cpu_type() == MESON_CPU_MAJOR_ID_GXBB)
-		|| (get_cpu_type() == MESON_CPU_MAJOR_ID_GXL)) {
+	if ((get_cpu_type() == MESON_CPU_MAJOR_ID_GXBB) ||
+		(get_cpu_type() == MESON_CPU_MAJOR_ID_GXL) ||
+		(get_cpu_type() == MESON_CPU_MAJOR_ID_TXHD)) {
 #endif
 		/* basic debug code using 24Mhz, fixme. */
 		if (clk_freq == 24) {
@@ -419,7 +420,8 @@ static int m3_nand_options_confirm(struct aml_nand_chip *aml_chip)
 	chip->write_buf = aml_nand_dma_write_buf;
 	chip->read_buf = aml_nand_dma_read_buf;
 
-	if (mtd->writesize <= 2048)
+	if ((mtd->writesize <= 2048)
+		|| (get_cpu_type() == MESON_CPU_MAJOR_ID_TXHD))
 		options_support = NAND_ECC_BCH8_MODE;
 
 	switch (options_support) {
@@ -1080,8 +1082,11 @@ int nand_init(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	pr_info("nand_clk_ctrl 0x%x\n",
+		aml_nand_mid_device.nand_clk_ctrl);
+
 	controller->nand_clk_reg = devm_ioremap_nocache(&pdev->dev,
-					NAND_CLK_CNTL,
+					aml_nand_mid_device.nand_clk_ctrl,
 					sizeof(int));
 	if (controller->nand_clk_reg == NULL) {
 		dev_err(&pdev->dev, "ioremap External Nand Clock IO fail\n");

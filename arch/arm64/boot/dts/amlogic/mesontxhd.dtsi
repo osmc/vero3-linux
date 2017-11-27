@@ -861,6 +861,60 @@
 			bias-pull-down;
 		};
 	};
+
+	nand_pulldown: nand_pulldown {
+		mux {
+			pins = "BOOT_0",
+				"BOOT_1",
+				"BOOT_2",
+				"BOOT_3",
+				"BOOT_4",
+				"BOOT_5",
+				"BOOT_6",
+				"BOOT_7";
+			function = "nandflash";
+			input-enable;
+			bias-pull-down;
+		};
+	};
+
+	nand_pullup: nand_pullup {
+		mux {
+			pins = "BOOT_8";
+			function = "nandflash";
+			input-enable;
+			bias-pull-up;
+		};
+	};
+
+	all_nand_pins: all_nand_pins {
+		mux {
+			pins =  "BOOT_0",
+				"BOOT_1",
+				"BOOT_2",
+				"BOOT_3",
+				"BOOT_4",
+				"BOOT_5",
+				"BOOT_6",
+				"BOOT_7",
+				"BOOT_8",
+				"BOOT_9",
+				"BOOT_10",
+				"BOOT_11",
+				"BOOT_12";
+			function = "nandflash";
+			input-enable;
+		};
+	};
+
+	nand_cs_pins: nand_cs {
+		mux {
+			pins = "BOOT_8";
+			function = "nandflash";
+		};
+	};
+
+
         a_uart_pins:a_uart {
 		mux {
 			pins = "GPIOC_7",
