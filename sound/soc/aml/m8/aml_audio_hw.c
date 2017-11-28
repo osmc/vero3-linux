@@ -224,15 +224,9 @@ void audio_set_aiubuf(u32 addr, u32 size, unsigned int channel)
 
 void audio_set_958outbuf(u32 addr, u32 size, int flag)
 {
-	if (ENABLE_IEC958) {
-		aml_write_cbus(AIU_MEM_IEC958_START_PTR, addr & 0xffffffc0);
-		if (aml_read_cbus(AIU_MEM_IEC958_START_PTR) ==
-		    aml_read_cbus(AIU_MEM_I2S_START_PTR)) {
-			aml_write_cbus(AIU_MEM_IEC958_RD_PTR,
-				       aml_read_cbus(AIU_MEM_I2S_RD_PTR));
-		} else
-			aml_write_cbus(AIU_MEM_IEC958_RD_PTR,
-				       addr & 0xffffffc0);
+	aml_aiu_write(AIU_MEM_IEC958_START_PTR, addr & 0xffffffc0);
+	aml_aiu_write(AIU_MEM_IEC958_RD_PTR,
+			       addr & 0xffffffc0);
 		if (flag == 0) {
 			/* this is for 16bit 2 channel */
 #ifdef CONFIG_SND_AML_SPLIT_MODE
