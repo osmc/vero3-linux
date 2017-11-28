@@ -831,6 +831,8 @@ void vdin_start_dec(struct vdin_dev_s *devp)
 	if (devp->vfp->skip_vf_num >= VDIN_CANVAS_MAX_CNT)
 		devp->vfp->skip_vf_num = 0;
 	devp->canvas_config_mode = canvas_config_mode;
+	/*config the vdin use default value*/
+	vdin_set_default_regmap(devp->addr_offset);
 	/* h_active/v_active will be recalculated by bellow calling */
 	vdin_set_decimation(devp);
 	vdin_set_cutwin(devp);
@@ -1078,8 +1080,6 @@ int start_tvin_service(int no , struct vdin_parm_s  *para)
 		/*disable vsync irq until vdin configured completely*/
 		disable_irq_nosync(devp->irq);
 	}
-	/*config the vdin use default value*/
-	vdin_set_default_regmap(devp->addr_offset);
 	/*only for vdin0*/
 	if (devp->urgent_en && (devp->index == 0))
 		vdin_urgent_patch_resume(devp->addr_offset);
