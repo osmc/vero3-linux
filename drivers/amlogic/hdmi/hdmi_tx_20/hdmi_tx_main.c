@@ -2581,6 +2581,10 @@ static ssize_t show_hdcp_mode(struct device *dev,
 static ssize_t store_hdcp_mode(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
+	/* Issue SW I2C transaction to take advantage of SDA recovery logic */
+	char tmp[8];
+
+
 	pr_info("hdcp: set mode as %s\n", buf);
 	hdmitx_device.HWOp.CntlDDC(&hdmitx_device, DDC_HDCP_MUX_INIT, 1);
 	if ((strncmp(buf, "0", 1) == 0) || (strncmp(buf, "-1", 2) == 0)) {
@@ -2590,13 +2594,26 @@ static ssize_t store_hdcp_mode(struct device *dev,
 		hdmitx_hdcp_do_work(&hdmitx_device);
 	}
 	if (strncmp(buf, "1", 1) == 0) {
-		pr_info("%s[%d]", __func__, __LINE__);
+		mutex_lock(&getedid_mutex);
+		hdmitx_device.HWOp.CntlDDC(&hdmitx_device,
+			DDC_PIN_MUX_OP, PIN_UNMUX);
+		edid_rx_data(0x0, tmp, sizeof(tmp));
+		hdmitx_device.HWOp.CntlDDC(&hdmitx_device,
+			DDC_PIN_MUX_OP, PIN_MUX);
+		mutex_unlock(&getedid_mutex);
 		hdmitx_device.hdcp_mode = 1;
 		hdmitx_hdcp_do_work(&hdmitx_device);
 		hdmitx_device.HWOp.CntlDDC(&hdmitx_device,
 			DDC_HDCP_OP, HDCP14_ON);
 	}
 	if (strncmp(buf, "2", 1) == 0) {
+		mutex_lock(&getedid_mutex);
+		hdmitx_device.HWOp.CntlDDC(&hdmitx_device,
+			DDC_PIN_MUX_OP, PIN_UNMUX);
+		edid_rx_data(0x0, tmp, sizeof(tmp));
+		hdmitx_device.HWOp.CntlDDC(&hdmitx_device,
+			DDC_PIN_MUX_OP, PIN_MUX);
+		mutex_unlock(&getedid_mutex);
 		hdmitx_device.hdcp_mode = 2;
 		hdmitx_hdcp_do_work(&hdmitx_device);
 		hdmitx_device.HWOp.CntlDDC(&hdmitx_device,
@@ -2698,7 +2715,9 @@ static ssize_t show_hdcp_ver(struct device *dev,
 		goto next;
 
 	/* Detect RX support HDCP22 */
+	mutex_lock(&getedid_mutex);
 	ver = hdcp_rd_hdcp22_ver();
+	mutex_unlock(&getedid_mutex);
 	if (ver) {
 		pos += snprintf(buf+pos, PAGE_SIZE, "22\n\r");
 		pos += snprintf(buf+pos, PAGE_SIZE, "14\n\r");
@@ -3182,7 +3201,7 @@ static void hdmitx_get_edid(struct hdmitx_dev *hdev)
 			gpio_read_edid(hdev->EDID_buf);
 			/* If EDID is not correct at first time, then retry */
 			if (!check_dvi_hdmi_edid_valid(hdev->EDID_buf)) {
-				msleep(40);
+				msleep(100);
 				gpio_read_edid(hdev->EDID_buf1);
 			}
 			edid_read_flag = 1;
@@ -3253,6 +3272,9 @@ void hdmitx_hpd_plugin_handler(struct work_struct *work)
 	if (hdev->repeater_tx)
 		rx_repeat_hpd_state(1);
 	hdmitx_get_edid(hdev);
+	mutex_lock(&getedid_mutex);
+	hdev->HWOp.CntlMisc(hdev, MISC_I2C_REACTIVE, 0);
+	mutex_unlock(&getedid_mutex);
 	if (hdev->repeater_tx) {
 		if (check_fbc_special(&hdev->EDID_buf[0])
 			|| check_fbc_special(&hdev->EDID_buf1[0]))
