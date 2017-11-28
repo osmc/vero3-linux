@@ -690,7 +690,7 @@ struct freq_ref_s freq_ref[] = {
 	{0, 0, 0, 0, 0, 0, 0, 0, 0}
 };
 
-static unsigned int wr_only_register[] = {
+static const unsigned int wr_only_register[] = {
 0x0c, 0x3c, 0x60, 0x64, 0x68, 0x6c, 0x70, 0x74, 0x78, 0x7c, 0x8c, 0xa0,
 0xac, 0xc8, 0xd8, 0xdc, 0x184, 0x188, 0x18c, 0x190, 0x194, 0x198, 0x19c,
 0x1a0, 0x1a4, 0x1a8, 0x1ac, 0x1b0, 0x1b4, 0x1b8, 0x1bc, 0x1c0, 0x1c4,
@@ -707,6 +707,30 @@ static unsigned int wr_only_register[] = {
 0xfc0, 0xfc4, 0xfd0, 0xfd4, 0xfd8, 0xfdc, 0xfe8, 0xfec, 0xff0, 0x1f04,
 0x1f0c, 0x1f10, 0x1f24, 0x1f28, 0x1f2c, 0x1f30, 0x1f34, 0x1f38, 0x1f3c
 };
+
+static const uint32_t txhd_nonexistent[] = {
+	/*PDEC VSI*/
+	0x368, 0x36c, 0x370, 0x374, 0x378, 0x37c,
+	/*PDEC AMP*/
+	0x480, 0x484, 0x488, 0x48c, 0x490, 0x494, 0x498, 0x49c,
+	/*PDEC NVBI*/
+	0x4a0, 0x4a4, 0x4a8, 0x4ac, 0x4b0, 0x4b4, 0x4b8, 0x4bc,
+	/*DRM*/
+	0x4c0, 0x4c4, 0x4c8, 0x4cc, 0x4d0, 0x4d4, 0x4d8, 0x4dc,
+
+	/*2.0 ctl scdc*/
+	0x800, 0x804, 0x808, 0x80c, 0x810, 0x814, 0x818, 0x81c,
+	0x820, 0x824, 0x828, 0x82c, 0x830, 0x834, 0x838, 0x83c,
+	0x840, 0x844, 0x848, 0x84c, 0x850, 0x854, 0x858, 0x85c,
+	0x860, 0x864, 0x868, 0x86c, 0x870, 0x874, 0x878, 0x87c,
+	/*2.0 sts*/
+	0x8e0, 0x8fc,
+	/*2.0 int HRX_HDCP22_EXTERNAL==1*/
+	0xf60, 0xf64, 0xf68, 0xf6c, 0xf70, 0xf74,
+	/*repeater*/
+	0x600, 0x604, 0x608, 0x60c, 0x610
+};
+
 
 /*------------------------variable define end------------------------------*/
 bool is_hdcp14_on(void)
@@ -747,9 +771,16 @@ void rx_hpd_to_esm_handle(struct work_struct *work)
 
 void hdmirx_dv_packet_stop(void)
 {
+	struct vsi_infoframe_st *pkt;
+
+	if (is_meson_txhd_cpu())
+		return;
+
 	if (rx.vsi_info.dolby_vision_sts == DOLBY_VERSION_START) {
-		if (((hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD0) & 0xFF) != 0)
-		|| ((hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD0) & 0xFF00) != 0))
+		/*if (((hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD0) & 0xFF) != 0)
+		|| ((hdmirx_rd_dwc(DWC_PDEC_VSI_PLAYLOAD0) & 0xFF00) != 0))*/
+		pkt = (struct vsi_infoframe_st *)&(rx.vs_info);
+		if ((pkt->sbpkt.payload.data[0] & 0xFFFF) != 0)
 			return;
 		if (rx.vsi_info.dolby_vision) {
 			rx.vsi_info.dolby_vision = FALSE;
@@ -3299,6 +3330,20 @@ bool is_wr_only_reg(uint32_t addr)
 	return false;
 }
 
+int rx_txhd_reg_filter(uint32_t addr)
+{
+	uint32_t i;
+
+	for (i = 0; i < sizeof(txhd_nonexistent)/sizeof(uint32_t); i++) {
+		if (txhd_nonexistent[i] == addr) {
+			rx_pr("err: txhd register access 0x%x\n", addr);
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
 void rx_set_global_varaible(const char *buf, int size)
 {
 	char tmpbuf[60];
@@ -3517,6 +3562,9 @@ void print_reg(uint start_addr, uint end_addr)
 		return;
 
 	for (i = start_addr; i <= end_addr; i += sizeof(uint)) {
+		if (is_meson_txhd_cpu() && rx_txhd_reg_filter(i))
+			continue;
+
 		if ((i - start_addr) % (sizeof(uint)*4) == 0)
 			rx_pr("[0x%-4x] ", i);
 		if (!is_wr_only_reg(i))
@@ -3645,9 +3693,13 @@ int rx_debug_wr_reg(const char *buf, char *tmpbuf, int i)
 			rx_pr("write %x to TOP [%x]\n",
 				value, adr);
 		} else if (buf[2] == 'd') {
-			hdmirx_wr_dwc(adr, value);
-			rx_pr("write %x to DWC [%x]\n",
-				value, adr);
+			if (is_meson_txhd_cpu() && rx_txhd_reg_filter(adr)) {
+				rx_pr("er:no this addr\n");
+			} else {
+				hdmirx_wr_dwc(adr, value);
+				rx_pr("write %x to DWC [%x]\n",
+					value, adr);
+			}
 		} else if (buf[2] == 'p') {
 			hdmirx_wr_phy(adr, value);
 			rx_pr("write %x to PHY [%x]\n",
@@ -3698,8 +3750,12 @@ int rx_debug_rd_reg(const char *buf, char *tmpbuf)
 			value = hdmirx_rd_top(adr);
 			rx_pr("TOP [%x]=%x\n", adr, value);
 		} else if (tmpbuf[2] == 'd') {
-			value = hdmirx_rd_dwc(adr);
-			rx_pr("DWC [%x]=%x\n", adr, value);
+			if (is_meson_txhd_cpu() && rx_txhd_reg_filter(adr)) {
+				rx_pr("er:no this addr\n");
+			} else {
+				value = hdmirx_rd_dwc(adr);
+				rx_pr("DWC [%x]=%x\n", adr, value);
+			}
 		} else if (tmpbuf[2] == 'p') {
 			value = hdmirx_rd_phy(adr);
 			rx_pr("PHY [%x]=%x\n", adr, value);
