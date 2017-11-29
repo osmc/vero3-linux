@@ -224,9 +224,8 @@ void audio_set_aiubuf(u32 addr, u32 size, unsigned int channel)
 
 void audio_set_958outbuf(u32 addr, u32 size, int flag)
 {
-	aml_aiu_write(AIU_MEM_IEC958_START_PTR, addr & 0xffffffc0);
-	aml_aiu_write(AIU_MEM_IEC958_RD_PTR,
-			       addr & 0xffffffc0);
+	aml_write_cbus(AIU_MEM_IEC958_START_PTR, addr & 0xffffffc0);
+	aml_write_cbus(AIU_MEM_IEC958_RD_PTR, addr & 0xffffffc0);
 		if (flag == 0) {
 			/* this is for 16bit 2 channel */
 #ifdef CONFIG_SND_AML_SPLIT_MODE
@@ -260,7 +259,6 @@ void audio_set_958outbuf(u32 addr, u32 size, int flag)
 
 		aml_write_cbus(AIU_MEM_IEC958_BUF_CNTL, 1 | (0 << 1));
 		aml_write_cbus(AIU_MEM_IEC958_BUF_CNTL, 0 | (0 << 1));
-	}
 }
 
 /*
