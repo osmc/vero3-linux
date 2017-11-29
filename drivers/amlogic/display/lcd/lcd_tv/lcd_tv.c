@@ -198,6 +198,7 @@ static void lcd_vmode_vinfo_update(enum vmode_e mode)
 	struct aml_lcd_drv_s *lcd_drv = aml_lcd_get_driver();
 	struct lcd_config_s *pconf;
 
+	pconf = lcd_drv->lcd_config;
 	lcd_output_vmode = lcd_get_vmode(mode);
 	info = &lcd_vmode_info[lcd_output_vmode];
 	sprintf(lcd_output_name, "%s%dhz", info->name, info->frame_rate);
@@ -207,8 +208,16 @@ static void lcd_vmode_vinfo_update(enum vmode_e mode)
 	}
 
 	/* store standard duration */
-	lcd_drv->std_duration.duration_num = info->frame_rate;
-	lcd_drv->std_duration.duration_den = 1;
+	if (pconf->lcd_timing.fr_adjust_type == 0xff) {
+		lcd_drv->std_duration.duration_num =
+			((pconf->lcd_timing.lcd_clk /
+			pconf->lcd_basic.h_period) * 100) /
+			pconf->lcd_basic.v_period;
+		lcd_drv->std_duration.duration_den = 100;
+	} else {
+		lcd_drv->std_duration.duration_num = info->frame_rate;
+		lcd_drv->std_duration.duration_den = 1;
+	}
 
 	/* update vinfo */
 	pconf = lcd_drv->lcd_config;
@@ -221,8 +230,10 @@ static void lcd_vmode_vinfo_update(enum vmode_e mode)
 	lcd_drv->lcd_info->aspect_ratio_den = pconf->lcd_basic.screen_height;
 	lcd_drv->lcd_info->screen_real_width = pconf->lcd_basic.screen_width;
 	lcd_drv->lcd_info->screen_real_height = pconf->lcd_basic.screen_height;
-	lcd_drv->lcd_info->sync_duration_num = info->frame_rate;
-	lcd_drv->lcd_info->sync_duration_den = 1;
+	lcd_drv->lcd_info->sync_duration_num =
+		lcd_drv->std_duration.duration_num;
+	lcd_drv->lcd_info->sync_duration_den =
+		lcd_drv->std_duration.duration_den;
 	lcd_drv->lcd_info->video_clk = pconf->lcd_timing.lcd_clk;
 	lcd_drv->lcd_info->htotal = pconf->lcd_basic.h_period;
 	lcd_drv->lcd_info->vtotal = pconf->lcd_basic.v_period;
@@ -237,6 +248,7 @@ static enum vmode_e lcd_validate_vmode(char *mode)
 {
 	int lcd_vmode, frame_rate;
 	int ret;
+	struct aml_lcd_drv_s *lcd_drv = aml_lcd_get_driver();
 
 	if (lcd_vout_serve_bypass) {
 		LCDPR("vout_serve bypass\n");
@@ -252,6 +264,8 @@ static enum vmode_e lcd_validate_vmode(char *mode)
 		return VMODE_MAX;
 	}
 	frame_rate = lcd_outputmode_to_lcd_frame_rate(mode);
+	if (lcd_drv->lcd_config->lcd_timing.fr_adjust_type == 0xff)
+		return lcd_vmode_info[lcd_vmode].mode;
 	if (frame_rate == 0) {
 		LCDERR("%s: frame_rate is not support\n", __func__);
 		return VMODE_MAX;
@@ -282,8 +296,13 @@ static int lcd_set_current_vmode(enum vmode_e mode)
 		LCDPR("vout_serve bypass\n");
 		return 0;
 	}
-	mutex_lock(&lcd_vout_mutex);
 
+	if (lcd_drv->lcd_config->lcd_timing.fr_adjust_type == 0xff) {
+		LCDPR("fixed timing, exit vmode change\n");
+		return -1;
+	}
+
+	mutex_lock(&lcd_vout_mutex);
 	/* do not change mode value here, for bit mask is useful */
 	lcd_vmode_vinfo_update(mode & VMODE_MODE_BIT_MASK);
 
@@ -419,6 +438,11 @@ static int lcd_set_vframe_rate_hint(int duration)
 		return 0;
 	}
 
+	if (lcd_drv->lcd_config->lcd_timing.fr_adjust_type == 0xff) {
+		LCDPR("%s: fixed timing, exit\n", __func__);
+		return 0;
+	}
+
 	info = lcd_drv->lcd_info;
 
 	fr_policy = lcd_drv->fr_auto_policy;
@@ -479,6 +503,11 @@ static int lcd_set_vframe_rate_end_hint(void)
 	}
 	if (lcd_drv->lcd_status == 0) {
 		LCDPR("%s: lcd is disabled, exit\n", __func__);
+		return 0;
+	}
+
+	if (lcd_drv->lcd_config->lcd_timing.fr_adjust_type == 0xff) {
+		LCDPR("%s: fixed timing, exit\n", __func__);
 		return 0;
 	}
 
@@ -806,10 +835,15 @@ static int lcd_config_load_from_dts(struct lcd_config_s *pconf,
 	ret = of_property_read_u32_array(child, "clk_attr", &para[0], 4);
 	if (ret) {
 		LCDERR("failed to get clk_attr\n");
+		pconf->lcd_timing.fr_adjust_type = 0;
+		pconf->lcd_timing.ss_level = 0;
+		pconf->lcd_timing.clk_auto = 1;
+		pconf->lcd_timing.lcd_clk = 60;
 	} else {
 		pconf->lcd_timing.fr_adjust_type = (unsigned char)(para[0]);
 		pconf->lcd_timing.ss_level = (unsigned char)(para[1]);
 		pconf->lcd_timing.clk_auto = (unsigned char)(para[2]);
+		pconf->lcd_timing.lcd_clk = (unsigned char)(para[3]);
 	}
 
 	switch (pconf->lcd_basic.lcd_type) {
@@ -1084,6 +1118,10 @@ static int lcd_config_load_from_unifykey(struct lcd_config_s *pconf)
 	pconf->lcd_timing.fr_adjust_type = *(p + LCD_UKEY_FR_ADJ_TYPE);
 	pconf->lcd_timing.ss_level = *(p + LCD_UKEY_SS_LEVEL);
 	pconf->lcd_timing.clk_auto = *(p + LCD_UKEY_CLK_AUTO_GEN);
+	pconf->lcd_timing.lcd_clk = (*(p + LCD_UKEY_PCLK) |
+		((*(p + LCD_UKEY_PCLK + 1)) << 8) |
+		((*(p + LCD_UKEY_PCLK + 2)) << 16) |
+		((*(p + LCD_UKEY_PCLK + 3)) << 24));
 	pconf->lcd_basic.h_period_min = (*(p + LCD_UKEY_H_PERIOD_MIN) |
 		((*(p + LCD_UKEY_H_PERIOD_MIN + 1)) << 8));
 	pconf->lcd_basic.h_period_max = (*(p + LCD_UKEY_H_PERIOD_MAX) |
@@ -1274,8 +1312,17 @@ static void lcd_config_init(struct lcd_config_s *pconf)
 	unsigned int ss_level;
 	unsigned int clk;
 
-	clk = pconf->lcd_basic.h_period * pconf->lcd_basic.v_period * 60;
-	pconf->lcd_timing.lcd_clk = clk;
+	if (pconf->lcd_timing.lcd_clk == 0) /* default 0 for 60hz */
+		pconf->lcd_timing.lcd_clk = 60;
+	else
+		LCDPR("custome clk: %d\n", pconf->lcd_timing.lcd_clk);
+
+	clk = pconf->lcd_timing.lcd_clk;
+	if (clk < 200) { /* regard as frame_rate */
+		pconf->lcd_timing.lcd_clk = clk * pconf->lcd_basic.h_period *
+			pconf->lcd_basic.v_period;
+	} else /* regard as pixel clock */
+		pconf->lcd_timing.lcd_clk = clk;
 	pconf->lcd_timing.lcd_clk_dft = pconf->lcd_timing.lcd_clk;
 	pconf->lcd_timing.h_period_dft = pconf->lcd_basic.h_period;
 	pconf->lcd_timing.v_period_dft = pconf->lcd_basic.v_period;
