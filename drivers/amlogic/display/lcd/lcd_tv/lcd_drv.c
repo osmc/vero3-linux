@@ -1121,7 +1121,7 @@ static irqreturn_t lcd_vbyone_vsync_isr(int irq, void *dev_id)
 	struct vbyone_config_s *vx1_conf;
 
 	vx1_conf = lcd_drv->lcd_config->lcd_control.vbyone_config;
-	if (lcd_drv->lcd_status == 0)
+	if ((lcd_drv->lcd_status & LCD_STATUS_IF_ON) == 0)
 		return IRQ_HANDLED;
 
 	if (lcd_vcbus_read(VBO_STATUS_L) & 0x40) /* hpd detect */
@@ -1647,8 +1647,9 @@ int lcd_tv_driver_change(void)
 			break;
 		}
 	} else {
-		if (pconf->lcd_basic.lcd_type == LCD_VBYONE)
-			lcd_vbyone_interrupt_enable(0);
+		if ((pconf->lcd_basic.lcd_type == LCD_VBYONE) &&
+			(lcd_drv->lcd_status & LCD_STATUS_IF_ON))
+					lcd_vbyone_interrupt_enable(0);
 
 		switch (pconf->lcd_timing.clk_change) {
 		case LCD_CLK_PLL_CHANGE:
@@ -1663,7 +1664,8 @@ int lcd_tv_driver_change(void)
 		}
 		lcd_venc_change(pconf);
 
-		if (pconf->lcd_basic.lcd_type == LCD_VBYONE)
+		if ((pconf->lcd_basic.lcd_type == LCD_VBYONE) &&
+			(lcd_drv->lcd_status & LCD_STATUS_IF_ON))
 			lcd_vbyone_wait_stable();
 	}
 
@@ -1693,7 +1695,10 @@ void lcd_tv_driver_tiny_enable(void)
 		lcd_vbyone_control_set(pconf);
 		lcd_vbyone_wait_hpd(pconf);
 		lcd_vbyone_phy_set(pconf, 1);
-		lcd_vbyone_power_on_wait_stable(pconf);
+		lcd_vx1_intr_request = 1;
+		queue_delayed_work(lcd_drv->workqueue,
+				&lcd_drv->lcd_vx1_delayed_work,
+				msecs_to_jiffies(LCD_VX1_WAIT_STABLE_DELAY));
 		break;
 	case LCD_MLVDS:
 		lcd_mlvds_control_set(pconf);

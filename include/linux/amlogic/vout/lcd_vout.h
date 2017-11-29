@@ -443,6 +443,10 @@ struct lcd_duration_s {
 	unsigned int duration_den;
 };
 
+#define LCD_STATUS_IF_ON     (1<<0)
+#define LCD_STATUS_MOD_ON    (1<<1)
+#define LCD_STATUS_ON    (LCD_STATUS_IF_ON | LCD_STATUS_MOD_ON)
+
 #define LCD_VMODE_SWITCH         1
 #define LCD_VFRAME_RATE_AUTO     2
 #define LCD_FRAME_RATE_CHANGE    3

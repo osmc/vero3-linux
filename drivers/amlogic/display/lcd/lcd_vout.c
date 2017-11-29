@@ -303,6 +303,9 @@ static void lcd_power_tiny_ctrl(int status)
 
 	LCDPR("%s: %d\n", __func__, status);
 	i = 0;
+	if (status == 0)
+		lcd_driver->lcd_status &= ~(LCD_STATUS_IF_ON);
+
 	while (i < LCD_PWR_STEP_MAX) {
 		if (status)
 			power_step = &lcd_power->power_on_step[i];
@@ -356,6 +359,11 @@ static void lcd_power_tiny_ctrl(int status)
 		if (power_step->delay)
 			mdelay(power_step->delay);
 		i++;
+	}
+
+	if (status) {
+		lcd_driver->lcd_test_pattern_restore();
+		lcd_driver->lcd_status |= (LCD_STATUS_IF_ON);
 	}
 
 	if (lcd_debug_print_flag)
@@ -439,7 +447,7 @@ static void lcd_module_enable(void)
 
 	lcd_driver->driver_init_pre();
 	lcd_driver->power_ctrl(1);
-	lcd_driver->lcd_status = 1;
+	lcd_driver->lcd_status = LCD_STATUS_ON;
 	lcd_driver->lcd_config->change_flag = 0;
 
 	mutex_unlock(&lcd_vout_mutex);
@@ -466,7 +474,7 @@ static void lcd_module_reset(void)
 
 	lcd_driver->driver_init_pre();
 	lcd_driver->power_ctrl(1);
-	lcd_driver->lcd_status = 1;
+	lcd_driver->lcd_status = LCD_STATUS_ON;
 	lcd_driver->lcd_config->change_flag = 0;
 
 	mutex_unlock(&lcd_vout_mutex);
@@ -476,11 +484,9 @@ static void lcd_module_tiny_reset(void)
 {
 	mutex_lock(&lcd_vout_mutex);
 
-	lcd_driver->lcd_status = 0;
 	lcd_power_tiny_ctrl(0);
 	mdelay(500);
 	lcd_power_tiny_ctrl(1);
-	lcd_driver->lcd_status = 1;
 	lcd_driver->lcd_config->change_flag = 0;
 
 	mutex_unlock(&lcd_vout_mutex);
@@ -894,7 +900,7 @@ static void lcd_config_default(void)
 	pconf->lcd_basic.v_active = lcd_vcbus_read(ENCL_VIDEO_VAVON_ELINE)
 			- lcd_vcbus_read(ENCL_VIDEO_VAVON_BLINE) + 1;
 	if (lcd_vcbus_read(ENCL_VIDEO_EN)) {
-		lcd_driver->lcd_status = 1;
+		lcd_driver->lcd_status = LCD_STATUS_ON;
 		lcd_resume_flag = 1;
 	} else {
 		lcd_driver->lcd_status = 0;
