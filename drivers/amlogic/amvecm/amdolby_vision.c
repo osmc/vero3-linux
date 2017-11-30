@@ -1812,7 +1812,11 @@ static void apply_stb_core_settings(
 	}
 	if (mask & 1) {
 		if (is_meson_txlx_package_962E()
-			|| force_stb_mode)
+			|| force_stb_mode) {
+			if (vinfo->mode >= VMODE_1080P)
+				dma_start_line = 0x400;
+			else
+				dma_start_line = 0x180;
 			stb_dolby_core1_set(
 				27, 173, 256 * 5,
 				(uint32_t *)&new_dovi_setting.dm_reg1,
@@ -1830,7 +1834,7 @@ static void apply_stb_core_settings(
 				new_dovi_setting.src_format == FORMAT_DOVI,
 				1,
 				reset);
-		else
+		} else
 			dolby_core1_set(
 				core1_dm_count, 173, 256 * 5,
 				(uint32_t *)&new_dovi_setting.dm_reg1,
