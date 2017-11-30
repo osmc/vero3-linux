@@ -1285,6 +1285,13 @@ enum tvin_sig_fmt_e hdmirx_hw_get_fmt(void)
 	if (force_vic)
 		vic = force_vic;
 
+	if (is_meson_txhd_cpu()) {
+		if (rx.pre.colorspace == E_COLOR_YUV420) {
+			fmt = TVIN_SIG_FMT_NULL;
+			/*rx_pr("warning: txhd not support 420\n");*/
+			return fmt;
+		}
+	}
 
 	switch (vic) {
 		/* basic format */
