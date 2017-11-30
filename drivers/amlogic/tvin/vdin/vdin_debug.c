@@ -511,8 +511,9 @@ static void vdin_dump_state(struct vdin_dev_s *devp)
 	pr_info("black_bar_enable: %d, hist_bar_enable: %d, use_frame_rate: %d\n ",
 		devp->black_bar_enable,
 		devp->hist_bar_enable, devp->use_frame_rate);
-	pr_info("vdin_irq_flag: %d, vdin_rest_flag: %d\n",
-		devp->vdin_irq_flag, devp->vdin_reset_flag);
+	pr_info("vdin_irq_flag: %d, vdin_rest_flag: %d, irq_cnt: %d, rdma_irq_cnt: %d\n",
+		devp->vdin_irq_flag, devp->vdin_reset_flag,
+		devp->irq_cnt, devp->rdma_irq_cnt);
 	pr_info("rdma_enable :  %d\n", devp->rdma_enable);
 	pr_info("dolby_input :  %d\n", devp->dv.dolby_input);
 	if ((devp->cma_config_en != 1) || !(devp->cma_config_flag & 0x100))
@@ -811,14 +812,14 @@ static ssize_t vdin_attr_store(struct device *dev,
 	} else if (!strcmp(parm[0], "capture")) {
 		if (parm[3] != NULL) {
 			unsigned int start = 0, offset = 0;
-			if (!kstrtol(parm[2], 16, &val))
+			if (kstrtol(parm[2], 16, &val) == 0)
 				start = val;
-			if (!kstrtol(parm[3], 16, &val))
+			if (kstrtol(parm[3], 16, &val) == 0)
 				offset = val;
 			dump_other_mem(parm[1], start, offset);
 		} else if (parm[2] != NULL) {
 			unsigned int buf_num = 0;
-			if (!kstrtol(parm[2], 10, &val))
+			if (kstrtol(parm[2], 10, &val) == 0)
 				buf_num = val;
 			vdin_dump_one_buf_mem(parm[1], devp, buf_num);
 		} else if (parm[1] != NULL) {
@@ -830,7 +831,7 @@ static ssize_t vdin_attr_store(struct device *dev,
 			kfree(buf_orig);
 			return len;
 		}
-		if (!kstrtol(parm[1], 16, &val))
+		if (kstrtol(parm[1], 16, &val) == 0)
 			port = val;
 		switch (port) {
 		case 0:/* HDMI0 */
@@ -867,7 +868,7 @@ static ssize_t vdin_attr_store(struct device *dev,
 			port = TVIN_PORT_CVBS0;
 			break;
 		}
-		if (!kstrtol(parm[2], 16, &val))
+		if (kstrtol(parm[2], 16, &val) == 0)
 			fmt = val;
 
 		/* devp->flags |= VDIN_FLAG_FS_OPENED; */
@@ -914,7 +915,7 @@ start_chk:
 				(time_delta <= 5000))
 			goto start_chk;
 
-		pr_info("	status: %s, fmt: %s\n",
+		pr_info("status: %s, fmt: %s\n",
 			tvin_sig_status_str(devp->parm.info.status),
 			tvin_sig_fmt_str(devp->parm.info.fmt));
 		if (devp->parm.info.fmt != TVIN_SIG_FMT_NULL)
@@ -969,11 +970,11 @@ start_chk:
 			pr_info(" port is TVIN_PORT_ISP\n");
 		}
 		/*parse the resolution*/
-		if (!kstrtol(parm[2], 10, &val))
+		if (kstrtol(parm[2], 10, &val) == 0)
 			param.h_active = val;
-		if (!kstrtol(parm[3], 10, &val))
+		if (kstrtol(parm[3], 10, &val) == 0)
 			param.v_active = val;
-		if (!kstrtol(parm[4], 10, &val))
+		if (kstrtol(parm[4], 10, &val) == 0)
 			param.frame_rate = val;
 		pr_info(" hactive:%d,vactive:%d, rate:%d\n",
 				param.h_active,
@@ -981,17 +982,17 @@ start_chk:
 				param.frame_rate);
 		if (!parm[5])
 			param.cfmt = TVIN_YUV422;
-		else if (!kstrtol(parm[5], 10, &val))
+		else if (kstrtol(parm[5], 10, &val) == 0)
 			param.cfmt = val;
 		pr_info(" cfmt:%d\n", param.cfmt);
 		if (!parm[6])
 			param.dfmt = TVIN_YUV422;
-		else if (!kstrtol(parm[6], 10, &val))
+		else if (kstrtol(parm[6], 10, &val) == 0)
 			param.dfmt = val;
 		pr_info(" dfmt:%d\n", param.dfmt);
 		if (!parm[7])
 			param.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;
-		else if (!kstrtol(parm[7], 10, &val))
+		else if (kstrtol(parm[7], 10, &val) == 0)
 			param.scan_mode = val;
 		pr_info(" scan_mode:%d\n", param.scan_mode);
 
@@ -1004,29 +1005,26 @@ start_chk:
 		del_timer_sync(&devp->timer);
 	else if (!strcmp(parm[0], "freeze")) {
 		if (!(devp->flags & VDIN_FLAG_DEC_STARTED)) {
-			kfree(buf_orig);
 			pr_info("vdin not started,can't do freeze!!!\n");
-			return len;
+		} else {
+			if (devp->fmt_info_p->scan_mode ==
+				TVIN_SCAN_MODE_PROGRESSIVE)
+				vdin_vf_freeze(devp->vfp, 1);
+			else
+				vdin_vf_freeze(devp->vfp, 2);
 		}
-		if (devp->fmt_info_p->scan_mode == TVIN_SCAN_MODE_PROGRESSIVE)
-			vdin_vf_freeze(devp->vfp, 1);
-		else
-			vdin_vf_freeze(devp->vfp, 2);
-
 	} else if (!strcmp(parm[0], "unfreeze")) {
-		if (!(devp->flags & VDIN_FLAG_DEC_STARTED)) {
-			kfree(buf_orig);
+		if (!(devp->flags & VDIN_FLAG_DEC_STARTED))
 			pr_info("vdin not started,can't do unfreeze!!!\n");
-			return len;
-		}
-		vdin_vf_unfreeze(devp->vfp);
+		else
+			vdin_vf_unfreeze(devp->vfp);
 	} else if (!strcmp(parm[0], "convertion")) {
 		if (parm[1] && parm[2] && parm[3]) {
-			if (!kstrtoul(parm[1], 10, &val))
+			if (kstrtoul(parm[1], 10, &val) == 0)
 				devp->debug.scaler4w = val;
-			if (!kstrtoul(parm[2], 10, &val))
+			if (kstrtoul(parm[2], 10, &val) == 0)
 				devp->debug.scaler4h = val;
-			if (!kstrtoul(parm[3], 10, &val))
+			if (kstrtoul(parm[3], 10, &val) == 0)
 				devp->debug.dest_cfmt = val;
 
 			devp->flags |= VDIN_FLAG_MANUAL_CONVERTION;
@@ -1045,58 +1043,50 @@ start_chk:
 		vdin_dump_state(devp);
 	} else if (!strcmp(parm[0], "histgram")) {
 		vdin_dump_histgram(devp);
-	}
 #ifdef CONFIG_AML_LOCAL_DIMMING
-	else if (!strcmp(parm[0], "histgram_ldim")) {
+	} else if (!strcmp(parm[0], "histgram_ldim")) {
 		unsigned int hnum, vnum;
 		if (parm[1] && parm[2]) {
 			hnum = kstrtoul(parm[1], 10, (unsigned long *)&hnum);
 			vnum = kstrtoul(parm[2], 10, (unsigned long *)&vnum);
-			}
-		else{
+		} else {
 			hnum = 8;
 			vnum = 2;
-			}
-		vdin_dump_histgram_ldim(devp, hnum, vnum);
 		}
+		vdin_dump_histgram_ldim(devp, hnum, vnum);
 #endif
-	else if (!strcmp(parm[0], "force_recycle")) {
+	} else if (!strcmp(parm[0], "force_recycle")) {
 		devp->flags |= VDIN_FLAG_FORCE_RECYCLE;
 	} else if (!strcmp(parm[0], "read_pic")) {
 		if (parm[1] && parm[2])
 			vdin_write_mem(devp, parm[1], parm[2], parm[3]);
-		else {
+		else
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo read_pic parm1 parm2 /sys/class/vdin/vdinx/attr.\n ");
-		}
 	} else if (!strcmp(parm[0], "read_bin")) {
 		if (parm[1] && parm[2] && parm[3])
 			vdin_write_cont_mem(devp, parm[1], parm[2], parm[3]);
-		else {
+		else
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo read_bin parm1 parm2 /sys/class/vdin/vdinx/attr.\n ");
-		}
 	} else if (!strcmp(parm[0], "dump_reg")) {
 		unsigned int reg;
 		unsigned int offset = devp->addr_offset;
 		pr_info("vdin%d addr offset:0x%x regs start----\n",
-				devp->index, offset);
+			devp->index, offset);
 		for (reg = VDIN_SCALE_COEF_IDX;	reg <= 0x1273; reg++)
 			pr_info("[0x%x]reg:0x%x-0x%x\n",
-					(0xd0100000 + ((reg+offset)<<2)),
-					(reg+offset), rd(offset, reg));
+				(0xd0100000 + ((reg+offset)<<2)),
+				(reg+offset), rd(offset, reg));
 		pr_info("vdin%d regs   end----\n", devp->index);
 	} else if (!strcmp(parm[0], "rgb_xy")) {
 		unsigned int x = 0, y = 0;
 		if (parm[1] && parm[2]) {
-			if (!kstrtoul(parm[1], 10, &val))
+			if (kstrtoul(parm[1], 10, &val) == 0)
 				x = val;
-			if (!kstrtoul(parm[2], 10, &val))
+			if (kstrtoul(parm[2], 10, &val) == 0)
 				y = val;
 			vdin_set_prob_xy(devp->addr_offset, x, y, devp);
 		} else {
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo rgb_xy x y /sys/class/vdin/vdinx/attr.\n");
 		}
 	} else if (!strcmp(parm[0], "rgb_info")) {
 		unsigned int r, g, b;
@@ -1104,16 +1094,15 @@ start_chk:
 		pr_info("rgb_info-->r:%d,g:%d,b:%d\n", r, g, b);
 	} else if (!strcmp(parm[0], "mpeg2vdin")) {
 		if (parm[1] && parm[2]) {
-			if (!kstrtoul(parm[1], 10, &val))
+			if (kstrtoul(parm[1], 10, &val) == 0)
 				devp->h_active = val;
-			if (!kstrtoul(parm[2], 10, &val))
+			if (kstrtoul(parm[2], 10, &val) == 0)
 				devp->v_active = val;
 			vdin_set_mpegin(devp);
 			pr_info("mpeg2vdin:h_active:%d,v_active:%d\n",
 				devp->h_active, devp->v_active);
 		} else {
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo mpeg2vdin h v /sys/class/vdin/vdinx/attr.\n");
 		}
 	} else if (!strcmp(parm[0], "yuv_rgb_info")) {
 		unsigned int rgb_yuv0, rgb_yuv1, rgb_yuv2;
@@ -1124,26 +1113,21 @@ start_chk:
 	} else if (!strcmp(parm[0], "mat0_xy")) {
 		unsigned int x = 0, y = 0;
 		if (parm[1] && parm[2]) {
-			if (!kstrtoul(parm[1], 10, &val))
+			if (kstrtoul(parm[1], 10, &val) == 0)
 				x = val;
-			if (!kstrtoul(parm[2], 10, &val))
+			if (kstrtoul(parm[2], 10, &val) == 0)
 				y = val;
 			pr_info("pos x  :%d, pos y  :%d\n", x, y);
 			vdin_set_prob_matrix0_xy(devp->addr_offset, x, y, devp);
 		} else {
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo mat0_xy x y /sys/class/vdin/vdinx/attr.\n");
 		}
 	} else if (!strcmp(parm[0], "mat0_set")) {
 		unsigned int x = 0;
 		if (!parm[1]) {
-			kfree(buf_orig);
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo mat0_set x /sys/class/vdin/vdinx/attr.\n");
-			return len;
-		} else {
-			if (!kstrtoul(parm[1], 10, &val))
-				x = val;
+		} else if (kstrtoul(parm[1], 10, &val) == 0) {
+			x = val;
 			pr_info("matrix set : %d\n", x);
 			vdin_set_before_after_mat0(devp->addr_offset, x, devp);
 		}
@@ -1242,61 +1226,41 @@ start_chk:
 		pr_info("resume_dec(%d) ok\n\n", devp->index);
 	} else if (!strcmp(parm[0], "color_depth")) {
 		if (!parm[1]) {
-			kfree(buf_orig);
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo color_depth x /sys/class/vdin/vdinx/attr.\n");
-			return len;
-		} else {
-			if (!kstrtoul(parm[1], 10, &val))
-				devp->color_depth_config = val;
+		} else if (kstrtoul(parm[1], 10, &val) == 0) {
+			devp->color_depth_config = val;
 			pr_info("color_depth(%d):%d\n\n", devp->index,
 				devp->color_depth_config);
 		}
 	} else if (!strcmp(parm[0], "color_depth_support")) {
 		if (!parm[1]) {
-			kfree(buf_orig);
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo color_depth_support x /sys/class/vdin/vdinx/attr.\n");
-			return len;
-		} else {
-			if (!kstrtoul(parm[1], 16, &val))
-				devp->color_depth_support = val;
+		} else if (!kstrtoul(parm[1], 16, &val) == 0) {
+			devp->color_depth_support = val;
 			pr_info("color_depth_support(%d):%d\n\n", devp->index,
 				devp->color_depth_support);
 		}
 	} else if (!strcmp(parm[0], "color_depth_mode")) {
 		if (!parm[1]) {
-			kfree(buf_orig);
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo color_depth_mode x /sys/class/vdin/vdinx/attr.\n");
-			return len;
-		} else {
-			if (!kstrtoul(parm[1], 10, &val))
-				devp->color_depth_mode = val;
+		} else if (kstrtoul(parm[1], 10, &val) == 0) {
+			devp->color_depth_mode = val;
 			pr_info("color_depth_mode(%d):%d\n\n", devp->index,
 				devp->color_depth_mode);
 		}
 	} else if (!strcmp(parm[0], "auto_cutwindow_en")) {
 		if (!parm[1]) {
-			kfree(buf_orig);
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo auto_cutwindow_en 0(1) /sys/class/vdin/vdinx/attr.\n");
-			return len;
-		} else {
-			if (!kstrtoul(parm[1], 10, &val))
-				devp->auto_cutwindow_en = val;
+		} else if (kstrtoul(parm[1], 10, &val) == 0) {
+			devp->auto_cutwindow_en = val;
 			pr_info("auto_cutwindow_en(%d):%d\n\n", devp->index,
 				devp->auto_cutwindow_en);
 		}
 	} else if (!strcmp(parm[0], "auto_ratio_en")) {
 		if (!parm[1]) {
-			kfree(buf_orig);
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo auto_ratio_en 0(1) /sys/class/vdin/vdinx/attr.\n");
-			return len;
-		} else {
-			if (!kstrtoul(parm[1], 10, &val))
-				devp->auto_ratio_en = val;
+		} else if (kstrtoul(parm[1], 10, &val) == 0) {
+			devp->auto_ratio_en = val;
 			pr_info("auto_ratio_en(%d):%d\n\n", devp->index,
 				devp->auto_ratio_en);
 		}
@@ -1314,213 +1278,142 @@ start_chk:
 	} else if (!strcmp(parm[0], "channel_order_config")) {
 		unsigned int c0, c1, c2;
 		if (!parm[3]) {
-			kfree(buf_orig);
 			pr_info("miss parameters\n");
-			return -EINVAL;
+		} else {
+			c0 = c1 = c2 = 0;
+			if (kstrtoul(parm[1], 10, &val) == 0)
+				c0 = val;
+			if (kstrtoul(parm[2], 10, &val) == 0)
+				c1 = val;
+			if (kstrtoul(parm[3], 10, &val) == 0)
+				c2 = val;
+			vdin_channel_order_config(devp->addr_offset,
+				c0, c1, c2);
 		}
-		if (kstrtoul(parm[1], 10, &val) < 0) {
-			kfree(buf_orig);
-			return -EINVAL;
-		} else
-			c0 = val;
-		if (kstrtoul(parm[2], 10, &val) < 0) {
-			kfree(buf_orig);
-			return -EINVAL;
-		} else
-			c1 = val;
-		if (kstrtoul(parm[3], 10, &val) < 0) {
-			kfree(buf_orig);
-			return -EINVAL;
-		} else
-			c2 = val;
-		vdin_channel_order_config(devp->addr_offset, c0, c1, c2);
 	} else if (!strcmp(parm[0], "channel_order_status"))
 		vdin_channel_order_status(devp->addr_offset);
 	else if (!strcmp(parm[0], "open_port")) {
 		if (!parm[1]) {
-			kfree(buf_orig);
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo open_port x /sys/class/vdin/vdinx/attr.\n");
-			return -len;
-		} else {
-			if (kstrtoul(parm[1], 16, &val) < 0) {
-				kfree(buf_orig);
-				return -EINVAL;
-			}
+		} else if (kstrtoul(parm[1], 16, &val) == 0) {
 			devp->parm.index = 0;
 			devp->parm.port  = val;
 			devp->unstable_flag = false;
 			ret = vdin_open_fe(devp->parm.port,
 				devp->parm.index, devp);
 			if (ret) {
-				kfree(buf_orig);
 				pr_err("TVIN_IOC_OPEN(%d) failed to open port 0x%x\n",
 					devp->parm.index, devp->parm.port);
-				return -EINVAL;
-			devp->flags |= VDIN_FLAG_DEC_OPENED;
-			pr_info("TVIN_IOC_OPEN(%d) port %s opened ok\n\n",
-				devp->parm.index ,
-				tvin_port_str(devp->parm.port));
+			} else {
+				devp->flags |= VDIN_FLAG_DEC_OPENED;
+				pr_info("TVIN_IOC_OPEN(%d) port %s opened ok\n\n",
+					devp->parm.index ,
+					tvin_port_str(devp->parm.port));
 			}
 		}
 	} else if (!strcmp(parm[0], "close_port")) {
 		enum tvin_port_e port = devp->parm.port;
 		if (!(devp->flags & VDIN_FLAG_DEC_OPENED)) {
-			kfree(buf_orig);
 			pr_err("TVIN_IOC_CLOSE(%d) you have not opened port\n",
-					devp->index);
-			return -EINVAL;
+				devp->index);
+		} else {
+			vdin_close_fe(devp);
+			devp->flags &= (~VDIN_FLAG_DEC_OPENED);
+			pr_info("TVIN_IOC_CLOSE(%d) port %s closed ok\n\n",
+				devp->parm.index, tvin_port_str(port));
 		}
-		vdin_close_fe(devp);
-		devp->flags &= (~VDIN_FLAG_DEC_OPENED);
-		pr_info("TVIN_IOC_CLOSE(%d) port %s closed ok\n\n",
-			devp->parm.index, tvin_port_str(port));
 	} else if (!strcmp(parm[0], "prehsc_en")) {
 		if (!parm[1]) {
-			kfree(buf_orig);
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo prehsc_en 0(1) /sys/class/vdin/vdinx/attr.\n");
 			return len;
-		} else {
-			if (kstrtoul(parm[1], 10, &val) < 0) {
-						kfree(buf_orig);
-						return -EINVAL;
-			}
+		} else if (kstrtoul(parm[1], 10, &val) == 0) {
 			devp->prehsc_en = val;
 			pr_info("prehsc_en(%d):%d\n\n", devp->index,
 				devp->prehsc_en);
 		}
 	} else if (!strcmp(parm[0], "vshrk_en")) {
 		if (!parm[1]) {
-			kfree(buf_orig);
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo vshrk_en 0(1) /sys/class/vdin/vdinx/attr.\n");
-			return len;
-		} else {
-			if (kstrtoul(parm[1], 10, &val) < 0) {
-				kfree(buf_orig);
-				return -EINVAL;
-			}
+		} else if (kstrtoul(parm[1], 10, &val) == 0) {
 			devp->vshrk_en = val;
 			pr_info("vshrk_en(%d):%d\n\n", devp->index,
 				devp->vshrk_en);
 		}
 	} else if (!strcmp(parm[0], "cma_mem_mode")) {
 		if (!parm[1]) {
-			kfree(buf_orig);
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo cma_mem_mode 0(1) /sys/class/vdin/vdinx/attr.\n");
-			return len;
-		} else {
-			if (kstrtoul(parm[1], 10, &val) < 0) {
-				kfree(buf_orig);
-				return -EINVAL;
-			}
+		} else if (kstrtoul(parm[1], 10, &val) == 0) {
 			devp->cma_mem_mode = val;
 			pr_info("cma_mem_mode(%d):%d\n\n", devp->index,
 				devp->cma_mem_mode);
 		}
 	} else if (!strcmp(parm[0], "black_bar_enable")) {
 		if (!parm[1]) {
-			kfree(buf_orig);
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo black_bar_enable 0(1) /sys/class/vdin/vdinx/attr.\n");
-			return -EINVAL;
-		} else {
-			if (kstrtoul(parm[1], 10, &val) < 0) {
-				kfree(buf_orig);
-				return -EINVAL;
-			}
+		} else if (kstrtoul(parm[1], 10, &val) == 0) {
 			devp->black_bar_enable = val;
 			pr_info("black_bar_enable(%d):%d\n\n", devp->index,
 				devp->black_bar_enable);
 		}
 	} else if (!strcmp(parm[0], "hist_bar_enable")) {
 		if (!parm[1]) {
-			kfree(buf_orig);
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo hist_bar_enable 0(1) /sys/class/vdin/vdinx/attr.\n");
-			return -EINVAL;
-		} else {
-			if (kstrtoul(parm[1], 10, &val) < 0) {
-				kfree(buf_orig);
-				return -EINVAL;
-			}
+		} else if (kstrtoul(parm[1], 10, &val) == 0) {
 			devp->hist_bar_enable = val;
 			pr_info("hist_bar_enable(%d):%d\n\n", devp->index,
 						devp->hist_bar_enable);
 		}
 	} else if (!strcmp(parm[0], "use_frame_rate")) {
 		if (!parm[1]) {
-			kfree(buf_orig);
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo use_frame_rate 0(1) /sys/class/vdin/vdinx/attr.\n");
-			return -EINVAL;
-		} else {
-			if (kstrtoul(parm[1], 10, &val) < 0) {
-				kfree(buf_orig);
-				return -EINVAL;
-			}
+		} else if (kstrtoul(parm[1], 10, &val) == 0) {
 			devp->use_frame_rate = val;
 			pr_info("use_frame_rate(%d):%d\n\n", devp->index,
 						devp->use_frame_rate);
 		}
 	} else if (!strcmp(parm[0], "dolby_input")) {
 		if (!parm[1]) {
-			kfree(buf_orig);
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo dolby_input 0(1) /sys/class/vdin/vdinx/attr.\n");
-			return -EINVAL;
-		} else {
-			if (kstrtoul(parm[1], 10, &val) < 0) {
-				kfree(buf_orig);
-				return -EINVAL;
-			}
+		} else if (kstrtoul(parm[1], 10, &val) == 0) {
 			devp->dv.dolby_input = val;
 			pr_info("dolby_input(%d):%d\n\n", devp->index,
 						devp->dv.dolby_input);
 		}
 	} else if (!strcmp(parm[0], "rdma_enable")) {
 		if (!parm[1]) {
-			kfree(buf_orig);
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo rdma_enable 0(1) /sys/class/vdin/vdinx/attr.\n");
-			return -EINVAL;
-		} else {
-			if (kstrtoul(parm[1], 10, &val) < 0) {
-				kfree(buf_orig);
-				return -EINVAL;
-			}
+		} else if (kstrtoul(parm[1], 10, &val) == 0) {
 			devp->rdma_enable = val;
 			pr_info("rdma_enable (%d):%d\n", devp->index,
 						devp->rdma_enable);
 		}
+	} else if (!strcmp(parm[0], "urgent_en")) {
+		if (!parm[1]) {
+			pr_err("miss parameters .\n");
+		} else if (kstrtoul(parm[1], 10, &val) == 0) {
+			devp->urgent_en = val;
+			pr_info("urgent_en (%d):%d\n", devp->index,
+				devp->urgent_en);
+		}
 	} else if (!strcmp(parm[0], "irq_cnt")) {
-		pr_info("vdin(%d) irq_cnt: %d\n", devp->index,
-						devp->irq_cnt);
-	} else if (!strcmp(parm[0], "rdma_irq_cnt")) {
-		pr_info("vdin(%d) rdma_irq_cnt: %d\n", devp->index,
-						devp->rdma_irq_cnt);
+		if (!parm[1]) {
+			pr_err("miss parameters .\n");
+		} else if (kstrtoul(parm[1], 10, &val) == 0) {
+			devp->vdin_irq_flag = val;
+			pr_info("vdin_irq_flag (%d):%d\n", devp->index,
+				devp->vdin_irq_flag);
+		}
 	} else if (!strcmp(parm[0], "skip_vf_num")) {
 		if (!parm[1]) {
-			kfree(buf_orig);
 			pr_err("miss parameters .\n");
-			pr_err("usage: echo skip_vf_num 0/1/2 /sys/class/vdin/vdinx/attr.\n");
-			return len;
-		} else {
-			if (kstrtoul(parm[1], 10, &val) < 0) {
-				kfree(buf_orig);
-				return -EINVAL;
-			}
-			if (devp->vfp) {
-				devp->vfp->skip_vf_num = val;
-				if (val == 0)
-					memset(devp->vfp->disp_mode, 0,
+		} else if (kstrtoul(parm[1], 10, &val) == 0 && devp->vfp) {
+			devp->vfp->skip_vf_num = val;
+			if (val == 0)
+				memset(devp->vfp->disp_mode, 0,
 					(sizeof(enum vframe_disp_mode_e) *
 					VFRAME_DISP_MAX_NUM));
-				pr_info("vframe_skip(%d):%d\n\n", devp->index,
-					devp->vfp->skip_vf_num);
-			}
+			pr_info("vframe_skip(%d):%d\n\n", devp->index,
+				devp->vfp->skip_vf_num);
 		}
 	} else {
 		pr_info("unknow command\n");

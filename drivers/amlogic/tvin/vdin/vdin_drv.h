@@ -43,9 +43,8 @@
 #include "../tvin_frontend.h"
 #include "vdin_vf.h"
 #include "vdin_regs.h"
-/*#include "vdin_canvas.h"*/
 
-#define VDIN_VER "Ref.2017/011/17"
+#define VDIN_VER "Ref.2017/12/01"
 
 /*the counter of vdin*/
 #define VDIN_MAX_DEVS			2
