@@ -151,3 +151,5 @@ obj-$(CONFIG_DRM_MESON) += drm/
 obj-$(CONFIG_AMLOGIC_TEE) += tee/
 
 obj-$(CONFIG_AMLOGIC_MEMORY_EXTEND) += memory_ext/
+
+obj-$(CONFIG_AMLOGIC_DEBUG) += debug/

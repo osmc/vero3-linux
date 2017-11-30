@@ -28,6 +28,9 @@
 #include <asm/irq_regs.h>
 #include <linux/kvm_para.h>
 #include <linux/perf_event.h>
+#ifdef CONFIG_AMLOGIC_DEBUG_LOCKUP
+#include <linux/amlogic/debug_lockup.h>
+#endif
 
 int watchdog_user_enabled = 1;
 int __read_mostly watchdog_thresh = 10;
@@ -253,11 +256,13 @@ static void watchdog_check_hardlockup_other_cpu(void)
 		if (per_cpu(hard_watchdog_warn, next_cpu) == true)
 			return;
 
+#ifdef CONFIG_AMLOGIC_DEBUG_LOCKUP
+		pr_lockup_info(next_cpu);
+#endif
 		if (hardlockup_panic)
 			panic("Watchdog detected hard LOCKUP on cpu %u", next_cpu);
 		else
 			WARN(1, "Watchdog detected hard LOCKUP on cpu %u", next_cpu);
-
 		per_cpu(hard_watchdog_warn, next_cpu) = true;
 	} else {
 		per_cpu(hard_watchdog_warn, next_cpu) = false;
@@ -314,6 +319,9 @@ static void watchdog_overflow_callback(struct perf_event *event,
 		if (__this_cpu_read(hard_watchdog_warn) == true)
 			return;
 
+#ifdef CONFIG_AMLOGIC_DEBUG_LOCKUP
+		pr_lockup_info(this_cpu);
+#endif
 		if (hardlockup_panic)
 			panic("Watchdog detected hard LOCKUP on cpu %d", this_cpu);
 		else

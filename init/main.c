@@ -918,6 +918,9 @@ static noinline void __init kernel_init_freeable(void)
 	smp_init();
 	sched_init_smp();
 
+#ifdef CONFIG_AMLOGIC_DEBUG_LOCKUP
+	irq_trace_en(1);
+#endif
 	do_basic_setup();
 
 	/* Open the /dev/console on the rootfs, this should never fail */

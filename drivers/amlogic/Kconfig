@@ -137,4 +137,5 @@ source "drivers/amlogic/tee/Kconfig"
 
 source "drivers/amlogic/memory_ext/Kconfig"
 
+source "drivers/amlogic/debug/Kconfig"
 endmenu

@@ -353,6 +353,10 @@ int generic_handle_irq(unsigned int irq)
 {
 	struct irq_desc *desc = irq_to_desc(irq);
 	__maybe_unused unsigned long time = 0, time1 = 0;
+#ifdef CONFIG_AMLOGIC_DEBUG_LOCKUP
+	unsigned long tin;
+	unsigned int cpu = smp_processor_id();
+#endif
 
 	if (!desc)
 		return -EINVAL;
@@ -361,7 +365,17 @@ int generic_handle_irq(unsigned int irq)
 	time = sched_clock()/1000;
 #endif
 
+
+#ifdef CONFIG_AMLOGIC_DEBUG_LOCKUP
+	isr_in_hook(cpu, &tin, irq);
+#endif
+
 	generic_handle_irq_desc(irq, desc);
+
+#ifdef CONFIG_AMLOGIC_DEBUG_LOCKUP
+	isr_out_hook(cpu, tin, irq);
+#endif
+
 
 #ifdef CONFIG_CHECK_ISR_TIME
 	time1 = (sched_clock()/1000);
