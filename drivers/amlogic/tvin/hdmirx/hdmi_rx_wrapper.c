@@ -319,7 +319,11 @@ bool is_hdcp_source = true;
 MODULE_PARM_DESC(is_hdcp_source, "\n is_hdcp_source\n");
 module_param(is_hdcp_source, bool, 0664);
 
-int stable_check_lvl = 0x7ff;
+/* No need to judge  frame rate while checking timing stable,as there are
+ * some out-spec sources whose framerate change a lot(e.g:59.7~60.16hz).
+ * Other brands of tv can support this,we also need to support.
+ */
+int stable_check_lvl = 0x7df;
 module_param(stable_check_lvl, int, 0664);
 MODULE_PARM_DESC(stable_check_lvl, "stable_check_lvl");
 
