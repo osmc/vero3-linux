@@ -230,7 +230,7 @@ static ssize_t aml_atvdemod_store(struct class *cls,
 				block_reg  = tmp;
 		if (block_addr < APB_BLOCK_ADDR_TOP)
 			block_val = atv_dmd_rd_long(block_addr, block_reg);
-		pr_info("rs block_addr:0x%x,block_reg:0x%x,block_val:0x%x\n",
+		pr_dbg("rs block_addr:0x%x,block_reg:0x%x,block_val:0x%x\n",
 			block_addr, block_reg, block_val);
 	} else if (!strncmp(parm[0], "ws", strlen("ws"))) {
 		if (kstrtoul(parm[1], 16, &tmp) == 0)
@@ -241,10 +241,10 @@ static ssize_t aml_atvdemod_store(struct class *cls,
 			block_val  = tmp;
 		if (block_addr < APB_BLOCK_ADDR_TOP)
 			atv_dmd_wr_long(block_addr, block_reg, block_val);
-		pr_info("ws block_addr:0x%x,block_reg:0x%x,block_val:0x%x\n",
+		pr_dbg("ws block_addr:0x%x,block_reg:0x%x,block_val:0x%x\n",
 			block_addr, block_reg, block_val);
 		block_val = atv_dmd_rd_long(block_addr, block_reg);
-		pr_info("readback_val:0x%x\n", block_val);
+		pr_dbg("readback_val:0x%x\n", block_val);
 	} else if (!strncmp(parm[0], "pin_mux", strlen("pin_mux"))) {
 		amlatvdemod_devp->pin =
 			devm_pinctrl_get_select(amlatvdemod_devp->dev,
@@ -254,6 +254,13 @@ static ssize_t aml_atvdemod_store(struct class *cls,
 	} else if (!strncmp(parm[0], "snr_cur", strlen("snr_cur"))) {
 		data_snr_avg = aml_atvdemod_get_snr_ex();
 		pr_dbg("**********snr_cur:%d*********\n", data_snr_avg);
+	} else if (!strncmp(parm[0], "pll_status", strlen("pll_status"))) {
+		int vpll_lock;
+		retrieve_vpll_carrier_lock(&vpll_lock);
+		if ((vpll_lock&0x1) == 0)
+			pr_dbg("visual carrier lock:locked\n");
+		else
+			pr_dbg("visual carrier lock:unlocked\n");
 	} else
 		pr_dbg("invalid command\n");
 	kfree(buf_orig);
@@ -322,7 +329,7 @@ static int aml_atvdemod_enter_mode(struct aml_fe *fe, int mode)
 		return err_code;
 	}
 
-	set_aft_thread_enable(1, 100);
+	set_aft_thread_enable(1, 0);
 	atvdemod_state = ATVDEMOD_STATE_WORK;
 	return 0;
 }

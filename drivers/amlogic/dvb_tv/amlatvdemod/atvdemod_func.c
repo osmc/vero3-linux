@@ -1331,7 +1331,14 @@ void retrieve_video_lock(int *lock)
 	slock = data & 0x80;
 	*lock = wlock & slock;
 }
-
+void retrieve_field_lock(int *lock)
+{
+	unsigned int data, field_lock, line_lock;
+	data = atv_dmd_rd_byte(APB_BLOCK_ADDR_VDAGC, 0x4f);
+	field_lock = data & 0x10;
+	line_lock = data & 0x4;
+	*lock = ((field_lock == 0) && (line_lock == 0));
+}
 void retrieve_fh_frequency(int *fh)
 {
 	unsigned long data1, data2;
