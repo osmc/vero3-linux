@@ -28,6 +28,11 @@
 #define DV_READ_MODE_AXI	(1 << 6)
 #define DV_CRC_CHECK	(1 << 7)
 
+/*the max hactive of vdin, also used as hlimit of txl/txlx/gxtvbb*/
+#define VDIN_MAX_HACTIVE 4096
+/*hlimit for gxl/gxlx/gxm/gxtv/txhd*/
+#define VDIN_HLIMIT_LOWCHIP 1920
+
 /* *********************************************************************** */
 /* *** enum definitions ********************************************* */
 /* *********************************************************************** */

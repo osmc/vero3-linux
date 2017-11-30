@@ -33,7 +33,6 @@
 #define VDIN_VSHRINK_HLIMIT 1280
 #define TVIN_MAX_PIXCLK 20000
 #define META_RETRY_MAX 10
-#define VDIN_MAX_HACTIVE 4096	/*the max hactive of vdin*/
 /*0: 1 word in 1burst, 1: 2 words in 1burst;
 2: 4 words in 1burst;*/
 #define VDIN_WR_BURST_MODE 2

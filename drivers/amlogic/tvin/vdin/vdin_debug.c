@@ -1415,6 +1415,14 @@ start_chk:
 			pr_info("vframe_skip(%d):%d\n\n", devp->index,
 				devp->vfp->skip_vf_num);
 		}
+	} else if (!strcmp(parm[0], "vdin_hlimit_en")) {
+		if (!parm[1])
+			pr_err("miss parameters .\n");
+		else if (kstrtoul(parm[1], 10, &val) == 0) {
+			devp->vdin_hlimit_en = val;
+			pr_info("vdin_hlimit_en (%d):%d\n", devp->index,
+				devp->vdin_hlimit_en);
+		}
 	} else {
 		pr_info("unknow command\n");
 	}

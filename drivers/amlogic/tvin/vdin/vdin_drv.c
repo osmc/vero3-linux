@@ -836,14 +836,20 @@ void vdin_start_dec(struct vdin_dev_s *devp)
 	/* h_active/v_active will be recalculated by bellow calling */
 	vdin_set_decimation(devp);
 	vdin_set_cutwin(devp);
+
+	if (devp->vdin_hlimit_en) {
+		if (devp->prop.scaling4w > devp->vdin_hlimit_size)
+			devp->prop.scaling4w = devp->vdin_hlimit_size;
+		else if ((devp->prop.scaling4w == 0) &&
+			(devp->h_active > devp->vdin_hlimit_size))
+			devp->prop.scaling4w = devp->vdin_hlimit_size;
+	}
 	vdin_set_hvscale(devp);
 	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXTVBB))
 		vdin_set_bitdepth(devp);
 	/* txl new add fix for hdmi switch resolution cause cpu holding */
 	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_TXL)
 		vdin_fix_nonstd_vsync(devp);
-
-
     /*reverse / disable reverse write buffer*/
 	vdin_wr_reverse(devp->addr_offset,
 				devp->parm.h_reverse,
@@ -2823,6 +2829,16 @@ static int vdin_drv_probe(struct platform_device *pdev)
 
 	/* set max pixel clk of vdin */
 	vdin_set_config(vdevp);
+
+	/*set vdin toplimit of hsize*/
+	if (is_meson_txl_cpu() || is_meson_txlx_cpu() ||
+		is_meson_gxtvbb_cpu()) {
+		vdevp->vdin_hlimit_en = 1;
+		vdevp->vdin_hlimit_size = VDIN_MAX_HACTIVE;
+	} else {
+		vdevp->vdin_hlimit_en = 1;
+		vdevp->vdin_hlimit_size = VDIN_HLIMIT_LOWCHIP;
+	}
 
 	/* vdin measure clock */
 	if (is_meson_gxbb_cpu()) {
