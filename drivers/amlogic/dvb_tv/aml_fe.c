@@ -672,6 +672,7 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 
 	/**enter manual search mode**/
 	if (p->analog.flag == ANALOG_FLAG_MANUL_SCAN) {
+		p->frequency = set_freq;
 		/*manul search force to ntsc_m */
 		std_bk = p->analog.std;
 		pr_dbg("%s Manully user analog.std:0x%08x\n",
@@ -838,7 +839,7 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 			}
 		}
 		usleep_range(20*1000, 20*1000+100);
-		p->frequency += afc_step;
+		p->frequency = set_freq;
 		fe->ops.set_frontend(fe);
 		return DVBFE_ALGO_SEARCH_FAILED;
 	}
