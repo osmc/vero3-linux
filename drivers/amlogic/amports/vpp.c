@@ -593,7 +593,7 @@ if di bypas:
 Time_in = (H_in * V_in)/Clk_vpu;
 if di work; for di clk is less than vpu usually;
 Time_in = (H_in * V_in)/Clk_di;
-if Time_in < Time_out,need do vskip;
+if Time_in > Time_out, need do vskip;
 but in effect,test result may have some error.
 ratio1:V_out test result may larger than calc result;
 --after test is large ratio is 1.09;
@@ -614,7 +614,9 @@ vpp_process_speed_check(s32 width_in,
 {
 	u32 cur_ratio, bpp = 1;
 	int min_ratio_1000 = 0;
-	u32 vtotal, clk_in_pps = 0;
+	u32 vtotal, htotal = 0, clk_in_pps = 0, clk_vpu = 0, clk_temp;
+	u32 input_time_us = 0, display_time_us = 0, dummy_time_us = 0;
+	u32 width_out = 0;
 
 	if (vf)
 		cur_vf_type = vf->type;
@@ -623,6 +625,9 @@ vpp_process_speed_check(s32 width_in,
 	if (next_frame_par->vscale_skip_count < force_vskip_cnt)
 		return SPEED_CHECK_VSKIP;
 
+	/*todo:this place is check di is working or not;
+	 *need change if di process has new flag
+	 */
 	if (vf->type & VIDTYPE_PRE_INTERLACE) {
 		if (is_meson_txlx_cpu())
 			clk_in_pps = 250000000;
@@ -646,6 +651,29 @@ vpp_process_speed_check(s32 width_in,
 		vtotal = vinfo->vtotal/2;
 	else
 		vtotal = vinfo->vtotal;
+
+	/*according vlsi suggest,
+	 *if di work need check mif input and vpu process speed
+	 */
+	if (vf->type & VIDTYPE_PRE_INTERLACE) {
+		htotal = vinfo->htotal;
+		clk_vpu = get_vpu_clk();
+		clk_temp = clk_in_pps / 1000000;
+		if (clk_temp)
+			input_time_us = height_in * width_in / clk_temp;
+		clk_temp = clk_vpu / 1000000;
+		width_out = next_frame_par->VPP_vsc_endp -
+			next_frame_par->VPP_vsc_startp + 1;
+		if (clk_temp)
+			dummy_time_us = (vtotal * htotal -
+			height_out * width_out) / clk_temp;
+		display_time_us = 1000000 * vinfo->sync_duration_den /
+			vinfo->sync_duration_num;
+		if (display_time_us > dummy_time_us)
+			display_time_us = display_time_us - dummy_time_us;
+		if (input_time_us > display_time_us)
+			return SPEED_CHECK_VSKIP;
+	}
 	/* #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8) */
 	if ((get_cpu_type() >= MESON_CPU_MAJOR_ID_M8) && !is_meson_mtvd_cpu()) {
 		if ((width_in <= 0) || (height_in <= 0) || (height_out <= 0)
