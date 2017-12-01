@@ -909,6 +909,8 @@ static int hdmi_rx_ctrl_irq_handler(struct hdmi_rx_ctrl *ctx)
 	/* bool audio_handle_flag = false; */
 	bool vsi_handle_flag = false;
 	bool drm_handle_flag = false;
+	uint32_t rx_top_intr_stat = 0;
+	bool irq_need_clr = 0;
 
 	/* clear interrupt quickly */
 	intr_hdmi =
@@ -988,6 +990,9 @@ static int hdmi_rx_ctrl_irq_handler(struct hdmi_rx_ctrl *ctx)
 		}
 	}
 
+	rx_top_intr_stat = hdmirx_rd_top(TOP_INTR_STAT);
+	if (rx_top_intr_stat & _BIT(31))
+		irq_need_clr = 1;
 	/* check hdmi open status before dwc isr */
 	if (!rx.open_fg) {
 		if (log_level & 0x1000)
@@ -1155,6 +1160,9 @@ static int hdmi_rx_ctrl_irq_handler(struct hdmi_rx_ctrl *ctx)
 		tasklet_schedule(&rx_tasklet);
 		/*pd_fifo_irq_ctl(1);*/
 	}
+	if (irq_need_clr)
+		error = 1;
+
 	return error;
 }
 
@@ -1169,8 +1177,8 @@ irqreturn_t irq_handler(int irq, void *params)
 		return IRQ_HANDLED;
 	}
 
-	hdmirx_top_intr_stat = hdmirx_rd_top(TOP_INTR_STAT);
-reisr:hdmirx_wr_top(TOP_INTR_STAT_CLR, hdmirx_top_intr_stat);
+reisr:hdmirx_top_intr_stat = hdmirx_rd_top(TOP_INTR_STAT);
+	hdmirx_wr_top(TOP_INTR_STAT_CLR, hdmirx_top_intr_stat);
 	/* modify interrupt flow for isr loading */
 	/* top interrupt handler */
 	if (hdmirx_top_intr_stat & (1 << 13))
@@ -1194,8 +1202,10 @@ reisr:hdmirx_wr_top(TOP_INTR_STAT_CLR, hdmirx_top_intr_stat);
 			}
 		}
 	}
-
+	if (error == 1)
+		goto reisr;
 	/* check the ip interrupt again */
+	/*
 	hdmirx_top_intr_stat = hdmirx_rd_top(TOP_INTR_STAT);
 	if (hdmirx_top_intr_stat & (1 << 31)) {
 		if (log_level & 0x100)
@@ -1203,6 +1213,7 @@ reisr:hdmirx_wr_top(TOP_INTR_STAT_CLR, hdmirx_top_intr_stat);
 		goto reisr;
 
 	}
+	*/
 	return IRQ_HANDLED;
 }
 
