@@ -2594,26 +2594,30 @@ static ssize_t store_hdcp_mode(struct device *dev,
 		hdmitx_hdcp_do_work(&hdmitx_device);
 	}
 	if (strncmp(buf, "1", 1) == 0) {
-		mutex_lock(&getedid_mutex);
-		hdmitx_device.HWOp.CntlDDC(&hdmitx_device,
-			DDC_PIN_MUX_OP, PIN_UNMUX);
-		edid_rx_data(0x0, tmp, sizeof(tmp));
-		hdmitx_device.HWOp.CntlDDC(&hdmitx_device,
-			DDC_PIN_MUX_OP, PIN_MUX);
-		mutex_unlock(&getedid_mutex);
+		if (hdmitx_device.gpio_i2c_enable) {
+			mutex_lock(&getedid_mutex);
+			hdmitx_device.HWOp.CntlDDC(&hdmitx_device,
+				DDC_PIN_MUX_OP, PIN_UNMUX);
+			edid_rx_data(0x0, tmp, sizeof(tmp));
+			hdmitx_device.HWOp.CntlDDC(&hdmitx_device,
+				DDC_PIN_MUX_OP, PIN_MUX);
+			mutex_unlock(&getedid_mutex);
+		}
 		hdmitx_device.hdcp_mode = 1;
 		hdmitx_hdcp_do_work(&hdmitx_device);
 		hdmitx_device.HWOp.CntlDDC(&hdmitx_device,
 			DDC_HDCP_OP, HDCP14_ON);
 	}
 	if (strncmp(buf, "2", 1) == 0) {
-		mutex_lock(&getedid_mutex);
-		hdmitx_device.HWOp.CntlDDC(&hdmitx_device,
-			DDC_PIN_MUX_OP, PIN_UNMUX);
-		edid_rx_data(0x0, tmp, sizeof(tmp));
-		hdmitx_device.HWOp.CntlDDC(&hdmitx_device,
-			DDC_PIN_MUX_OP, PIN_MUX);
-		mutex_unlock(&getedid_mutex);
+		if (hdmitx_device.gpio_i2c_enable) {
+			mutex_lock(&getedid_mutex);
+			hdmitx_device.HWOp.CntlDDC(&hdmitx_device,
+				DDC_PIN_MUX_OP, PIN_UNMUX);
+			edid_rx_data(0x0, tmp, sizeof(tmp));
+			hdmitx_device.HWOp.CntlDDC(&hdmitx_device,
+				DDC_PIN_MUX_OP, PIN_MUX);
+			mutex_unlock(&getedid_mutex);
+		}
 		hdmitx_device.hdcp_mode = 2;
 		hdmitx_hdcp_do_work(&hdmitx_device);
 		hdmitx_device.HWOp.CntlDDC(&hdmitx_device,
