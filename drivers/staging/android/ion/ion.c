@@ -59,11 +59,12 @@ struct ion_device {
 	struct rw_semaphore lock;
 	struct plist_head heaps;
 	long (*custom_ioctl) (struct ion_client *client, unsigned int cmd,
-			      unsigned long arg);
+	     unsigned long arg);
 	struct rb_root clients;
 	struct dentry *debug_root;
 	struct dentry *heaps_debug_root;
 	struct dentry *clients_debug_root;
+	struct proc_dir_entry *proc_entry;
 };
 
 /**
@@ -1654,13 +1655,9 @@ void ion_device_add_heap(struct ion_device *dev, struct ion_heap *heap)
 		pr_err("Failed to create heap debugfs at %s/%s\n",
 			path, heap->name);
 	}
-	/* to create file in /proc */
-	if (heap->type == ION_HEAP_TYPE_SYSTEM) {
-		struct proc_dir_entry *entry;
-		entry = proc_mkdir("ion", NULL);
-		proc_create_data(heap->name, 0644, entry,
-				&proc_heap_fops, heap);
-	}
+
+	proc_create_data(heap->name, 0644, dev->proc_entry,
+			&proc_heap_fops, heap);
 
 #ifdef DEBUG_HEAP_SHRINKER
 	if (heap->shrinker.shrink) {
@@ -1719,6 +1716,11 @@ struct ion_device *ion_device_create(long (*custom_ioctl)
 	if (!idev->clients_debug_root)
 		pr_err("ion: failed to create debugfs clients directory.\n");
 
+	/* to create file in /proc */
+	idev->proc_entry = proc_mkdir("ion", NULL);
+	if (!idev->proc_entry)
+		pr_info("create /proc/ion failed\n");
+
 debugfs_done:
 
 	idev->custom_ioctl = custom_ioctl;
@@ -1733,6 +1735,9 @@ debugfs_done:
 void ion_device_destroy(struct ion_device *dev)
 {
 	misc_deregister(&dev->dev);
+	if (dev->proc_entry)
+		proc_remove(dev->proc_entry);
+
 	debugfs_remove_recursive(dev->debug_root);
 	/* XXX need to free the heaps and clients ? */
 	kfree(dev);
