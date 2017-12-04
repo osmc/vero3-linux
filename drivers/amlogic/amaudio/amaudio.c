@@ -317,11 +317,11 @@ static ssize_t record_type_store(struct class *class,
 static ssize_t record_type_show(struct class *class,
 				struct class_attribute *attr, char *buf)
 {
-	if (audioin_mode & I2SIN_MASTER_MODE) {	/* mic */
+	if (audioin_mode == I2SIN_MASTER_MODE) {	/* mic */
 		return sprintf(buf, "i2s in master mode for built in mic\n");
-	} else if (audioin_mode & SPDIFIN_MODE) {	/* spdif in mode */
+	} else if (audioin_mode == SPDIFIN_MODE) {	/* spdif in mode */
 		return sprintf(buf, "spdif in mode\n");
-	} else if (audioin_mode & I2SIN_SLAVE_MODE) {	/* i2s in slave */
+	} else if (audioin_mode == I2SIN_SLAVE_MODE) {	/* i2s in slave */
 		return sprintf(buf, "i2s in slave mode\n");
 	} else {
 		return sprintf(buf, "audioin_mode can't match mode\n");
