@@ -5252,6 +5252,11 @@ int register_dv_functions(const struct dolby_vision_func_s *func)
 			reg_value);
 		if (is_meson_gxm_cpu())
 			dolby_vision_run_mode_delay = 3;
+		/* adjust core2 setting to work around fixing with 1080p24hz */
+		if (is_meson_txlx_cpu())
+			g_vpotch = 0x20;
+		else
+			g_vpotch = 0x8;
 	}
 	return ret;
 }
