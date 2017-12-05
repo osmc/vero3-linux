@@ -135,17 +135,17 @@ struct lcd_basic_s {
 #define LCD_CLK_PLL_CHANGE      (1 << 1)
 struct lcd_timing_s {
 	unsigned char clk_auto; /* clk parameters auto generation */
+	unsigned char fr_adjust_type; /* 0=clock, 1=htotal, 2=vtotal */
+	unsigned char clk_change; /* internal used */
 	unsigned int lcd_clk;   /* pixel clock(unit: Hz) */
 	unsigned int lcd_clk_dft; /* internal used */
 	unsigned int h_period_dft; /* internal used */
 	unsigned int v_period_dft; /* internal used */
-	unsigned char clk_change; /* internal used */
 	unsigned int pll_ctrl;  /* pll settings */
 	unsigned int div_ctrl;  /* divider settings */
 	unsigned int clk_ctrl;  /* clock settings */
 
-	unsigned char fr_adjust_type; /* 0=clock, 1=htotal, 2=vtotal */
-	unsigned char ss_level;
+	unsigned int ss_level;
 
 	unsigned int sync_duration_num;
 	unsigned int sync_duration_den;

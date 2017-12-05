@@ -122,6 +122,8 @@ enum div_sel_e {
 	CLK_DIV_SEL_MAX,
 };
 
+#define LCD_SS_STEP_BASE            500 /* ppm */
+
 
 /* **********************************
  * M8
