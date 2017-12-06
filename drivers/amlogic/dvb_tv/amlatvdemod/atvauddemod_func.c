@@ -891,7 +891,10 @@ void set_btsc_outputmode(uint32_t outmode)
 
 	case AUDIO_OUTMODE_BTSC_SAP:
 		if (sap_flag) {
-			tmp_value = (reg_value & 0xf) | (2 << 4);
+			if (aml_atvdemod_get_btsc_sap_mode() != 0)
+				tmp_value = (reg_value & 0xf) | (6 << 4);
+			else
+				tmp_value = (reg_value & 0xf) | (2 << 4);
 			adec_wr_reg(ADDR_ADEC_CTRL, tmp_value);
 
 			reg_value = adec_rd_reg(ADDR_LPR_COMP_CTRL);
@@ -1179,6 +1182,79 @@ void audio_thd_det(void)
 			thd_cnt = 0;
 			thd_tmp_v = 0;
 		}
+	}
+}
+
+void audio_mode_det(int mode)
+{
+	if (is_atvdemod_work() &&
+			(is_meson_txlx_cpu() || is_meson_txhd_cpu())) {
+		uint32_t reg_value;
+		uint32_t tmp_value, tmp_value1;
+		int stereo_flag, sap_flag;
+		static int last_stereo_flag = -1, last_sap_flag = -1;
+
+		reg_value = adec_rd_reg(AUDIO_MODE_REPORT);
+		stereo_flag = reg_value&0x1;
+		sap_flag = (reg_value>>1)&0x1;
+		reg_value = adec_rd_reg(ADDR_ADEC_CTRL);
+
+		if (sap_flag != last_sap_flag
+			|| stereo_flag != last_stereo_flag) {
+			switch (mode) {
+			case AUDIO_OUTMODE_BTSC_MONO:
+				tmp_value = (reg_value & 0xf)|(0 << 4);
+				adec_wr_reg(ADDR_ADEC_CTRL, tmp_value);
+				break;
+
+			case AUDIO_OUTMODE_BTSC_STEREO:
+				if (stereo_flag) {
+					tmp_value = (reg_value & 0xf)|(1 << 4);
+					adec_wr_reg(ADDR_ADEC_CTRL, tmp_value);
+
+					reg_value =
+						adec_rd_reg(ADDR_LPR_COMP_CTRL);
+					tmp_value1 = (reg_value & 0xffff);
+					adec_wr_reg(ADDR_LPR_COMP_CTRL,
+						tmp_value1);
+				} else {
+					tmp_value = (reg_value & 0xf)|(0 << 4);
+					adec_wr_reg(ADDR_ADEC_CTRL, tmp_value);
+				}
+				break;
+
+			case AUDIO_OUTMODE_BTSC_SAP:
+				if (sap_flag) {
+					tmp_value = (reg_value & 0xf)|(6 << 4);
+					adec_wr_reg(ADDR_ADEC_CTRL, tmp_value);
+
+					reg_value =
+						adec_rd_reg(ADDR_LPR_COMP_CTRL);
+					tmp_value1 =
+						(reg_value & 0xffff)|(1 << 16);
+					adec_wr_reg(ADDR_LPR_COMP_CTRL,
+						tmp_value1);
+				} else if (stereo_flag) {
+					tmp_value = (reg_value & 0xf)|(1 << 4);
+					adec_wr_reg(ADDR_ADEC_CTRL, tmp_value);
+
+					reg_value =
+						adec_rd_reg(ADDR_LPR_COMP_CTRL);
+					tmp_value1 = (reg_value & 0xffff);
+					adec_wr_reg(ADDR_LPR_COMP_CTRL,
+						tmp_value1);
+				} else {
+					tmp_value = (reg_value & 0xf)|(0 << 4);
+					adec_wr_reg(ADDR_ADEC_CTRL, tmp_value);
+				}
+				break;
+			}
+		}
+
+		last_stereo_flag = stereo_flag;
+		last_sap_flag = sap_flag;
+
+		pr_info("[tuner..] atvdemod_monitor_audio done ....\n");
 	}
 }
 

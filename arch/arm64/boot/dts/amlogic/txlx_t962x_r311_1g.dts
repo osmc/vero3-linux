@@ -532,6 +532,7 @@
 		compatible = "amlogic, aml_atv_demod";
 		dev_name = "aml_atv_demod";
 		status = "okay";
+		btsc_sap_mode = <1>;
 		pinctrl-names="atvdemod_agc";
 		pinctrl-0=<&atvdemod_agc>;
 		reg = <0x0 0xff640000 0x0 0x2000

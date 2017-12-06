@@ -53,6 +53,10 @@ unsigned int atvdemod_scan_mode = 0; /*IIR filter*/
 module_param(atvdemod_scan_mode, uint, 0664);
 MODULE_PARM_DESC(atvdemod_scan_mode, "\n atvdemod_scan_mode\n");
 
+static int btsc_sap_mode = 1;	/*0: off 1:monitor 2:auto */
+module_param(btsc_sap_mode, int, 0644);
+MODULE_DESCRIPTION("btsc sap mode\n");
+
 /* used for resume */
 #define ATVDEMOD_STATE_IDEL 0
 #define ATVDEMOD_STATE_WORK 1
@@ -71,6 +75,14 @@ void set_atvdemod_scan_mode(int val)
 }
 EXPORT_SYMBOL(set_atvdemod_scan_mode);
 
+int is_atvdemod_work(void)
+{
+	int ret = 0;
+
+	if (atvdemod_state == ATVDEMOD_STATE_WORK)
+		ret = 1;
+	return ret;
+}
 
 static int aml_atvdemod_enter_mode(struct aml_fe *fe, int mode);
 /*static void sound_store(const char *buff, v4l2_std_id *std);*/
@@ -348,6 +360,11 @@ static int aml_atvdemod_resume(struct aml_fe_dev *dev)
 	if (atvdemod_state == ATVDEMOD_STATE_SLEEP)
 		aml_atvdemod_enter_mode(NULL, 0);
 	return 0;
+}
+
+int aml_atvdemod_get_btsc_sap_mode(void)
+{
+	return btsc_sap_mode;
 }
 
 /*
@@ -667,6 +684,12 @@ static void aml_atvdemod_dt_parse(struct platform_device *pdev)
 			pr_dbg("atvdemod agc pinmux name:%s\n",
 				amlatvdemod_devp->pin_name);
 		}
+		ret = of_property_read_u32(node, "btsc_sap_mode",
+			&val);
+		if (ret)
+			pr_dbg("Can't find	btsc_sap_mode.\n");
+		else
+			btsc_sap_mode = val;
 	}
 }
 static struct resource amlatvdemod_memobj;

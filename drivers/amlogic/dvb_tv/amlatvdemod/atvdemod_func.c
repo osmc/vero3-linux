@@ -1524,6 +1524,9 @@ void atvdemod_timer_hander(unsigned long arg)
 		atvdemod_det_snr_serice();
 	if (audio_thd_en)
 		audio_thd_det();
+	if (aml_atvdemod_get_btsc_sap_mode() == 1 &&
+			aud_std == AUDIO_STANDARD_BTSC)
+		audio_mode_det(aud_mode);
 }
 
 int atvdemod_clk_init(void)
