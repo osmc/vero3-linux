@@ -112,6 +112,7 @@ struct sFlmSftPar {
 	int dif01rate;
 	int flag_di01th;
 	int numthd;
+	int pulldown_VER;
 
 	UINT32 sF32Dif02M0;	/* mpeg-4096, cvbs-8192 */
 	UINT32 sF32Dif02M1;	/* mpeg-4096, cvbs-8192 */

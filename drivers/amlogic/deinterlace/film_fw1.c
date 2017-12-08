@@ -58,6 +58,7 @@ UINT8 FlmVOFSftInt(struct sFlmSftPar *pPar)
 	pPar->numthd = 60;
 	pPar->sF32Dif02M0 = 4096;/* mpeg-4096, cvbs-8192 */
 	pPar->sF32Dif02M1 = 4096;
+	pPar->pulldown_VER = 20171220;/*2017-12-20*/
 	field_count = 0;
 
 	return 0;

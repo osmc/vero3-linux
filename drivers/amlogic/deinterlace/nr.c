@@ -768,6 +768,7 @@ static dnr_param_t dnr_params[] = {
 	{"sw_vbof_vld_flg", &(dnr_param.sw_vbof_vld_flg)},
 	{"sw_vbof_vld_cnt", &(dnr_param.sw_vbof_vld_cnt)},
 	{"dnr_stat_coef", &(dnr_param.dnr_stat_coef)},
+	{"dnr_VER", &(dnr_param.dnr_VER)},
 	{"", NULL}
 };
 static ssize_t dnr_param_store(struct device *dev,
@@ -975,6 +976,7 @@ static int dnr_prm_init(DNR_PRM_t *pPrm)
 	pPrm->sw_vbof_vld_flg = 0;
 	pPrm->sw_vbof_vld_cnt = 0;
 	pPrm->dnr_stat_coef = 3;
+	pPrm->dnr_VER = 20171220; /*2017-12-20*/
 	return 0;
 }
 

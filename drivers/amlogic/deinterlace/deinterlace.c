@@ -168,6 +168,7 @@ static dev_t di_devno;
 static struct class *di_clsp;
 #define INIT_FLAG_NOT_LOAD 0x80
 static const char version_s[] = "2016-12-18a";
+static const char combing_ver_s[] = "2017-12-20";
 static unsigned char boot_init_flag;
 static int receiver_is_amvideo = 1;
 
@@ -1067,6 +1068,8 @@ static struct pd_param_s pd_params[] = {
 	  &(pd_param.sF32Dif02M0)   },/* mpeg-4096, cvbs-8192 */
 	{ "sF32Dif02M1",
 	  &(pd_param.sF32Dif02M1)   },/* mpeg-4096, cvbs-8192 */
+	{ "pulldown_VER",
+		  &(pd_param.pulldown_VER)	},/* mpeg-4096, cvbs-8192 */
 	{ "",	  NULL              }
 };
 
@@ -3397,6 +3400,7 @@ static void dump_state(void)
 	pr_info("video_peek_cnt = %d,force_trig_cnt = %d\n",
 		video_peek_cnt, force_trig_cnt);
 	pr_info("reg_unreg_timerout = %lu\n", reg_unreg_timeout_cnt);
+	pr_info("combing version: %s\n", combing_ver_s);
 	dump_state_flag = 0;
 }
 

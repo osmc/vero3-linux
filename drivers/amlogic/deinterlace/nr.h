@@ -36,6 +36,7 @@ struct DNR_PARM_s {
 	int sw_vbof_vld_flg;
 	int sw_vbof_vld_cnt;
 	int dnr_stat_coef;
+	int dnr_VER;
 };/* used for software */
 #define DNR_PRM_t struct DNR_PARM_s
 struct NR4_PARM_s {

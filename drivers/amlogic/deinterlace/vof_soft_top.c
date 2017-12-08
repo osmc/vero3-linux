@@ -5,49 +5,19 @@
 
 #include "film_vof_soft.h"
 
-int cmb32_blw_wnd = 180; /*192 */
-module_param(cmb32_blw_wnd, int, 0644);
-MODULE_PARM_DESC(cmb32_blw_wnd, "cmb32_blw_wnd");
-
+static int cmb32_blw_wnd = 180; /*192 */
 static int cmb32_wnd_ext = 11;
-module_param(cmb32_wnd_ext, int, 0644);
-MODULE_PARM_DESC(cmb32_wnd_ext, "cmb32_wnd_ext");
-
-int cmb32_wnd_tol = 4;
-module_param(cmb32_wnd_tol, int, 0644);
-MODULE_PARM_DESC(cmb32_wnd_tol, "cmb32_wnd_tol");
-
-int cmb32_frm_nocmb = 40;
-module_param(cmb32_frm_nocmb, int, 0644);
-MODULE_PARM_DESC(cmb32_frm_nocmb, "cmb32_frm_nocmb");
-
-int cmb32_min02_sft = 7;
-module_param(cmb32_min02_sft, int, 0644);
-MODULE_PARM_DESC(cmb32_min02_sft, "cmb32_min02_sft");
-
-int cmb32_cmb_tol = 10;
-module_param(cmb32_cmb_tol, int, 0644);
-MODULE_PARM_DESC(cmb32_cmb_tol, "cmb32_cmb_tol");
-
-int cmb32_avg_dff = 48; /* if avg dif32 > dff>>4 */
-module_param(cmb32_avg_dff, int, 0644);
-MODULE_PARM_DESC(cmb32_avg_dff, "cmb32_avg_dff");
-
-int cmb32_smfrm_num = 4;
-module_param(cmb32_smfrm_num, int, 0644);
-MODULE_PARM_DESC(cmb32_smfrm_num, "cmb32_smfrm_num");
-
-int cmb32_nocmb_num = 20;
-module_param(cmb32_nocmb_num, int, 0644);
-MODULE_PARM_DESC(cmb32_nocmb_num, "cmb32_nocmb_num");
-
-int cmb22_gcmb_rnum = 8;
-module_param(cmb22_gcmb_rnum, int, 0644);
-MODULE_PARM_DESC(cmb22_gcmb_rnum, "cmb22_gcmb_rnum");
-
-int flmxx_cal_lcmb = 1;
-module_param(flmxx_cal_lcmb, int, 0644);
-MODULE_PARM_DESC(flmxx_cal_lcmb, "flmxx_cal_lcmb");
+static int cmb32_wnd_tol = 4;
+static int cmb32_frm_nocmb = 40;
+static int cmb32_min02_sft = 7;
+static int cmb32_cmb_tol = 10;
+static int cmb32_avg_dff = 48; /* if avg dif32 > dff>>4 */
+static int cmb32_smfrm_num = 4;
+static int cmb32_nocmb_num = 20;
+static int cmb22_gcmb_rnum = 8;
+static int flmxx_cal_lcmb = 1;
+static int flmvof_nWCmb = 1;
+static int flmvof_nWCmb_thd = 100;
 
 /* 15: 8-7 */
 /* 12: 3-2-3-2-2 */
@@ -535,6 +505,33 @@ int VOFSftTop(UINT8 *rFlmPstGCm, UINT8 *rFlmSltPre, UINT8 *rFlmPstMod,
 					pFlg22[HISDETNUM - 1 - mDly]);
 			}
 		}
+		if (flmvof_nWCmb && nWCmb > flmvof_nWCmb_thd) {
+			rPstCYWnd0[0] = 0;	/*bgn*/
+			rPstCYWnd0[1] = 0;	/*end*/
+			/*0-mtn,1-with-buffer,2-ei,3-di*/
+			rPstCYWnd0[2] = 3;
+			rPstCYWnd1[0] = 0;	/*bgn*/
+			rPstCYWnd1[1] = 0;	/*end*/
+			/*0-mtn,1-with-buffer,2-ei,3-di*/
+			rPstCYWnd1[2] = 3;
+			rPstCYWnd2[0] = 0;	/*bgn*/
+			rPstCYWnd2[1] = 0;	/*end*/
+			/*0-mtn,1-with-buffer,2-ei,3-di*/
+			rPstCYWnd2[2] = 3;
+			rPstCYWnd3[0] = 0;	/*bgn*/
+			rPstCYWnd3[1] = 0;	/*end*/
+			/*0-mtn,1-with-buffer,2-ei,3-di*/
+			rPstCYWnd3[2] = 3;
+			*rFlmPstGCm = WGlb[HISDETNUM - mDly];
+			if (prt_flg) {
+				sprintf(debug_str + strlen(debug_str),
+					"rFlmPstGCm-7=%d\n", *rFlmPstGCm);
+				sprintf(debug_str + strlen(debug_str),
+					"pFlg32=%d, pFlg22=%d\n",
+					pFlg32[HISDETNUM - 1 - mDly],
+					pFlg22[HISDETNUM - 1 - mDly]);
+			}
+		}
 	} else {
 		rPstCYWnd0[0] = 0;	/* bgn */
 		rPstCYWnd0[1] = 0;	/* end */
@@ -675,3 +672,43 @@ UINT8 Get1RCmb(UINT32 *iHSCMB, UINT32 iRow)
 	return (iHSCMB[nR1] >> nBt) & 0x1;
 }
 
+#ifdef DEBUG_SUPPORT
+module_param(cmb32_blw_wnd, int, 0644);
+MODULE_PARM_DESC(cmb32_blw_wnd, "cmb32_blw_wnd");
+
+module_param(cmb32_wnd_ext, int, 0644);
+MODULE_PARM_DESC(cmb32_wnd_ext, "cmb32_wnd_ext");
+
+module_param(cmb32_wnd_tol, int, 0644);
+MODULE_PARM_DESC(cmb32_wnd_tol, "cmb32_wnd_tol");
+
+module_param(cmb32_frm_nocmb, int, 0644);
+MODULE_PARM_DESC(cmb32_frm_nocmb, "cmb32_frm_nocmb");
+
+module_param(cmb32_cmb_tol, int, 0644);
+MODULE_PARM_DESC(cmb32_cmb_tol, "cmb32_cmb_tol");
+
+module_param(cmb32_avg_dff, int, 0644);
+MODULE_PARM_DESC(cmb32_avg_dff, "cmb32_avg_dff");
+
+module_param(cmb32_smfrm_num, int, 0644);
+MODULE_PARM_DESC(cmb32_smfrm_num, "cmb32_smfrm_num");
+
+module_param(cmb32_nocmb_num, int, 0644);
+MODULE_PARM_DESC(cmb32_nocmb_num, "cmb32_nocmb_num");
+
+module_param(cmb32_min02_sft, int, 0644);
+MODULE_PARM_DESC(cmb32_min02_sft, "cmb32_min02_sft");
+
+module_param(cmb22_gcmb_rnum, int, 0644);
+MODULE_PARM_DESC(cmb22_gcmb_rnum, "cmb22_gcmb_rnum");
+
+module_param(flmxx_cal_lcmb, int, 0644);
+MODULE_PARM_DESC(flmxx_cal_lcmb, "flmxx_cal_lcmb");
+
+module_param(flmvof_nWCmb, int, 0644);
+MODULE_PARM_DESC(flmvof_nWCmb, "flmvof_nWCmb");
+
+module_param(flmvof_nWCmb_thd, int, 0644);
+MODULE_PARM_DESC(flmvof_nWCmb_thd, "flmvof_nWCmb_thd");
+#endif
