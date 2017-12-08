@@ -102,6 +102,7 @@ struct amlsd_platform {
 	unsigned int card_capacity;
 	unsigned int tx_phase;
 	unsigned int tx_delay;
+	unsigned int ds_delay;
 	unsigned int f_min;
 	unsigned int f_max;
 	unsigned int f_max_w;

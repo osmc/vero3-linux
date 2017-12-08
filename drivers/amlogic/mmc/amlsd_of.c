@@ -260,6 +260,8 @@ int amlsd_get_platform_data(struct platform_device *pdev,
 						pdata->clksrc_base);
 		SD_PARSE_U32_PROP_DEC(child, "tx_delay",
 						prop, pdata->tx_delay);
+		SD_PARSE_U32_PROP_DEC(child, "ds_delay",
+						prop, pdata->ds_delay);
 		if (aml_card_type_mmc(pdata)) {
 			/*tx_phase set default value first*/
 			if (get_cpu_type() == MESON_CPU_MAJOR_ID_GXTVBB)

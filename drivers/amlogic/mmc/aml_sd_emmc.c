@@ -1084,6 +1084,7 @@ static int aml_sd_emmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 				err = aml_sd_emmc_execute_tuning_index(mmc,
 						&adj_win_start);
 		}
+
 		/* if calibration failed, gdelay use default value */
 		if (err) {
 			if (get_cpu_type() == MESON_CPU_MAJOR_ID_GXBB)
@@ -2872,6 +2873,8 @@ static void aml_sd_emmc_set_timing(
 			if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXL) {
 				adjust = sd_emmc_regs->gadjust;
 				gadjust->ds_enable = 1;
+				if (pdata->ds_delay)
+					gadjust->ds_delay = pdata->ds_delay;
 				sd_emmc_regs->gadjust = adjust;
 				host->tuning_mode = AUTO_TUNING_MODE;
 			}
