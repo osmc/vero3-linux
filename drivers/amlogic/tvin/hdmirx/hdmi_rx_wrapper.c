@@ -196,7 +196,6 @@ static bool new_hdr_lum;
 MODULE_PARM_DESC(new_hdr_lum, "\n new_hdr_lum\n");
 module_param(new_hdr_lum, bool, 0664);
 
-
 #ifdef HDCP22_ENABLE
 /* to inform ESM whether the cable is connected or not */
 bool hpd_to_esm;
@@ -345,6 +344,8 @@ int pre_port = 0xff;
 int pll_unlock_check_times;
 int pll_unlock_check_times_max = 5;
 bool hdmi5v_lost_flag;
+int arc_port_id;
+bool need_support_atmos_bit;
 
 /*------------------------external function------------------------------*/
 static void dump_state(unsigned char enable);
@@ -1785,8 +1786,8 @@ void rx_get_audio_status(struct rx_audio_stat_s *aud_sts)
 			(rx.aud_info.aud_packet_received == 0) ? false : true;
 		aud_sts->aud_stb_flag = true;
 		aud_sts->aud_sr = rx.aud_info.real_sample_rate;
-		aud_sts->aud_channel_cnt = rx.aud_info.coding_type;
-		aud_sts->aud_type = rx.aud_info.channel_count;
+		aud_sts->aud_channel_cnt = rx.aud_info.channel_count;
+		aud_sts->aud_type = rx.aud_info.coding_type;
 	} else {
 		memset(aud_sts, 0,
 			sizeof(struct rx_audio_stat_s));
@@ -1818,6 +1819,10 @@ void rx_5v_det(void)
 			hdmi5v_lost_flag = TRUE;
 			fsm_restart();
 		}
+		/* if (need_support_atmos_bit &&
+		 *	(((pwr_sts >> arc_port_id) & 1) == 0))
+		 *	need_support_atmos_bit = false;
+		 */
 		hotplug_wait_query();
 	} else
 		rx.cur_5v_sts = (pwr_sts >> rx.port) & 1;
@@ -2975,6 +2980,98 @@ void rx_edid_update_overlay(
 	}
 }
 
+unsigned char get_atmos_offset(unsigned char *p_edid)
+{
+	unsigned char max_offset = 0;
+	unsigned char tag_offset = 0;
+	unsigned char tag_data = 0;
+	unsigned char aud_length = 0;
+	unsigned char i = 0;
+	unsigned char ret = 0;
+
+	max_offset = p_edid[130] + 128;
+	tag_offset = 132;
+	do {
+		tag_data = p_edid[tag_offset];
+		if ((tag_data & 0xE0) == 0x20) {
+			rx_pr("audio_\n");
+			aud_length = tag_data & 0x1F;
+			break;
+		}
+		tag_offset += (tag_data & 0x1F) + 1;
+	} while (tag_offset < max_offset);
+
+	for (i = 0; i < aud_length; i += 3) {
+		if (p_edid[tag_offset+1+i] >> 3 == 10) {
+			ret = tag_offset+1+i+2;
+			break;
+		}
+	}
+	return ret;
+}
+
+/* @func: seek dd+ atmos bit
+ * @param:get audio type info by cec message:
+ *	request short sudio descriptor
+ */
+unsigned char rx_parse_arc_aud_type(const unsigned char *buff)
+{
+	unsigned char tmp[7] = {0};
+	unsigned char aud_length = 0;
+	unsigned char i = 0;
+	unsigned int aud_data = 0;
+	int ret = 0;
+
+	aud_length = strlen(buff);
+	rx_pr("length = %d\n", aud_length);
+
+	for (i = 0; i < aud_length; i += 6) {
+		tmp[6] = '\0';
+		memcpy(tmp, buff + i, 6);
+		ret = sscanf(tmp, "%x", &aud_data);
+		if (ret != 1)
+			rx_pr("sscanf failed\n");
+		if (aud_data >> 19 == AUDIO_FORMAT_DDP)
+			break;
+	}
+	if ((i < aud_length) &&
+		((aud_data & 0xff) == 1)) {
+		if (!need_support_atmos_bit) {
+			need_support_atmos_bit = true;
+			if (rx.open_fg) {
+				hdmi_rx_ctrl_edid_update();
+				rx_send_hpd_pulse();
+				rx_pr("*update edid-atmos*\n");
+			} else
+				pre_port = 0xff;
+		}
+	} else {
+		if (need_support_atmos_bit) {
+			need_support_atmos_bit = false;
+			if (rx.open_fg) {
+				hdmi_rx_ctrl_edid_update();
+				rx_send_hpd_pulse();
+				rx_pr("*update edid-no atmos*\n");
+			} else
+				pre_port = 0xff;
+		}
+	}
+
+	return 0;
+}
+
+unsigned char rx_edid_update_atmos(unsigned char *p_edid)
+{
+	unsigned char offset = get_atmos_offset(p_edid);
+	if (offset == 0)
+		rx_pr("can not find atmos info\n");
+	else {
+		p_edid[offset] = 1;
+		rx_pr("offset = %d\n", offset);
+	}
+	return 0;
+}
+
 int hdmi_rx_ctrl_edid_update(void)
 {
 	int edid_index = rx_get_edid_index();
@@ -2982,8 +3079,8 @@ int hdmi_rx_ctrl_edid_update(void)
 	u_char *pedid_data;
 	u_int sts;
 	u_int phy_addr_offset;
-	u_int phy_addr[E_PORT_NUM] = {0, 0, 0};
-	u_char checksum[E_PORT_NUM] = {0, 0, 0};
+	u_int phy_addr[E_PORT_NUM] = {0, 0, 0, 0};
+	u_char checksum[E_PORT_NUM] = {0, 0, 0, 0};
 
 	/* get edid from buffer, return buffer addr */
 	pedid_data = rx_get_edid(edid_index);
@@ -2996,6 +3093,9 @@ int hdmi_rx_ctrl_edid_update(void)
 		rx_edid_update_audio_info(pedid_data,
 				rx_get_edid_size(edid_index));
 	}
+
+	if (need_support_atmos_bit)
+		rx_edid_update_atmos(pedid_data);
 
 	/* caculate physical address and checksum */
 	sts = rx_edid_cal_phy_addr(brepeat,
@@ -3461,6 +3561,7 @@ void rx_set_global_varaible(const char *buf, int size)
 	set_pr_var(tmpbuf, pll_unlock_check_times, value, index);
 	set_pr_var(tmpbuf, pll_unlock_check_times_max, value, index);
 	set_pr_var(tmpbuf, esm_recovery_mode, value, index);
+	set_pr_var(tmpbuf, need_support_atmos_bit, value, index);
 }
 
 void rx_get_global_varaible(const char *buf)
@@ -3553,6 +3654,7 @@ void rx_get_global_varaible(const char *buf)
 	pr_var(pll_unlock_check_times, i++);
 	pr_var(pll_unlock_check_times_max, i++);
 	pr_var(esm_recovery_mode, i++);
+	pr_var(need_support_atmos_bit, i++);
 }
 
 void print_reg(uint start_addr, uint end_addr)

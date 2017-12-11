@@ -1494,6 +1494,21 @@ static ssize_t store_info(struct device *dev,
 	return count;
 }
 
+static ssize_t set_arc_aud_type(struct device *dev,
+	struct device_attribute *attr,
+	const char *buf,
+	size_t count)
+{
+	rx_parse_arc_aud_type(buf);
+	return count;
+}
+
+static ssize_t get_arc_aud_type(struct device *dev,
+	struct device_attribute *attr,
+	char *buf)
+{
+	return 0;
+}
 
 static DEVICE_ATTR(debug, 0666, hdmirx_debug_show, hdmirx_debug_store);
 static DEVICE_ATTR(edid, 0666, hdmirx_edid_show, hdmirx_edid_store);
@@ -1504,6 +1519,7 @@ static DEVICE_ATTR(cec, 0666, cec_get_state, cec_set_state);
 static DEVICE_ATTR(param, 0666, param_get_value, param_set_value);
 static DEVICE_ATTR(esm_base, 0666, esm_get_base, esm_set_base);
 static DEVICE_ATTR(info, 0666, show_info, store_info);
+static DEVICE_ATTR(arc_aud_type, 0666, get_arc_aud_type, set_arc_aud_type);
 
 
 static int hdmirx_add_cdev(struct cdev *cdevp,
@@ -1712,13 +1728,16 @@ static int hdmirx_probe(struct platform_device *pdev)
 		rx_pr("hdmirx: fail to create esm_base attribute file\n");
 		goto fail_create_esm_base_file;
 	}
-
 	ret = device_create_file(hdevp->dev, &dev_attr_cec);
 	if (ret < 0) {
 		rx_pr("hdmirx: fail to create cec attribute file\n");
 		goto fail_create_cec_file;
 	}
-
+	ret = device_create_file(hdevp->dev, &dev_attr_arc_aud_type);
+		if (ret < 0) {
+			rx_pr("hdmirx: fail to create arc_aud_type file\n");
+			goto fail_create_arc_aud_type_file;
+		}
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res) {
 		rx_pr("%s: can't get irq resource\n", __func__);
@@ -1873,8 +1892,12 @@ static int hdmirx_probe(struct platform_device *pdev)
 		en_4k_timing = 1;
 	}
 
-	rx_pr("rept:%d\n", repeat_function);
-	rx_pr("hdcp22_on=%d\n", hdcp22_on);
+	ret = of_property_read_u32(pdev->dev.of_node,
+					"arc_port", &arc_port_id);
+		if (ret) {
+			pr_err("%s:no arc port info.\n", __func__);
+			arc_port_id = 2;
+	}
 
 	hdmirx_hw_probe();
 	hdmirx_switch_pinmux(pdev->dev);
@@ -1895,6 +1918,8 @@ fail_create_cec_file:
 	device_remove_file(hdevp->dev, &dev_attr_cec);
 fail_create_esm_base_file:
 	device_remove_file(hdevp->dev, &dev_attr_esm_base);
+fail_create_arc_aud_type_file:
+	device_remove_file(hdevp->dev, &dev_attr_arc_aud_type);
 fail_create_reg_file:
 	device_remove_file(hdevp->dev, &dev_attr_reg);
 fail_create_log_file:
@@ -1908,7 +1933,7 @@ fail_create_debug_file:
 fail_create_param_file:
 	device_remove_file(hdevp->dev, &dev_attr_param);
 fail_create_info_file:
-		device_remove_file(hdevp->dev, &dev_attr_info);
+	device_remove_file(hdevp->dev, &dev_attr_info);
 
 /* fail_get_resource_irq: */
 	/* hdmirx_delete_device(hdevp->index); */
@@ -1944,6 +1969,9 @@ static int hdmirx_remove(struct platform_device *pdev)
 	device_remove_file(hdevp->dev, &dev_attr_log);
 	device_remove_file(hdevp->dev, &dev_attr_reg);
 	device_remove_file(hdevp->dev, &dev_attr_cec);
+	device_remove_file(hdevp->dev, &dev_attr_esm_base);
+	device_remove_file(hdevp->dev, &dev_attr_info);
+	device_remove_file(hdevp->dev, &dev_attr_arc_aud_type);
 	tvin_unreg_frontend(&hdevp->frontend);
 	hdmirx_delete_device(hdevp->index);
 	tasklet_kill(&rx_tasklet);

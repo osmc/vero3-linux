@@ -33,7 +33,7 @@
 
 
 
-#define RX_VER0 "Ref.2017/11/30"
+#define RX_VER0 "Ref.2017/12/11"
 /*------------------------------*/
 
 #define RX_VER1 "Ref.2017/11/01"
@@ -708,6 +708,7 @@ struct rx_s {
 
 	unsigned char pre_5v_sts;
 	unsigned char cur_5v_sts;
+	unsigned char arc_port_5v_sts;
 	bool no_signal;
 	uint16_t wait_no_sig_cnt;
 	int aud_sr_stable_cnt;
@@ -851,6 +852,7 @@ extern struct delayed_work		esm_dwork;
 extern struct workqueue_struct	*esm_wq;
 extern struct delayed_work	repeater_dwork;
 extern struct workqueue_struct	*repeater_wq;
+extern int arc_port_id;
 extern unsigned char run_eq_flag;
 extern unsigned int pwr_sts;
 extern int md_ists_en;
@@ -1041,4 +1043,6 @@ extern void vdac_enable(bool on, unsigned int module_sel);
 extern void hdmirx_dv_packet_stop(void);
 extern void rx_aud_pll_ctl(bool en);
 extern void rx_send_hpd_pulse(void);
+extern unsigned char rx_parse_arc_aud_type(const unsigned char *buff);
+
 #endif  /* _TVHDMI_H */

@@ -406,6 +406,7 @@
 		pinctrl-0 = <&hdmirx_pins>;
 		pinctrl-1 = <&hu_det_none>;
 		repeat = <0>;
+		arc_port = <2>;
 		interrupts = <0 56 1>;
 		clocks = <&clock CLK_HDMIRX_MODET_CLK>,
 			<&clock CLK_HDMIRX_CFG_CLK>,
