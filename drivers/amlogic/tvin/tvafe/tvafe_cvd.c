@@ -2281,6 +2281,7 @@ inline bool tvafe_cvd2_no_sig(struct tvafe_cvd2_s *cvd2,
 	time_flag++;
 	if (time_flag%2 != 0)
 		return ret;
+	time_flag = 0;
 
 	/* get signal status from HW */
 

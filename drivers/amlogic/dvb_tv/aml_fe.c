@@ -1035,7 +1035,8 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 					usleep_range(30*1000, 30*1000+100);
 				}
 				if (debug_fe & 0x2)
-					pr_err("get std_bk cnt:%d\n", i);
+					pr_err("get std_bk cnt:%d, std_bk: 0x%x\n",
+						i, (unsigned int) std_bk);
 
 				if (std_bk == 0) {
 					pr_err("%s, failed to get v fmt !!\n",
@@ -1085,12 +1086,14 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 					AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_DK);
 				audio = aml_audiomode_autodet(fe);
 				audio = demod_fmt_2_v4l2_std(audio);
+/*
 				if (audio == V4L2_STD_PAL_M) {
 					audio = demod_fmt_2_v4l2_std(
 						broad_std_except_pal_m);
 					pr_err("select the audio mode 0x%x\n",
 						audio);
 				}
+*/
 			}
 			pr_err("%s,Auto search freq:%d: std_bk:0x%x ,audmode:0x%x\n",
 					__func__, p->frequency,
