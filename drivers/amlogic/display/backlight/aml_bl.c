@@ -82,7 +82,7 @@ static unsigned int bl_on_level;
 
 static DEFINE_MUTEX(bl_power_mutex);
 static DEFINE_MUTEX(bl_level_mutex);
-static spinlock_t bl_pinmux_lock;
+static DEFINE_MUTEX(bl_pinmux_mutex);
 
 static void bl_set_pwm_gpio_check(struct bl_pwm_config_s *bl_pwm);
 
@@ -469,11 +469,10 @@ static void bl_pwm_pinmux_gpio_set(int pwm_index, int gpio_level)
 	struct bl_config_s *bconf = bl_drv->bconf;
 	struct bl_pwm_config_s *bl_pwm = NULL;
 	int index = 0xff;
-	unsigned long flags = 0;
 
 	if (bl_debug_print_flag)
 		BLPR("%s\n", __func__);
-	spin_lock_irqsave(&bl_pinmux_lock, flags);
+	mutex_lock(&bl_pinmux_mutex);
 
 	switch (bconf->method) {
 	case BL_CTRL_PWM:
@@ -506,7 +505,7 @@ static void bl_pwm_pinmux_gpio_set(int pwm_index, int gpio_level)
 	}
 
 	if (bl_pwm == NULL) {
-		spin_unlock_irqrestore(&bl_pinmux_lock, flags);
+		mutex_unlock(&bl_pinmux_mutex);
 		return;
 	}
 
@@ -547,7 +546,7 @@ static void bl_pwm_pinmux_gpio_set(int pwm_index, int gpio_level)
 	if (bl_pwm->pwm_gpio < BL_GPIO_NUM_MAX)
 		bl_gpio_multiplex_set(bl_pwm->pwm_gpio, gpio_level);
 
-	spin_unlock_irqrestore(&bl_pinmux_lock, flags);
+	mutex_unlock(&bl_pinmux_mutex);
 }
 
 static void bl_pwm_pinmux_gpio_clr(unsigned int pwm_index)
@@ -555,11 +554,10 @@ static void bl_pwm_pinmux_gpio_clr(unsigned int pwm_index)
 	struct bl_config_s *bconf = bl_drv->bconf;
 	struct bl_pwm_config_s *bl_pwm = NULL;
 	int index = 0xff, release_flag = 0;
-	unsigned long flags = 0;
 
 	if (bl_debug_print_flag)
 		BLPR("%s\n", __func__);
-	spin_lock_irqsave(&bl_pinmux_lock, flags);
+	mutex_lock(&bl_pinmux_mutex);
 
 	switch (bconf->method) {
 	case BL_CTRL_PWM:
@@ -625,7 +623,7 @@ static void bl_pwm_pinmux_gpio_clr(unsigned int pwm_index)
 	}
 
 	if (bl_pwm == NULL) {
-		spin_unlock_irqrestore(&bl_pinmux_lock, flags);
+		mutex_unlock(&bl_pinmux_mutex);
 		return;
 	}
 
@@ -635,7 +633,7 @@ static void bl_pwm_pinmux_gpio_clr(unsigned int pwm_index)
 			bl_pwm->pinmux_flag, bconf->pinmux_flag);
 	}
 	if (bl_pwm->pinmux_flag > 0) {
-		spin_unlock_irqrestore(&bl_pinmux_lock, flags);
+		mutex_unlock(&bl_pinmux_mutex);
 		return;
 	}
 
@@ -665,13 +663,11 @@ static void bl_pwm_pinmux_gpio_clr(unsigned int pwm_index)
 	bconf->pinmux_flag = 1;
 	bl_pwm->pinmux_flag = 1;
 
-	spin_unlock_irqrestore(&bl_pinmux_lock, flags);
+	mutex_unlock(&bl_pinmux_mutex);
 }
 
 static void bl_pwm_pinmux_ctrl(struct bl_config_s *bconf, int status)
 {
-	unsigned long flags = 0;
-
 	if (bl_debug_print_flag)
 		BLPR("%s\n", __func__);
 	if (status) {
@@ -688,7 +684,7 @@ static void bl_pwm_pinmux_ctrl(struct bl_config_s *bconf, int status)
 			break;
 		}
 	} else {
-		spin_lock_irqsave(&bl_pinmux_lock, flags);
+		mutex_lock(&bl_pinmux_mutex);
 		/* release pwm pinmux */
 		if (bconf->pinmux_flag > 0) {
 			if (bl_debug_print_flag)
@@ -724,7 +720,7 @@ static void bl_pwm_pinmux_ctrl(struct bl_config_s *bconf, int status)
 		default:
 			break;
 		}
-		spin_unlock_irqrestore(&bl_pinmux_lock, flags);
+		mutex_unlock(&bl_pinmux_mutex);
 	}
 }
 
@@ -3225,7 +3221,6 @@ static int aml_bl_probe(struct platform_device *pdev)
 	struct bl_config_s *bconf;
 	int ret;
 
-	spin_lock_init(&bl_pinmux_lock);
 #ifdef AML_BACKLIGHT_DEBUG
 	bl_debug_print_flag = 1;
 #else
