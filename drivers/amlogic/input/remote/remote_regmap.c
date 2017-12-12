@@ -483,6 +483,10 @@ static int ir_sharp_get_scancode(struct remote_chip *chip)
 	int status = 0;
 	int decode_status = 0;
 	int key0 = 0, key0_mask;
+	int temp_h = 0, temp_l = 0;
+	int switch_code = 0;
+	int i = 0;
+	#define NUM_BIT 15
 
 	remote_reg_read(chip, MULTI_IR_ID, REG_STATUS, &decode_status);
 
@@ -515,8 +519,14 @@ static int ir_sharp_get_scancode(struct remote_chip *chip)
 	}
 	code = chip->rx_buffer[0];
 	remote_dbg(chip->dev, "framecode=0x%x\n", code);
-	chip->r_dev->cur_hardcode = code;
-	code = (code >> 2) & 0xff;
+	for (i = 0; i <= NUM_BIT; i++)
+		switch_code |= ((code >> i) & 0x01) << (NUM_BIT - i);
+	chip->r_dev->cur_hardcode = switch_code;
+	temp_h = (switch_code >> 10) & 0xf;
+	temp_l = (switch_code >> 6) & 0xf;
+	code = (temp_h << 4) | temp_l;
+	remote_dbg(chip->dev, "switchcode=0x%x, code=0x%x\n",
+		switch_code, code);
 	chip->decode_status = REMOTE_NORMAL;
 	return code;
 }
@@ -531,8 +541,12 @@ static int ir_sharp_get_decode_status(struct remote_chip *chip)
 static u32 ir_sharp_get_custom_code(struct remote_chip *chip)
 {
 	u32 custom_code;
+	u32 temp_h = 0, temp_l = 0;
 
-	custom_code = (chip->r_dev->cur_hardcode >> 10) & 0xf;
+	temp_h = (chip->r_dev->cur_hardcode >> 5) & 0x1;
+	temp_l = (chip->r_dev->cur_hardcode >> 1) & 0xf;
+	custom_code = (temp_h << 4) | temp_l;
+	remote_dbg(chip->dev, "customcode=0x%x\n", custom_code);
 	return custom_code;
 }
 
