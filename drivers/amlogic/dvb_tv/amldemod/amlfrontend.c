@@ -1669,6 +1669,9 @@ static int gxtv_demod_fe_enter_mode(struct aml_fe *fe, int mode)
 {
 	struct aml_fe_dev *dev = fe->dtv_demod;
 	int memstart_dtmb;
+
+	if (is_meson_txhd_cpu() && (mode != AM_FE_DTMB))
+		return -1;
 	/* must enable the adc ref signal for demod, */
 	vdac_enable(1, 0x2);
 
