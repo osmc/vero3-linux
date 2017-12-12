@@ -182,6 +182,7 @@ static s32 frame_force_skip_flag;
 static s32 error_frame_skip_level;
 static s32 wait_buffer_counter;
 static u32 first_i_frame_ready;
+static u32 force_first_i_ready;
 
 static struct work_struct userdata_push_work;
 static struct work_struct notify_work;
@@ -1055,7 +1056,7 @@ static void vmpeg12_local_init(void)
 	frame_width = frame_height = frame_dur = frame_prog = 0;
 	frame_force_skip_flag = 0;
 	wait_buffer_counter = 0;
-	first_i_frame_ready = 0;
+	first_i_frame_ready = force_first_i_ready;
 	saved_resolution = 0;
 	dec_control &= DEC_CONTROL_INTERNAL_MASK;
 }
@@ -1276,6 +1277,8 @@ MODULE_PARM_DESC(dec_control, "\n amvmpeg12 decoder control\n");
 module_param(error_frame_skip_level, uint, 0664);
 MODULE_PARM_DESC(error_frame_skip_level,
 				 "\n amvdec_mpeg12 error_frame_skip_level\n");
+module_param(force_first_i_ready, uint, 0664);
+MODULE_PARM_DESC(dec_control, "\n amvmpeg12 force_first_i_ready\n");
 
 module_init(amvdec_mpeg12_driver_init_module);
 module_exit(amvdec_mpeg12_driver_remove_module);
