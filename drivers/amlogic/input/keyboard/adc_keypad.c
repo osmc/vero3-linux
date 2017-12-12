@@ -287,7 +287,7 @@ static void kp_list_free(struct kp *kp)
 static int kp_input_dev_register(struct platform_device *pdev, struct kp *kp)
 {
 	/*alloc input device*/
-	kp->input = input_allocate_device();
+	kp->input = devm_input_allocate_device(&pdev->dev);
 	if (!kp->input) {
 		dev_err(&pdev->dev, "alloc input device failed!\n");
 		return -ENOMEM;
@@ -495,11 +495,12 @@ static int kp_probe(struct platform_device *pdev)
 	send_data_to_bl301();
 	kernel_keypad_enable_mode_enable();
 
-	kp = kzalloc(sizeof(struct kp), GFP_KERNEL);
+	kp = devm_kmalloc(&pdev->dev, sizeof(struct kp), GFP_KERNEL);
 	if (!kp) {
 		dev_err(&pdev->dev, "alloc kp memory failed!\n");
 		return -ENOMEM;
 	}
+	memset(kp, 0, sizeof(struct kp));
 	platform_set_drvdata(pdev, kp);
 	spin_lock_init(&kp->kp_lock);
 	INIT_LIST_HEAD(&kp->adckey_head);
@@ -509,14 +510,14 @@ static int kp_probe(struct platform_device *pdev)
 	kp->count = 0;
 	INIT_WORK(&(kp->work_update), update_work_func);
 	setup_timer(&kp->timer, kp_timer_sr, (unsigned long)kp);
-	if (kp_input_dev_register(pdev, kp) < 0) {
-		ret = -EINVAL;
-		goto err;
-	}
-	if (kp_get_devtree_pdata(pdev, kp) < 0) {
+	ret = kp_input_dev_register(pdev, kp);
+	if (ret)
+		return ret;
+
+	ret = kp_get_devtree_pdata(pdev, kp);
+	if (ret) {
 		kp_list_free(kp);
-		ret = -EINVAL;
-		goto err;
+		return ret;
 	}
 	#ifdef CONFIG_HAS_EARLYSUSPEND
 	kp->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
@@ -532,17 +533,14 @@ static int kp_probe(struct platform_device *pdev)
 	ret = class_register(&kp->kp_class);
 	if (ret) {
 		dev_err(&pdev->dev, "fail to create adc keypad class.\n");
-		goto err;
+		kp_list_free(kp);
+		return ret;
 	}
 
 	/*enable timer*/
 	mod_timer(&kp->timer, jiffies+msecs_to_jiffies(100));
+
 	return 0;
-err:
-	if (kp->input)
-		input_free_device(kp->input);
-	kfree(kp);
-	return ret;
 }
 
 static int kp_remove(struct platform_device *pdev)
@@ -555,10 +553,7 @@ static int kp_remove(struct platform_device *pdev)
 	#endif
 	del_timer_sync(&kp->timer);
 	cancel_work_sync(&kp->work_update);
-	input_unregister_device(kp->input);
-	input_free_device(kp->input);
 	kp_list_free(kp);
-	kfree(kp);
 	return 0;
 }
 
