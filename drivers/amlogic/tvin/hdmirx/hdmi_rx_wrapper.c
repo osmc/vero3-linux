@@ -4170,7 +4170,8 @@ void hdmirx_hw_init(enum tvin_port_e port)
 	else
 		rx.hdcp.repeat = 0;
 
-	if (pre_port != rx.port) {
+	if ((pre_port != rx.port) ||
+		(get_cur_hpd_sts() == 0)) {
 		memset(&rx.pre, 0, sizeof(struct rx_video_info));
 		memcpy(rx.hdcp.bksv, init_hdcp_data.bksv,
 			sizeof(init_hdcp_data.bksv));
@@ -4205,12 +4206,14 @@ void hdmirx_hw_init(enum tvin_port_e port)
 		*/
 		if (hdmi5v_lost_flag)
 			hdmirx_hw_config();
-		if (0 == get_cur_hpd_sts())
-			rx.state = FSM_HPD_HIGH;
-		else if (rx.state >= FSM_SIG_STABLE)
+		/* when open port and signal is unstable, */
+		/* force to do hpd reset for hdcp compliance*/
+		if (rx.state >= FSM_SIG_STABLE)
 			rx.state = FSM_SIG_STABLE;
-		else
-			rx.state = FSM_HPD_HIGH;
+		else {
+			rx_set_hpd(0);
+			rx.state = FSM_INIT;
+		}
 	}
 	edid_update_flag = 0;
 	hdmi5v_lost_flag = FALSE;
