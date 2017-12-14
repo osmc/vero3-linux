@@ -457,7 +457,7 @@
 	emmc{
 		compatible = "amlogic, aml_sd_emmc";
 		dev_name = "aml_newsd.0";
-		status = "okay";
+		status = "disable";
 		reg = <0x0 0xd0074000 0x0 0x2000>;
 		interrupts = <	0 218 1>;
 		pinctrl-names = "emmc_clk_cmd_pins", "emmc_all_pins";
@@ -571,6 +571,18 @@
 		pinctrl-1 = <&conf_nand_pulldown &conf_nand_pullup &all_nand_pins>;
 		pinctrl-2 = <&nand_cs_pins>;
 		device_id = <0>;
+
+		/*fip/tpl configurations, must be same
+		 * with uboot if bl_mode was set as 1
+		 * bl_mode: 0 compact mode; 1 descrete mode
+		 * if bl_mode was set as 1, fip configeration will work
+		 */
+		bl_mode = <1>;
+		/*copy count of fip*/
+		fip_copies = <4>;
+		/*size of each fip copy */
+		fip_size = <0x200000>;
+		nand_clk_ctrl = <0xd0074000>;
 		plat-names = "bootloader","nandnormal";
 		plat-num = <2>;
 		plat-part-0 = <&bootloader>;
@@ -600,23 +612,25 @@
 			rb_detect = <1>;
 		};
 		nand_partitions:nand_partition{
+			tpl {
+				offset=<0x0 0x0>;
+				size=<0x0 0x0>;
+			};
 			logo{
-				offset=<0x0 0x300000>;
-				size=<0x0 0x800000>;
+				offset=<0x0 0x0>;
+				size=<0x0 0x200000>;
 			};
-			/*
 			recovery{
-				offset=<0x0 0xB00000>;
-				size=<0x0 0xA00000>;
+				offset=<0x0 0x0>;
+				size=<0x0 0x1000000>;
 			};
-			*/
 			boot{
-				offset=<0x0 0xB00000>;
-				size=<0x0 0x1C00000>;
+				offset=<0x0 0x0>;
+				size=<0x0 0x1000000>;
 			};
-			upgrade{
-				offset=<0x0 0x2700000>;
-				size=<0x0 0x8C00000>;
+			system{
+				offset=<0x0 0x0>;
+				size=<0x0 0xDC00000>;
 			};
 			data{
 				offset=<0xffffffff 0xffffffff>;

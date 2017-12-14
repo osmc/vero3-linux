@@ -77,19 +77,26 @@ void nand_info_page_prepare(struct aml_nand_chip *aml_chip, u8 *page0_buf)
 	u32 configure_data;
 	struct _nand_page0 *p_nand_page0 = NULL;
 	struct _ext_info *p_ext_info = NULL;
+	struct _fip_info *p_fip_info = NULL;
 	struct nand_setup *p_nand_setup = NULL;
 	int each_boot_pages, boot_num, bbt_pages;
 	unsigned int pages_per_blk_shift , bbt_size;
 
 	pages_per_blk_shift = (chip->phys_erase_shift - chip->page_shift);
 	bbt_size = aml_chip_normal->aml_nandbbt_info->size;
-
-	boot_num = (!aml_chip->boot_copy_num) ? 1 : aml_chip->boot_copy_num;
-	each_boot_pages = BOOT_TOTAL_PAGES/boot_num;
+	if (aml_chip->bl_mode) {
+		boot_num = aml_chip->fip_copies;
+		each_boot_pages = aml_chip->fip_size / mtd->writesize;
+	} else {
+		boot_num = (!aml_chip->boot_copy_num) ?
+			1 : aml_chip->boot_copy_num;
+		each_boot_pages = BOOT_TOTAL_PAGES/boot_num;
+	}
 
 	p_nand_page0 = (struct _nand_page0 *) page0_buf;
 	p_nand_setup = &p_nand_page0->nand_setup;
 	p_ext_info = &p_nand_page0->ext_info;
+	p_fip_info = &p_nand_page0->fip_info;
 
 	configure_data = NFC_CMD_N2M(aml_chip->ran_mode,
 			aml_chip->bch_mode, 0, (chip->ecc.size >> 3),
@@ -122,7 +129,16 @@ void nand_info_page_prepare(struct aml_nand_chip *aml_chip, u8 *page0_buf)
 	p_ext_info->bbt_occupy_pages = bbt_pages;
 	p_ext_info->bbt_start_block =
 		(BOOT_TOTAL_PAGES >> pages_per_blk_shift) + 4;
-
+	/* fill descrete infos */
+	if (aml_chip->bl_mode) {
+		p_fip_info->version = 1;
+		p_fip_info->mode = NAND_FIPMODE_DISCRETE;
+		p_fip_info->fip_start =
+			1024 + RESERVED_BLOCK_NUM * p_ext_info->page_per_blk;
+		pr_info("ver %d, mode %d, fip 0x%x\n",
+			p_fip_info->version, p_fip_info->mode,
+			p_fip_info->fip_start);
+	}
 	/* pr_info("new_type = 0x%x\n", p_ext_info->new_type); */
 	pr_info("page_per_blk = 0x%x bbt_pages = 0x%x\n",
 		p_ext_info->page_per_blk, bbt_pages);
@@ -183,8 +199,12 @@ int m3_nand_boot_read_page_hwecc(struct mtd_info *mtd,
 
 	if (aml_chip->support_new_nand == 1)
 		en_slc = ((type < 10) && type) ? 1:0;
-
-	boot_num = (!aml_chip->boot_copy_num) ? 1 : aml_chip->boot_copy_num;
+	if (aml_chip->bl_mode)
+		boot_num =
+			(get_cpu_type() < MESON_CPU_MAJOR_ID_TXHD) ? 4 : 8;
+	else
+		boot_num = (!aml_chip->boot_copy_num) ?
+			1 : aml_chip->boot_copy_num;
 	each_boot_pages = BOOT_TOTAL_PAGES / boot_num;
 	if (page >= (each_boot_pages * boot_num)) {
 		memset(buf, 0, (1 << chip->page_shift));
@@ -355,7 +375,12 @@ int m3_nand_boot_write_page_hwecc(struct mtd_info *mtd,
 	int error = 0, i = 0, bch_mode, ecc_size;
 	int each_boot_pages, boot_num;
 
-	boot_num = (!aml_chip->boot_copy_num) ? 1 : aml_chip->boot_copy_num;
+	if (aml_chip->bl_mode)
+		boot_num =
+			(get_cpu_type() < MESON_CPU_MAJOR_ID_TXHD) ? 4 : 8;
+	else
+		boot_num = (!aml_chip->boot_copy_num) ?
+			1 : aml_chip->boot_copy_num;
 	each_boot_pages = BOOT_TOTAL_PAGES / boot_num;
 	ecc_size = chip->ecc.size;
 	if (((aml_chip->page_addr % each_boot_pages) == 0)
@@ -418,7 +443,14 @@ int m3_nand_boot_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 
 	new_nand_info = &aml_chip->new_nand_info;
 	slc_program_info = &new_nand_info->slc_program_info;
-	boot_num = (!aml_chip->boot_copy_num) ? 1 : aml_chip->boot_copy_num;
+	/* check cpuid, */
+	if (aml_chip->bl_mode)
+		boot_num =
+			(get_cpu_type() < MESON_CPU_MAJOR_ID_TXHD) ? 4 : 8;
+	else
+		boot_num = (!aml_chip->boot_copy_num) ?
+			1 : aml_chip->boot_copy_num;
+
 	each_boot_pages = BOOT_TOTAL_PAGES / boot_num;
 
 	if (aml_chip->support_new_nand == 1) {
@@ -592,13 +624,17 @@ void nand_release_device(struct mtd_info *mtd)
 int erase_bootloader(struct mtd_info *mtd, int boot_num)
 {
 	struct nand_chip *chip = mtd->priv;
+	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	int page, each_boot_pages, boot_copy_num;
 	int pages_per_block;
 	int start_page, end_page;
 	int status;
 
-	boot_copy_num =
-	(!aml_chip_uboot->boot_copy_num) ? 1 : aml_chip_uboot->boot_copy_num;
+	if (aml_chip->bl_mode)
+		boot_copy_num = 4;
+	else
+		boot_copy_num = (!aml_chip_uboot->boot_copy_num) ?
+			1 : aml_chip_uboot->boot_copy_num;
 	each_boot_pages = BOOT_TOTAL_PAGES/boot_copy_num;
 
 	nand_get_device(mtd, FL_ERASING);
@@ -747,6 +783,7 @@ static ssize_t uboot_write(struct file *file, const char __user *buf,
 {
 	struct mtd_info *mtd = &aml_chip_uboot->mtd;
 	struct nand_chip *chip = &aml_chip_uboot->chip;
+	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	unsigned char *data_buf, *buffer;
 	int ret, page;
 	size_t align_count = 0, wr_size;
@@ -769,9 +806,10 @@ static ssize_t uboot_write(struct file *file, const char __user *buf,
 		goto err_exit0;
 	}
 	memset(data_buf, 0x0, align_count);
-
-	if (!aml_chip_uboot->boot_copy_num)
-		get_boot_num(mtd, align_count);
+	if (!aml_chip->bl_mode) {
+		if (!aml_chip_uboot->boot_copy_num)
+			get_boot_num(mtd, align_count);
+	}
 
 	ret = copy_from_user(data_buf, buf, count);
 	addr = *ppos;

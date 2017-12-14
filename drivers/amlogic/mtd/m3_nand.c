@@ -882,6 +882,7 @@ static int m3_nand_probe(struct aml_nand_platform *plat, unsigned int dev_num)
 	int err = 0, i;
 	int tmp_val;
 	unsigned nand_type = 0;
+	struct aml_nand_device *aml_nand_device = NULL;
 
 	if (!plat) {
 		pr_info("no platform specific information\n");
@@ -908,6 +909,15 @@ static int m3_nand_probe(struct aml_nand_platform *plat, unsigned int dev_num)
 #ifndef AML_NAND_UBOOT
 	/*fixit ,hardware support all address*/
 	/* dev->coherent_dma_mask = DMA_BIT_MASK(32); */
+	aml_nand_device = plat->aml_nand_device;
+	pr_info("%s() aml_nand_device %p\n", __func__, aml_nand_device);
+	if (aml_nand_device) {
+		aml_chip->bl_mode = aml_nand_device->bl_mode;
+		aml_chip->fip_copies = aml_nand_device->fip_copies;
+		aml_chip->fip_size = aml_nand_device->fip_size;
+	}
+
+
 	aml_chip->device = dev;
 	mtd->dev.parent = dev->parent;
 	mtd->owner = THIS_MODULE;
@@ -1134,6 +1144,9 @@ int nand_init(struct platform_device *pdev)
 			continue;
 		}
 #ifndef AML_NAND_UBOOT
+		/* to get the glb fip infos */
+		plat->aml_nand_device = &aml_nand_mid_device;
+		pr_info("plat->aml_nand_device %p\n", plat->aml_nand_device);
 		ret = m3_nand_probe(plat, i, &pdev->dev);
 #else
 		ret = m3_nand_probe(plat, i);

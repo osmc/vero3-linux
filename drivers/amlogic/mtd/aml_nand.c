@@ -184,6 +184,8 @@ static int aml_nand_add_partition(struct aml_nand_chip *aml_chip)
 	uint64_t last_size = 0, start_blk = 0;
 	uint64_t mini_part_size;
 	int reserved_part_blk_num = RESERVED_BLOCK_NUM;
+	uint8_t bl_mode, base_part = 0;
+	uint32_t fip_copies, fip_size, fip_part_size = 0;
 	unsigned int bad_blk_addr[128];
 
 	mini_part_size =
@@ -210,20 +212,39 @@ static int aml_nand_add_partition(struct aml_nand_chip *aml_chip)
 				(1024 * mtd->writesize / aml_chip->plane_num);
 		part_num++;
 		start_blk = 0;
-		do {
-			offset = adjust_offset + start_blk * mtd->erasesize;
-			error = mtd->_block_isbad(mtd, offset);
-			if (error == FACTORY_BAD_BLOCK_ERROR) {
-				pr_info("%s:%d factory bad addr =%llx\n",
+		bl_mode = aml_chip->bl_mode;
+		if (bl_mode == NAND_FIPMODE_COMPACT) {
+			/* compact bootloader mode */
+			do {
+				offset = adjust_offset +
+					start_blk * mtd->erasesize;
+				error = mtd->_block_isbad(mtd, offset);
+				if (error == FACTORY_BAD_BLOCK_ERROR) {
+					pr_info("%s:%d factory bad addr =%llx\n",
 					__func__, __LINE__,
 					(uint64_t)(offset >> phys_erase_shift));
-				adjust_offset += mtd->erasesize;
-				continue;
-			}
-			start_blk++;
-		} while (start_blk < reserved_part_blk_num);
-		adjust_offset += reserved_part_blk_num * mtd->erasesize;
-
+					adjust_offset += mtd->erasesize;
+					continue;
+				}
+				start_blk++;
+			} while (start_blk < reserved_part_blk_num);
+		} else {
+			/* descrete bootloader mode */
+			/* calculate fip partition by dts config*/
+			fip_copies = aml_chip->fip_copies;
+			fip_size = aml_chip->fip_size;
+			fip_part_size = fip_copies * fip_size;
+			temp_parts = parts;
+			/* TODO: do name check! */
+			temp_parts->offset = adjust_offset
+				+ reserved_part_blk_num * mtd->erasesize;
+			temp_parts->size = fip_part_size;
+			pr_info("%s: off %lld, size %lld\n", temp_parts->name,
+			temp_parts->offset, temp_parts->size);
+			base_part  = 1;
+		}
+		adjust_offset += reserved_part_blk_num * mtd->erasesize
+			+fip_part_size;
 		/*normal mtd device divide part from here(adjust_offset)*/
 		if (nr == 0) {
 			part_save_in_env = 0;
@@ -238,7 +259,7 @@ static int aml_nand_add_partition(struct aml_nand_chip *aml_chip)
 			mini_part_size =
 	(mtd->erasesize > MINI_PART_SIZE) ? mtd->erasesize : MINI_PART_SIZE;
 		}
-		for (i = 0; i < nr; i++) {
+		for (i = base_part; i < nr; i++) {
 			temp_parts = parts + i;
 			bad_block_cnt = 0;
 			memset((u8 *)bad_blk_addr, 0xff, 128 * sizeof(int));

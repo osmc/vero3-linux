@@ -127,13 +127,24 @@ struct _ext_info {
 	uint32_t rsv[1];
 	/* add new below, */
 };
+#define NAND_FIPMODE_COMPACT    (0)
+#define NAND_FIPMODE_DISCRETE   (1)
 
+struct _fip_info {
+	/* version */
+	uint16_t version;
+	/* compact or discrete */
+	uint16_t mode;
+	/* fip start, pages */
+	uint32_t fip_start;
+};
 /*max size is 384 bytes*/
 struct _nand_page0 {
 	struct nand_setup nand_setup;
 	unsigned char page_list[16];
 	struct _nand_cmd retry_usr[32];
 	struct _ext_info ext_info;
+	struct _fip_info fip_info;
 };
 
 
@@ -505,6 +516,9 @@ struct aml_nand_chip {
 	int dtbsize;
 	int keysize;
 	int boot_copy_num; /*tell how many bootloader copies*/
+	unsigned int  bl_mode;
+	unsigned int fip_copies;
+	unsigned int fip_size;
 
 	u8 key_protect;
 	unsigned char *rsv_data_buf;
@@ -562,6 +576,8 @@ struct aml_nand_chip {
 	int (*aml_nand_block_bad_scrub)(struct mtd_info *mtd);
 };
 
+struct aml_nand_device;
+
 struct aml_nand_platform {
 	struct aml_nand_flash_dev *nand_flash_dev;
 	char *name;
@@ -578,6 +594,8 @@ struct aml_nand_platform {
 	unsigned int short_pgsz;	/*zero means no short*/
 
 	struct aml_nand_chip *aml_chip;
+	/* back pointer to the device*/
+	struct aml_nand_device *aml_nand_device;
 	struct platform_nand_data platform_nand_data;
 };
 
@@ -586,6 +604,10 @@ struct aml_nand_device {
 	u8 dev_num;
 #ifndef AML_NAND_UBOOT
 	struct notifier_block nb;
+	u32 bl_mode;
+	u32 fip_copies;
+	u32 fip_size;
+	/* for mapping regsters */
 	u32 nand_clk_ctrl;
 #endif
 };
