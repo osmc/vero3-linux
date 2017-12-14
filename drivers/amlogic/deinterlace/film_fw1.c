@@ -52,6 +52,7 @@ UINT8 FlmVOFSftInt(struct sFlmSftPar *pPar)
 	pPar->flm22_comnum = 115;
 	pPar->flm22_comth = 15;
 	pPar->flm22_dif01_avgth = 55;
+	pPar->flm22_nAVdlt = 1;
 	pPar->dif01rate = 20;
 	pPar->flag_di01th = 0;
 	pPar->numthd = 60;
@@ -216,7 +217,6 @@ MODULE_PARM_DESC(flagdif01chk, "flagdif01chk");
 static int dif01_ratio = 10;
 module_param(dif01_ratio,  int, 0644);
 MODULE_PARM_DESC(dif01_ratio, "dif01_ratio");
-
 
 unsigned int frame_diff_avg = 0;
 int comsum = 0;
@@ -1140,6 +1140,7 @@ int Flm22DetSft(struct sFlmDatSt *pRDat, int *nDif02,
 	int flm22_comlev = pPar->flm22_comlev;
 	int flm22_comlev1 = pPar->flm22_comlev1;
 	int flm22_comnum = pPar->flm22_comnum;
+	int flm22_nAVdlt = pPar->flm22_nAVdlt;
 
 	int cFlg = pFlg[HISDETNUM - 1];
 	int rFlg[4] = { 2, 3, 4, 1 };
@@ -1177,6 +1178,7 @@ int Flm22DetSft(struct sFlmDatSt *pRDat, int *nDif02,
 	int nFlgChk4 = 0; /* chk4 */
 	int nFlgChk5 = 0; /* chk5 */
 	int nFlgChk6 = 0; /* dif02-small */
+	int nAVOfst = 0;
 
 	static UINT8 nCk20Cnt;
 	static UINT8 nCk21Cnt;
@@ -1295,10 +1297,12 @@ int Flm22DetSft(struct sFlmDatSt *pRDat, int *nDif02,
 	nAV21 = (nSM21 + nL21 / 2) / nL21;	/* High average */
 	nAV22 = (nSM22 + nL22 / 2) / nL22;	/* Low average */
 	nOfst = nAV21 - nAV22;
+	nAVOfst = (nAV22 + nMn/3) / nAV21;
 
 	if (prt_flg)
 		sprintf(debug_str + strlen(debug_str),
-		"LAvg=%04d\n", (nAV22/nSIZE));
+		"LAvg=%04d,nAV22=%d,nAV21=%d,nAVOfst=%d\n",
+		(nAV22/nSIZE), nAV22, nAV21, nAVOfst);
 
 	if (nAV22 > (nSIZE << 3))
 		mNum22[HISDETNUM - 1] = 0;
@@ -1540,7 +1544,7 @@ int Flm22DetSft(struct sFlmDatSt *pRDat, int *nDif02,
 
 		nFlm22Lvl -= nT1;
 	}
-	if (flm22_flag) {
+	if (flm22_flag && (nAVOfst < flm22_nAVdlt)) {
 		if (pFlg[HISDETNUM-1] == 3
 				|| pFlg[HISDETNUM-1] == 1) {
 			if (comsum > flm22_comnum) {

@@ -1055,6 +1055,8 @@ static struct pd_param_s pd_params[] = {
 	  &(pd_param.flm22_comth)  },
 	{ "flm22_dif01_avgth",
 	  &(pd_param.flm22_dif01_avgth)  },
+	{ "flm22_nAVdlt",
+	  &(pd_param.flm22_nAVdlt)  },
 	{ "dif01rate",
 	  &(pd_param.dif01rate)     },
 	{ "flag_di01th",
