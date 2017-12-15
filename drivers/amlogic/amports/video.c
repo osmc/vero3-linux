@@ -420,7 +420,9 @@ static u32 frame_skip_check_cnt;
 #define DisableVideoLayer2() \
 	do { \
 		CLEAR_VCBUS_REG_MASK(VPP_MISC + cur_dev->vpp_off, \
-		VPP_VD2_PREBLEND | (0x1ff << VPP_VD2_ALPHA_BIT)); \
+		VPP_VD2_POSTBLEND | VPP_VD2_PREBLEND | \
+		(0x1ff << VPP_VD2_ALPHA_BIT)); \
+		VIDEO_LAYER2_OFF(); \
 		VD2_MEM_POWER_OFF(); \
 	} while (0)
 #endif
@@ -2571,6 +2573,8 @@ static void vsync_toggle_frame(struct vframe_s *vf)
 				VD2_MEM_POWER_ON();
 			else if (vf_with_el)
 				EnableVideoLayer2();
+			else
+				DisableVideoLayer2();
 		}
 	}
 	if (cur_dispbuf && (cur_dispbuf->type != vf->type)) {
@@ -4327,6 +4331,7 @@ static irqreturn_t vsync_isr_in(int irq, void *dev_id)
 	struct vframe_s *toggle_vf = NULL;
 	struct vframe_s *toggle_frame = NULL;
 	int video1_off_req = 0;
+	int video2_off_req = 0;
 	struct vframe_s *cur_dispbuf_back = cur_dispbuf;
 	static  struct vframe_s *pause_vf;
 
@@ -5628,6 +5633,7 @@ cur_dev->vpp_off,0,VPP_VD2_ALPHA_BIT,9);//vd2 alpha must set
 
 			if (debug_flag & DEBUG_FLAG_BLACKOUT)
 				pr_info("VsyncDisableVideoLayer2\n");
+			video2_off_req = 1;
 		}
 		spin_unlock_irqrestore(&video2_onoff_lock, flags);
 	}
@@ -5645,6 +5651,18 @@ cur_dev->vpp_off,0,VPP_VD2_ALPHA_BIT,9);//vd2 alpha must set
 			vpp_misc_set);
 	}
 	/*vpp_misc_set maybe have same,but need off.*/
+	/* if vd1 off, disable vd2 also */
+	if (video2_off_req || video1_off_req) {
+		if ((debug_flag & DEBUG_FLAG_BLACKOUT)
+			&& video2_off_req)
+			pr_info("VD2 AFBC off now.\n");
+		VSYNC_WR_MPEG_REG(VD2_AFBC_ENABLE, 0);
+		VSYNC_WR_MPEG_REG(VD2_IF0_GEN_REG, 0);
+		last_el_w = 0;
+		last_el_status = 0;
+		if (cur_dispbuf2 && (cur_dispbuf2 == &vf_local2))
+			cur_dispbuf2 = NULL;
+	}
 	if (video1_off_req) {
 		/*video layer off, swith off afbc,
 		will enabled on new frame coming.
@@ -5652,16 +5670,12 @@ cur_dev->vpp_off,0,VPP_VD2_ALPHA_BIT,9);//vd2 alpha must set
 		if (debug_flag & DEBUG_FLAG_BLACKOUT)
 			pr_info("AFBC off now.\n");
 		VSYNC_WR_MPEG_REG(AFBC_ENABLE, 0);
-		VSYNC_WR_MPEG_REG(VD2_AFBC_ENABLE, 0);
 		VSYNC_WR_MPEG_REG(VD1_IF0_GEN_REG, 0);
-		VSYNC_WR_MPEG_REG(VD2_IF0_GEN_REG, 0);
 		if (is_dolby_vision_enable()
 			&& is_dolby_vision_stb_mode())
 			VSYNC_WR_MPEG_REG_BITS(
 				VIU_MISC_CTRL1,
 				1, 16, 1); /* bypass core1 */
-		last_el_w = 0;
-		last_el_status = 0;
 		if (cur_dispbuf && (cur_dispbuf == &vf_local))
 			cur_dispbuf = NULL;
 	}
