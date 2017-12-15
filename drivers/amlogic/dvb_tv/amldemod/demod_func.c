@@ -838,7 +838,9 @@ void dtmb_all_reset(void)
 {
 	int temp_data = 0;
 	if (is_meson_txl_cpu()) {
-		dtmb_write_reg(DTMB_FRONT_AFIFO_ADC, 0x1f);
+		/*fix bug 139044: DTMB lost sync*/
+		/*dtmb_write_reg(DTMB_FRONT_AFIFO_ADC, 0x1f);*/
+		dtmb_write_reg(DTMB_FRONT_AFIFO_ADC, 0x22);
 		/*modified bu xiaotong*/
 		dtmb_write_reg(DTMB_CHE_TPS_CONFIG, 0xc00000);
 		dtmb_write_reg(DTMB_CHE_EQ_CONFIG, 0x1a027719);

@@ -4355,7 +4355,7 @@ int adc_set_pll_cntl(bool on, unsigned int module_sel, void *pDtvPara)
 			pr_info("\n%s: on:%d,module:0x%x,flag:0x%x...\n",
 				__func__, on, module_sel, adc_pll_chg);
 		break;
-	case ADC_EN_DTV_DEMODPLL: /* dtv demod default*/
+	case ADC_EN_DTV_DEMODPLL: /* dtv demod */
 
 		if (adc_pll_chg & (ADC_EN_ATV_DEMOD | ADC_EN_TVAFE)) {
 			ret = -4;
@@ -4376,11 +4376,17 @@ int adc_set_pll_cntl(bool on, unsigned int module_sel, void *pDtvPara)
 			do {
 				/*reset*/
 				W_HIU_REG(HHI_ADC_PLL_CNTL3, 0xca6a2110);
-				W_HIU_REG(HHI_ADC_PLL_CNTL,  pDpara->adcpllctl);
-				if (pDpara->atsc)
+				W_HIU_REG(HHI_ADC_PLL_CNTL, pDpara->adcpllctl);
+				if (pDpara->atsc) {
 					W_HIU_REG(HHI_DEMOD_CLK_CNTL, 0x507);
-				else
-					W_HIU_REG(HHI_DEMOD_CLK_CNTL, 0x502);
+				} else {
+					if (is_meson_txl_cpu())	/*bug 139044*/
+						W_HIU_REG(HHI_DEMOD_CLK_CNTL,
+							0x301);
+					else
+						W_HIU_REG(HHI_DEMOD_CLK_CNTL,
+							0x502);
+				}
 
 				W_HIU_REG(HHI_ADC_PLL_CNTL3, 0x4a6a2110);
 
