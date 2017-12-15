@@ -59,7 +59,7 @@ static int audio_mode_manul;
 module_param(audio_mode_manul, int, 0644);
 MODULE_DESCRIPTION("search the audio manully by get_froutend api\n");
 
-static int tuner_status_cnt = 16;	/*4-->16 test on sky mxl661 */
+static int tuner_status_cnt = 4;	/*4-->16 test on sky mxl661 */
 module_param(tuner_status_cnt, int, 0644);
 MODULE_DESCRIPTION("after write a freq, max cnt value of read tuner status\n");
 
@@ -749,7 +749,7 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 #endif
 	fee = fe->demodulator_priv;
 	if ((fe == NULL) || (p == NULL) || (fee == NULL))
-		return DVBFE_ALGO_SEARCH_FAILED;
+		return DVBFE_ALGO_SEARCH_INVALID;
 	atv_cvd_format = 0;
 	hv_lock_status = 0;
 	snr_vale = 0;
@@ -771,7 +771,7 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 		pr_dbg("[%s]:afc_range==0,skip the search\n", __func__);
 		/*afc tune enable*/
 		afc_timer_enable(fe);
-		return DVBFE_ALGO_SEARCH_FAILED;
+		return DVBFE_ALGO_SEARCH_INVALID;
 	}
 /*set the frist_step*/
 	if (p->analog.afc_range > ATV_AFC_1_0MHZ)
@@ -783,7 +783,8 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 	maxafcfreq = p->frequency + p->analog.afc_range;
 /*from the min freq start,and set the afc_step*/
 	/*if step is 2Mhz,r840 will miss program*/
-	if (slow_mode || (fee->tuner->drv->id == AM_TUNER_R840)) {
+	if (slow_mode || (fee->tuner->drv->id == AM_TUNER_R840)
+			|| (p->analog.afc_range == ATV_AFC_1_0MHZ)) {
 		pr_dbg("[%s]this is slow mode to search the channel\n",
 		       __func__);
 		p->frequency = minafcfreq;
@@ -975,7 +976,7 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 		pr_error("[%s]the func of set_param err.\n", __func__);
 		/*afc tune enable*/
 		afc_timer_enable(fe);
-		return DVBFE_ALGO_SEARCH_FAILED;
+		return DVBFE_ALGO_SEARCH_INVALID;
 	}
 #ifdef DEBUG_TIME_CUS
 	time_end = jiffies_to_msecs(jiffies);
@@ -990,7 +991,7 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 		pr_error("[%s]error: NULL func.\n", __func__);
 		/*afc tune enable*/
 		afc_timer_enable(fe);
-		return DVBFE_ALGO_SEARCH_FAILED;
+		return DVBFE_ALGO_SEARCH_INVALID;
 	}
 	while (p->frequency <= maxafcfreq) {
 		if (debug_fe & 0x3)
@@ -1114,7 +1115,9 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 			    (tuner_status_cnt_local == 0))
 				break;
 		} while (1);
+
 		tuner_status_cnt_local = tuner_status_cnt;
+
 		if (((FE_HAS_LOCK == ade_state ||
 		      FE_HAS_LOCK == tuner_state) &&
 		     (fee->tuner->drv->id != AM_TUNER_R840)) ||
@@ -1133,7 +1136,7 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 			if (aml_fe_afc_closer(fe, minafcfreq,
 				maxafcfreq + ATV_AFC_500KHZ, 1) == 0) {
 				try_ntsc = 0;
-				get_vfmt_maxcnt = 200;
+				get_vfmt_maxcnt = 300;
 			while (1) {
 				for (i = 0; i < get_vfmt_maxcnt; i++) {
 					if (aml_fe_hook_get_fmt == NULL)
@@ -1192,7 +1195,6 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 				usleep_range(20*1000, 20*1000+100);
 			}
 			std_bk = trans_tvin_fmt_to_v4l2_std(std_bk);
-
 			if (std_bk == V4L2_COLOR_STD_NTSC) {
 				amlatvdemod_set_std(
 					AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_DK);
@@ -1261,7 +1263,7 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 				__func__, p->frequency, maxafcfreq);
 			/*back  original freq  to api */
 			p->frequency = set_freq;
-			fe->ops.set_frontend(fe);
+			/*fe->ops.set_frontend(fe);*/
 #ifdef DEBUG_TIME_CUS
 			time_end = jiffies_to_msecs(jiffies);
 			time_delta = time_end - time_start;
@@ -2459,11 +2461,12 @@ static ssize_t setting_show(struct class *cls, struct class_attribute *attr,
 		struct aml_fe *fe = &fm->fe[i];
 
 		r = sprintf(buf,
-			    "\t%d: %s device: %d ts: %d tuner: %s atv_demod: %s dtv_demod: %s\n",
+			    "\t%d: %s device: %d ts: %d tuner: %s atv_demod: %s dtv_demod: %s, mode: %d\n",
 			    i, fe->init ? "enabled" : "disabled", fe->dev_id,
 			    fe->ts, fe->tuner ? fe->tuner->drv->name : "none",
 			    fe->atv_demod ? fe->atv_demod->drv->name : "none",
-			    fe->dtv_demod ? fe->dtv_demod->drv->name : "none");
+			    fe->dtv_demod ? fe->dtv_demod->drv->name : "none",
+				fe->mode);
 		buf += r;
 		total += r;
 	}

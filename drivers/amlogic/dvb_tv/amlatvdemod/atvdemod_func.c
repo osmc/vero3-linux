@@ -1268,6 +1268,21 @@ void retrieve_vpll_carrier_lock(int *lock)
 	data = atv_dmd_rd_byte(APB_BLOCK_ADDR_CARR_RCVY, 0x43);
 	*lock = (data & 0x1);
 }
+
+void retrieve_vpll_carrier_line_lock(int *lock)
+{
+	int line_lock = 0;
+	int line_lock_strong = 0;
+
+	line_lock = atv_dmd_rd_byte(APB_BLOCK_ADDR_VDAGC, 0x4f) & 0x10;
+	line_lock_strong = atv_dmd_rd_byte(APB_BLOCK_ADDR_VDAGC, 0x4f) & 0x8;
+
+	pr_info("line_status = 0x%x, line_lock_strong = 0x%x\n",
+			line_lock, line_lock_strong);
+
+	*lock = (line_lock | line_lock_strong);
+}
+
 int retrieve_vpll_carrier_afc(void)
 {
 	int data_ret, pll_lock, field_lock, line_lock, line_lock_strong;

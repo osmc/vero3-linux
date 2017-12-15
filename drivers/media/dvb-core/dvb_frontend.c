@@ -1157,7 +1157,8 @@ restart:
 				 *for some reason, possibly
 				 * requesting a search with a new set of parameters
 				 */
-				if (fepriv->algo_status & DVBFE_ALGO_SEARCH_AGAIN) {
+			if ((fepriv->algo_status & DVBFE_ALGO_SEARCH_AGAIN)
+					&& !(fepriv->state & FESTATE_IDLE)) {
 					if (fe->ops.search) {
 						fepriv->algo_status = fe->ops.search(fe);
 				/* We did do a search as was requested,
@@ -1183,8 +1184,10 @@ restart:
 					s = FE_HAS_LOCK;
 				} else {
 			/*fepriv->algo_status |= DVBFE_ALGO_SEARCH_AGAIN;*/
-					fepriv->delay = HZ / 2;
-					s = FE_TIMEDOUT;
+			if (fepriv->algo_status != DVBFE_ALGO_SEARCH_INVALID) {
+						fepriv->delay = HZ / 2;
+						s = FE_TIMEDOUT;
+					}
 				}
 				dtv_property_legacy_params_sync_ex(fe,
 					&fepriv->parameters_out);
@@ -2619,7 +2622,8 @@ static int dvb_frontend_ioctl(struct file *file,
 			cmd == FE_READ_AFC ||
 			cmd == FE_SET_BLINDSCAN ||
 			cmd == FE_GET_BLINDSCANEVENT ||
-			cmd == FE_SET_BLINDSCANCANCEl)
+			cmd == FE_SET_BLINDSCANCANCEl ||
+			cmd == FE_READ_TS)
 		need_lock = 0;
 
 	if (cmd == FE_SET_BLINDSCAN ||

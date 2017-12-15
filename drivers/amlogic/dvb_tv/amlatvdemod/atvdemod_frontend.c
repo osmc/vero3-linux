@@ -461,8 +461,13 @@ static void aml_atvdemod_get_pll_status(struct dvb_frontend *fe, void *stat)
 {
 	int vpll_lock;
 	fe_status_t *status = (fe_status_t *) stat;
+	int line_lock;
 	retrieve_vpll_carrier_lock(&vpll_lock);
-	if ((vpll_lock&0x1) == 0) {
+
+	/* add line lock status for atv scan */
+	retrieve_vpll_carrier_line_lock(&line_lock);
+
+	if ((vpll_lock&0x1) == 0 && line_lock == 0) {
 		*status = FE_HAS_LOCK;
 		pr_info("visual carrier lock:locked\n");
 	} else {
