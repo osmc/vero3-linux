@@ -1043,10 +1043,13 @@ int pts_get_rec_num(u8 type, u32 val)
 
 	pTable = &pts_table[type];
 
-	if (list_empty(&pTable->valid_list))
-		return 0;
-
 	spin_lock_irqsave(&lock, flags);
+
+	if (pTable->status != PTS_RUNNING)
+		goto out;
+
+	if (list_empty(&pTable->valid_list))
+		goto out;
 
 	if (pTable->pts_search == &pTable->valid_list) {
 		p = list_entry(pTable->valid_list.next,
@@ -1068,6 +1071,7 @@ int pts_get_rec_num(u8 type, u32 val)
 		r++;
 	}
 
+out:
 	spin_unlock_irqrestore(&lock, flags);
 
 	return r;
