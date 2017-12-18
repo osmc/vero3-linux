@@ -314,22 +314,14 @@ static int ltr558_ps_read(void)
 	/* unsigned int psval_lo, psval_hi, psdata; */
 	/* int psval_lo, psval_hi, psdata; */
 	ltr558_i2c_read_reg(LTR558_PS_DATA_0, &psval_lo);
-	if (psval_lo < 0) {
-		psdata = psval_lo;
-		goto out;
-	}
 
 	ltr558_i2c_read_reg(LTR558_PS_DATA_1, &psval_hi);
-	if (psval_hi < 0) {
-		psdata = psval_hi;
-		goto out;
-	}
+
 	LTR558_DEBUG(" ltr558_ps_read psval_hi = %x psval_lo = %x\n",
 		psval_hi, psval_lo);
 	psdata = ((psval_hi & 7) * 256) + psval_lo;
 	LTR558_DEBUG_LIUDJ(" ltr558_ps_read psdata = %d", psdata);
 
-out:
 	final_prox_val_ltr558 = psdata;
 	return psdata;
 }
@@ -339,12 +331,9 @@ static int ltr558_ps_read_status(void)
 	unsigned char intval;
 
 	ltr558_i2c_read_reg(LTR558_ALS_PS_STATUS, &intval);
-	if (intval < 0)
-		goto out;
 
 	intval = intval & 0x02;
 
-out:
 	return intval;
 }
 
@@ -372,7 +361,7 @@ static ssize_t ltr558_show_ps(struct device *cd,
 	struct device_attribute *attr, char *buf)
 {
 	/* ssize_t res; */
-	unsigned int  dat = 0;
+	int dat = 0;
 	int dat1 = 0;
 	if (!the_data_ltr558) {
 		dprintk("ltr558 devices  is null!!\n");
@@ -390,7 +379,7 @@ static ssize_t ltr558_show_als(struct device *cd,
 	struct device_attribute *attr, char *buf)
 {
 	/* ssize_t res; */
-	unsigned int  dat = 0;
+	int dat = 0;
 	if (!the_data_ltr558) {
 		dprintk("ltr558 devices is null!!\n");
 		return 0;
@@ -491,8 +480,6 @@ static ssize_t ltr558_als_status(struct device *cd,
 	if (!the_data_ltr558)
 		dprintk("ltr558 devices is null\n");
 	ltr558_i2c_read_reg(LTR558_ALS_CONTR, &dat);
-	if (0 > dat)
-		ltr558_i2c_read_reg(LTR558_ALS_CONTR, &dat);
 	return snprintf(buf, PAGE_SIZE, "als_status %d 0x%x\n", dat, dat);
 }
 
@@ -761,12 +748,9 @@ static int ltr558_als_read_status(void)
 	unsigned char intval;
 
 	ltr558_i2c_read_reg(LTR558_ALS_PS_STATUS, &intval);
-	if (intval < 0)
-		goto out;
 
 	intval = intval & 0x08;
 
-out:
 	return intval;
 }
 

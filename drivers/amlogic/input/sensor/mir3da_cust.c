@@ -445,7 +445,7 @@ static ssize_t mir3da_delay_store(struct device *dev,
 	if (kstrtoul(buf, 10, &interval))
 		return -EINVAL;
 
-	if (interval < 0 || interval > 1000)
+	if (interval > 1000)
 		return -EINVAL;
 
 	if ((interval <= 30) && (interval > 10))

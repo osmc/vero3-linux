@@ -727,7 +727,7 @@ static irqreturn_t lsm303d_isr2(int irq, void *dev)
 static void lsm303d_interrupt_catch(struct lsm303d_status *stat, int pin)
 {
 	u8 buf[2];
-	u8 val;
+	int val;
 
 	if (atomic_read(&stat->interrupt->gen1_pin1.enable) == 1) {
 		buf[0] = status_registers.int_gen1_src.address;

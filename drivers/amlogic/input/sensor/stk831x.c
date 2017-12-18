@@ -1677,7 +1677,7 @@ static int STK831x_SetCali(struct stk831x_data *stk, char sstate)
 		__func__, store_location);
 #endif
 	if ((store_location != 3 && store_location != 2 && store_location != 1)
-		|| (stk831x_placement < 0 || stk831x_placement > 5)) {
+		|| (stk831x_placement > 5)) {
 		debugprintk(KERN_ERR "%s, invalid parameters\n", __func__);
 		atomic_set(&stk->cali_status, STK_K_FAIL_K_PARA);
 		return -STK_K_FAIL_K_PARA;

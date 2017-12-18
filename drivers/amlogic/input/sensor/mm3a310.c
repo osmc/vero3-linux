@@ -550,7 +550,7 @@ static int mm3a310_set_enable(bool bEnable)
 {
 	struct i2c_client *client;
 	int ret, rst;
-	u8  val;
+	int  val;
 
 	client = mm3a310_i2c_client;
 	rst = 0;
@@ -579,7 +579,7 @@ static int mm3a310_set_enable(bool bEnable)
 static int mm3a310_get_enable(bool *bEnable)
 {
 	struct i2c_client *client;
-	u8 val;
+	int val;
 	int rst;
 
 
@@ -604,7 +604,7 @@ static int mm3a310_set_odr(int odr)
 {
 	struct i2c_client *client;
 	int ret;
-	u8  val;
+	int  val;
 	int rst;
 
 	client = mm3a310_i2c_client;
@@ -1750,7 +1750,7 @@ static ssize_t mm3a310_delay_store(struct device *dev,
 	if (kstrtoul(buf, 10, &interval))
 		return -EINVAL;
 
-	if (interval < 0 || interval > 1000)
+	if (interval > 1000)
 		return -EINVAL;
 	if ((interval <= 30) && (interval > 10))
 		interval = 10;
