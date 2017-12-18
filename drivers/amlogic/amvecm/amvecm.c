@@ -142,6 +142,7 @@ module_param(pq_user_latch_flag, uint, 0664);
 MODULE_PARM_DESC(pq_user_latch_flag, "\n pq_user_latch_flag\n");
 
 unsigned int pq_user_value;
+static unsigned int pq_reg_r_value;
 
 static int wb_init_bypass_coef[24] = {
 	0, 0, 0, /* pre offset */
@@ -1793,11 +1794,7 @@ static ssize_t amvecm_cm_reg_store(struct class *cls,
 static ssize_t amvecm_write_reg_show(struct class *cla,
 		struct class_attribute *attr, char *buf)
 {
-	pr_info("Usage: echo w addr value > /sys/class/amvecm/pq_reg_rw\n");
-	pr_info("Usage: echo bw addr value start length > /...\n");
-	pr_info("Usage: echo r addr > /sys/class/amvecm/pq_reg_rw\n");
-	pr_info("addr and value must be hex\n");
-	return 0;
+	return sprintf(buf, "%x\n", pq_reg_r_value);
 }
 
 static ssize_t amvecm_write_reg_store(struct class *cls,
@@ -1820,8 +1817,8 @@ static ssize_t amvecm_write_reg_store(struct class *cls,
 			return -EINVAL;
 		}
 		addr = val;
-		value = READ_VPP_REG(addr);
-		pr_info("0x%x=0x%x\n", addr, value);
+		pq_reg_r_value = READ_VPP_REG(addr);
+		pr_info("0x%x=0x%x\n", addr, pq_reg_r_value);
 	} else if (!strncmp(parm[0], "w", 1)) {
 		if (kstrtoul(parm[1], 16, &val) < 0) {
 			kfree(buf_orig);
@@ -1856,6 +1853,11 @@ static ssize_t amvecm_write_reg_store(struct class *cls,
 		}
 		bitlength = val;
 		WRITE_VPP_REG_BITS(addr, value, bitstart, bitlength);
+	} else if (!strncmp(parm[0], "usage", 5)) {
+		pr_info("Usage: echo w addr value > /sys/class/amvecm/pq_reg_rw\n");
+		pr_info("Usage: echo bw addr value start length > /...\n");
+		pr_info("Usage: echo r addr > /sys/class/amvecm/pq_reg_rw\n");
+		pr_info("addr and value must be hex\n");
 	}
 
 	kfree(buf_orig);
