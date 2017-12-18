@@ -315,7 +315,7 @@
 	};
 	ion_reserved:linux,ion-dev {
 		compatible = "amlogic, idev-mem";
-		ize = <0x0 0x1000>;
+		size = <0x0 0x1000>;
 	};
 	amvideocap {
 		compatible = "amlogic, amvideocap";
