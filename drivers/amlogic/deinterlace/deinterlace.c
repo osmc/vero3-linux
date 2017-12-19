@@ -8266,13 +8266,13 @@ static void di_pre_size_change(unsigned short width,
 
 static bool need_bypass(struct vframe_s *vf)
 {
-	if (vf->source_type & VIDTYPE_MVC)
+	if (vf->type & VIDTYPE_MVC)
 		return true;
 
 	if (vf->source_type == VFRAME_SOURCE_TYPE_PPMGR)
 		return true;
 
-	if (vf->source_type & VIDTYPE_VIU_444)
+	if (vf->type & VIDTYPE_VIU_444)
 		return true;
 
 	if (vf->type & VIDTYPE_PIC)
