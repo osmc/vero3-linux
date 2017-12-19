@@ -1398,12 +1398,12 @@ static int gxtv_demod_dtmb_read_snr(struct dvb_frontend *fe, u16 *snr)
 #if 1
 	int tmp, snr_avg;
 	tmp = snr_avg = 0;
-	tmp = dtmb_read_reg(DTMB_TOP_FEC_LOCK_SNR);
+	tmp = dtmb_read_reg(DTMB_TOP_FEC_LOCK_SNR) & 0x3fff;
 /*	snr_avg = (tmp >> 16) & 0x3fff;
 	if (snr_avg >= 2048)
 		snr_avg = snr_avg - 4096;
 	snr_avg = snr_avg / 32;*/
-	*snr = tmp&0xff;
+	*snr = convert_snr(tmp);
 #endif
 	return 0;
 }
