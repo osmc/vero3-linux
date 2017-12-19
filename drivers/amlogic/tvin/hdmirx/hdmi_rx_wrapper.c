@@ -2139,9 +2139,32 @@ void rx_esm_exception_monitor(void)
 	}
 }
 
+int rx_get_aud_pll_sts(void)
+{
+	int ret = E_AUDPLL_OK;
+	int32_t req_clk = hdmirx_get_mpll_div_clk();
+	uint32_t phy_pll_rate = (hdmirx_rd_phy(PHY_MAINFSM_STATUS1)>>9)&0x3;
+	uint32_t aud_pll_cntl = (rd_reg_hhi(HHI_AUD_PLL_CNTL6)>>28)&0x3;
+
+	if (req_clk > PHY_REQUEST_CLK_MAX ||
+			req_clk < PHY_REQUEST_CLK_MIN) {
+		ret = E_REQUESTCLK_ERR;
+		if (log_level & AUDIO_LOG)
+			rx_pr("request clk err:%d\n", req_clk);
+	} else if (phy_pll_rate != aud_pll_cntl) {
+			ret = E_PLLRATE_CHG;
+			if (log_level & AUDIO_LOG)
+					rx_pr("pll rate chg,phy=%d,pll=%d\n",
+						phy_pll_rate, aud_pll_cntl);
+	}
+
+	return ret;
+}
+
 void hdmirx_hw_monitor(void)
 {
 	int pre_sample_rate;
+	int aud_pll_sts;
 	enum eq_states_e sts;
 
 	if (clk_debug)
@@ -2467,12 +2490,24 @@ void hdmirx_hw_monitor(void)
 		if (is_aud_pll_error()) {
 			rx.aud_sr_unstable_cnt++;
 			if (rx.aud_sr_unstable_cnt > aud_sr_stb_max) {
-				hdmirx_audio_pll_sw_update();
-				if (log_level & AUDIO_LOG)
-					rx_pr("update audio-err\n");
+				aud_pll_sts = rx_get_aud_pll_sts();
+				if (aud_pll_sts > E_AUDPLL_OK) {
+					if (aud_pll_sts == E_REQUESTCLK_ERR) {
+						hdmirx_phy_init();
+						rx.state = FSM_WAIT_CLK_STABLE;
+						rx.pre_state = FSM_SIG_READY;
+						rx_pr("reqclk err->wait_clk\n");
+					} else if (aud_pll_sts == E_PLLRATE_CHG)
+						rx_aud_pll_ctl(1);
+				} else {
+					hdmirx_audio_pll_sw_update();
+					if (log_level & AUDIO_LOG)
+						rx_pr("update audio-err\n");
+				}
 				rx.aud_sr_unstable_cnt = 0;
 			}
-		}
+		} else
+			rx.aud_sr_unstable_cnt = 0;
 		packet_update();
 		break;
 	default:

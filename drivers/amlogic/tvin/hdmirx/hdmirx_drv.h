@@ -42,7 +42,7 @@
 #define RX_VER2 "Ref.2017/12/12"
 /*------------------------------*/
 
-#define RX_VER3 "Ref.2017/12/04"
+#define RX_VER3 "Ref.2017/12/19"
 /*------------------------------*/
 
 #define RX_VER4 "Ref.2017/10/19"
@@ -146,6 +146,8 @@
 
 #define PFIFO_SIZE 160
 #define K_PKT_FIFO_START		0x80
+#define PHY_REQUEST_CLK_MIN		170000000
+#define PHY_REQUEST_CLK_MAX		370000000
 
 struct hdmirx_dev_s {
 	int                         index;
@@ -410,6 +412,11 @@ enum esm_recovery_mode_e {
 	ESM_RECOVERY_MODE_STOP_TMDS,
 };
 
+enum aud_clk_err_e {
+	E_AUDPLL_OK,
+	E_REQUESTCLK_ERR,
+	E_PLLRATE_CHG,
+};
 /** Configuration clock minimum [kHz] */
 #define CFG_CLK_MIN				(10000UL)
 /** Configuration clock maximum [kHz] */

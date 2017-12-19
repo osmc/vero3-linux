@@ -1416,6 +1416,7 @@ void hdmirx_phy_init(void)
 
 	/* clear clkrate cfg */
 	hdmirx_wr_bits_phy(PHY_CDR_CTRL_CNT, CLK_RATE_BIT, 0);
+	last_clk_rate = 0;
 
 	#if 0
 	/* enable all ports's termination*/
