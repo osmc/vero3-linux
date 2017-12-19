@@ -3387,6 +3387,18 @@ static int get_hdr_type(void)
 	return change_flag;
 }
 
+void get_hdr_source_type(void)
+{
+	if ((signal_transfer_characteristic == 18) ||
+		(signal_transfer_characteristic == 14))
+		hdr_source_type = HLG_SOURCE;
+	else if ((signal_color_primaries == 9) ||
+			(signal_transfer_characteristic == 16))
+		hdr_source_type = HDR10_SOURCE;
+	else
+		hdr_source_type = SDR_SOURCE;
+}
+
 static void cal_out_curve(uint panel_luma)
 {
 	int index;

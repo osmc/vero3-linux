@@ -135,6 +135,6 @@ extern int VSYNC_WR_MPEG_REG_BITS(u32 adr, u32 val, u32 start, u32 len);
 #endif
 
 extern u32 get_video_enabled(void);
-
+extern void get_hdr_source_type(void);
 #endif /* AM_CSC_H */
 

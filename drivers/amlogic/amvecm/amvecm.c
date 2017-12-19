@@ -141,6 +141,7 @@ unsigned int pq_user_latch_flag;
 module_param(pq_user_latch_flag, uint, 0664);
 MODULE_PARM_DESC(pq_user_latch_flag, "\n pq_user_latch_flag\n");
 
+unsigned int hdr_source_type = 0x1;
 unsigned int pq_user_value;
 static unsigned int pq_reg_r_value;
 
@@ -910,6 +911,9 @@ int amvecm_on_vs(
 			ioctrl_get_hdr_metadata(toggle_vf);
 	} else
 		result = amvecm_matrix_process(NULL, NULL, flags);
+
+	if (!is_dolby_vision_on())
+		get_hdr_source_type();
 
 	/* add some flag to trigger */
 	if (vf) {
@@ -3923,6 +3927,19 @@ static ssize_t amvecm_reg_store(struct class *cla,
 }
 
 
+static ssize_t amvecm_get_hdr_type_show(struct class *cla,
+		struct class_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%x\n", hdr_source_type);
+}
+
+static ssize_t amvecm_get_hdr_type_store(struct class *cls,
+		 struct class_attribute *attr,
+		 const char *buffer, size_t count)
+{
+	return count;
+}
+
 /* #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV) */
 void init_pq_setting(void)
 {
@@ -4120,6 +4137,8 @@ static struct class_attribute amvecm_class_attrs[] = {
 		amvecm_pq_user_show, amvecm_pq_user_store),
 	__ATTR(pq_reg_rw, S_IRUGO | S_IWUSR,
 		amvecm_write_reg_show, amvecm_write_reg_store),
+	__ATTR(get_hdr_type, S_IRUGO | S_IWUSR,
+		amvecm_get_hdr_type_show, amvecm_get_hdr_type_store),
 	__ATTR_NULL
 };
 
