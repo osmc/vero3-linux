@@ -2569,9 +2569,7 @@ static irqreturn_t aml_sd_emmc_data_thread(int irq, void *data)
 	if (!mrq) {
 		sd_emmc_err("%s: !mrq xfer_step %d\n",
 			mmc_hostname(host->mmc), xfer_step);
-		if (xfer_step == XFER_FINISHED ||
-			xfer_step == XFER_TIMER_TIMEOUT)
-			spin_unlock_irqrestore(&host->mrq_lock, flags);
+		spin_unlock_irqrestore(&host->mrq_lock, flags);
 		aml_sd_emmc_print_err(host);
 #ifdef SD_EMMC_DATA_TASKLET
 			return;
@@ -2826,10 +2824,6 @@ static void aml_sd_emmc_set_clk_rate(struct mmc_host *mmc, unsigned int clk_ios)
 	case SD_EMMC_CLOCK_SRC_FCLK_DIV2:
 		clk_rate = 1000000000;
 		break;
-	default:
-		sdhc_err("%s: clock source error: %d\n",
-			mmc_hostname(host->mmc), clk_src_sel);
-		return;
 	}
 
 	spin_lock_irqsave(&host->mrq_lock, flags);
@@ -3649,13 +3643,9 @@ static int aml_sd_emmc_probe(struct platform_device *pdev)
 	host->dev = &pdev->dev;
 	if (host->ctrl_ver >= 3) {
 		aml_sd_emmc_init_host_v3(host);
-		if (!host)
-			goto fail_init_host;
 		aml_sd_emmc_reg_init_v3(host);
 	} else {
 		aml_sd_emmc_init_host(host);
-		if (!host)
-			goto fail_init_host;
 		aml_sd_emmc_reg_init(host);
 	}
 
