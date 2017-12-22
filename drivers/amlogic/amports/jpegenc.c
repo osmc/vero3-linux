@@ -1704,9 +1704,11 @@ static void prepare_jpeg_header(struct jpegenc_wq_s *wq)
 
 	/* Define quantization tables */
 	q_num = 1;
+#if 0
 	if ((q_sel_comp0 != q_sel_comp1) ||
 		(q_sel_comp0 != q_sel_comp2) ||
 		(q_sel_comp1 != q_sel_comp2))
+#endif
 		q_num++;
 #if 0
 	tq[0] = q_sel_comp0;
@@ -2071,9 +2073,11 @@ static void init_jpeg_encoder(struct jpegenc_wq_s *wq)
 	if (dc_huff_sel_comp1 != dc_huff_sel_comp0)
 		write_jpeg_huffman_lut_dc(dc_huff_sel_comp1);
 
+#if 0
 	if ((dc_huff_sel_comp2 != dc_huff_sel_comp0)
 		&& (dc_huff_sel_comp2 != dc_huff_sel_comp1))
 		write_jpeg_huffman_lut_dc(dc_huff_sel_comp2);
+#endif
 
 	/* Set AC Huffman LUT start address */
 	data32 = 0;
@@ -2086,9 +2090,11 @@ static void init_jpeg_encoder(struct jpegenc_wq_s *wq)
 	if (ac_huff_sel_comp1 != ac_huff_sel_comp0)
 		write_jpeg_huffman_lut_ac(ac_huff_sel_comp1);
 
+#if 0
 	if ((ac_huff_sel_comp2 != ac_huff_sel_comp0)
 		&& (ac_huff_sel_comp2 != ac_huff_sel_comp1))
 		write_jpeg_huffman_lut_ac(ac_huff_sel_comp2);
+#endif
 
 	/* Configure general control registers */
 	data32 = 0;
@@ -2139,17 +2145,29 @@ static void init_jpeg_encoder(struct jpegenc_wq_s *wq)
 
 	data32 = 0;
 	/* [29] jpeg_comp2_ac_table_sel */
-	data32 |= ((ac_huff_sel_comp2 == ac_huff_sel_comp0) ? 0 : 1) << 29;
+	/*
+	data32 |= ((ac_huff_sel_comp2 == ac_huff_sel_comp0) ? 0 : 1 << 29;
+	*/
+	data32 |= 1 << 29;
 	/* [28] jpeg_comp2_dc_table_sel */
+	/*
 	data32 |= ((dc_huff_sel_comp2 == dc_huff_sel_comp0) ? 0 : 1) << 28;
+	*/
+	data32 |= 1 << 28;
 	/* [26:25] jpeg_comp2_cnt_max */
 	data32 |= ((h_factor_comp2 + 1) * (v_factor_comp2 + 1) - 1) << 25;
 	/* [24] jpeg_comp2_en */
 	data32 |= 1 << 24;
 	/* [21] jpeg_comp1_ac_table_sel */
+	/*
 	data32 |= ((ac_huff_sel_comp1 == ac_huff_sel_comp0) ? 0 : 1) << 21;
+	*/
+	data32 |= 1 << 21;
 	/* [20] jpeg_comp1_dc_table_sel */
+	/*
 	data32 |= ((dc_huff_sel_comp1 == dc_huff_sel_comp0) ? 0 : 1) << 20;
+	*/
+	data32 |= 1 << 20;
 	/* [18:17] jpeg_comp1_cnt_max */
 	data32 |= ((h_factor_comp1 + 1) * (v_factor_comp1 + 1) - 1) << 17;
 	/* [16] jpeg_comp1_en */
