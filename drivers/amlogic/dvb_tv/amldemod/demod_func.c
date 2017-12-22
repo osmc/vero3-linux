@@ -1513,7 +1513,8 @@ void demod_set_reg(struct aml_demod_reg *demod_reg)
 			demod_reg->addr = demod_reg->addr * 4 + DVBT_BASE;
 			break;
 		case AMLOGIC_DTMB:
-			demod_reg->addr = DTMB_TOP_ADDR(demod_reg->addr);
+			demod_reg->addr = ddemod_reg_base
+					+ DTMB_TOP_ADDR(demod_reg->addr);
 			break;
 		case AMLOGIC_ATSC:
 			/* demod_reg->addr=ATSC_BASE; */
@@ -1560,7 +1561,8 @@ void demod_get_reg(struct aml_demod_reg *demod_reg)
 		if (demod_reg->mode == AMLOGIC_DVBC_J83B)
 			demod_reg->addr = (demod_reg->addr)>>2;
 		else if (demod_reg->mode == AMLOGIC_DTMB)
-			demod_reg->addr = DTMB_TOP_ADDR(demod_reg->addr);
+			demod_reg->addr = ddemod_reg_base
+				+ DTMB_TOP_ADDR(demod_reg->addr);
 		else if (demod_reg->mode == AMLOGIC_DVBT_ISDBT)
 			demod_reg->addr = demod_reg->addr * 4 + DVBT_BASE;
 		else if (demod_reg->mode == AMLOGIC_ATSC)
