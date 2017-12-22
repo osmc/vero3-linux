@@ -416,6 +416,7 @@ Err:
 
 static long vpu_ioctl(struct file *filp, u32 cmd, ulong arg)
 {
+	void __user *argp = (void __user *)arg;
 	s32 ret = 0;
 	struct vpu_drv_context_t *dev =
 		(struct vpu_drv_context_t *)filp->private_data;
@@ -747,9 +748,14 @@ static long vpu_ioctl(struct file *filp, u32 cmd, ulong arg)
 				ret = (ret != 0) ? -EFAULT : 0;
 			} else {
 				ret = copy_from_user(&s_instance_pool,
-					(struct vpudrv_buffer_t *)arg,
+					argp,
 					sizeof(struct vpudrv_buffer_t));
 				if (ret == 0) {
+					if (s_instance_pool.size > 0xFFFFF000) {
+						ret = -EFAULT;
+						up(&s_vpu_sem);
+						break;
+					}
 					s_instance_pool.size =
 						PAGE_ALIGN(
 						s_instance_pool.size);
@@ -789,6 +795,11 @@ static long vpu_ioctl(struct file *filp, u32 cmd, ulong arg)
 				break;
 			if (s_instance_pool.base != 0) {
 				buf32.size = s_instance_pool.size;
+				if (s_instance_pool.size > 0xFFFFF000) {
+					ret = -EFAULT;
+					up(&s_vpu_sem);
+					break;
+				}
 				buf32.phys_addr =
 					(compat_ulong_t)
 					s_instance_pool.phys_addr;
@@ -804,7 +815,7 @@ static long vpu_ioctl(struct file *filp, u32 cmd, ulong arg)
 				ret = (ret != 0) ? -EFAULT : 0;
 			} else {
 				ret = copy_from_user(&buf32,
-					(struct compat_vpudrv_buffer_t *)arg,
+					argp,
 					sizeof(struct compat_vpudrv_buffer_t));
 				if (ret == 0) {
 					s_instance_pool.size = buf32.size;
