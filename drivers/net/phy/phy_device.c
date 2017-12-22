@@ -1112,16 +1112,138 @@ void wol_test(struct phy_device *phydev)
 unsigned long rx_packets_internal_phy = 0;
 unsigned long tx_packets_internal_phy = 0;
 
-static int internal_phy_read_status(struct phy_device *phydev)
+#define TSTCNTL		20
+#define  TSTCNTL_READ		BIT(15)
+#define  TSTCNTL_WRITE		BIT(14)
+#define  TSTCNTL_REG_BANK_SEL	GENMASK(12, 11)
+#define  TSTCNTL_TEST_MODE	BIT(10)
+#define  TSTCNTL_READ_ADDRESS	GENMASK(9, 5)
+#define  TSTCNTL_WRITE_ADDRESS	GENMASK(4, 0)
+#define TSTREAD1	21
+#define TSTWRITE	23
+#define INTSRC_FLAG	29
+#define  INTSRC_ANEG_PR		BIT(1)
+#define  INTSRC_PARALLEL_FAULT	BIT(2)
+#define  INTSRC_ANEG_LP_ACK	BIT(3)
+#define  INTSRC_LINK_DOWN	BIT(4)
+#define  INTSRC_REMOTE_FAULT	BIT(5)
+#define  INTSRC_ANEG_COMPLETE	BIT(6)
+#define INTSRC_MASK	30
+
+#define BANK_ANALOG_DSP		0
+#define BANK_WOL		1
+#define BANK_BIST		3
+
+/* WOL Registers */
+#define LPI_STATUS	0xc
+#define  LPI_STATUS_RSV12	BIT(12)
+
+/* BIST Registers */
+#define FR_PLL_CONTROL	0x1b
+#define FR_PLL_DIV0	0x1c
+#define FR_PLL_DIV1	0x1d
+
+static int internal_phy_open_banks(struct phy_device *phydev)
 {
-	int err;
-	int reg31 = 0;
-	int wol_reg12;
-	int linkup = 0;
-	int val;
+	int ret;
+
+	/* Enable Analog and DSP register Bank access by
+	 * toggling TSTCNTL_TEST_MODE bit in the TSTCNTL register
+	 */
+	ret = phy_write(phydev, TSTCNTL, 0);
+	if (ret)
+		return ret;
+	ret = phy_write(phydev, TSTCNTL, TSTCNTL_TEST_MODE);
+	if (ret)
+		return ret;
+	ret = phy_write(phydev, TSTCNTL, 0);
+	if (ret)
+		return ret;
+	return phy_write(phydev, TSTCNTL, TSTCNTL_TEST_MODE);
+}
+
+static void internal_phy_close_banks(struct phy_device *phydev)
+{
+	phy_write(phydev, TSTCNTL, 0);
+}
+
+static int internal_phy_read_reg(struct phy_device *phydev,
+			      unsigned int bank, unsigned int reg)
+{
+	int ret;
+
+	ret = internal_phy_open_banks(phydev);
+	if (ret)
+		goto out;
+
+	ret = phy_write(phydev, TSTCNTL, TSTCNTL_READ |
+			(bank << 11) |
+			TSTCNTL_TEST_MODE |
+			(reg << 4));
+	if (ret)
+		goto out;
+
+	ret = phy_read(phydev, TSTREAD1);
+out:
+	/* Close the bank access on our way out */
+	internal_phy_close_banks(phydev);
+	return ret;
+}
+
+static int genphy_aneg_done(struct phy_device *phydev)
+{
+	int retval = phy_read(phydev, MII_BMSR);
+
+	return (retval < 0) ? retval : (retval & BMSR_ANEGCOMPLETE);
+}
+
+static int internal_phy_fix_autoneg(struct phy_device *phydev)
+{
+	int ret, wol, lpa, exp;
+
+	if (phydev->autoneg == AUTONEG_ENABLE) {
+		ret = genphy_aneg_done(phydev);
+		if (ret < 0)
+			return ret;
+		else if (!ret)
+			return 1;
+
+		/* Aneg is done, let's check everything is fine */
+		wol = internal_phy_read_reg(phydev, BANK_WOL, LPI_STATUS);
+		if (wol < 0)
+			return wol;
+
+		lpa = phy_read(phydev, MII_LPA);
+		if (lpa < 0)
+			return lpa;
+
+		exp = phy_read(phydev, MII_EXPANSION);
+		if (exp < 0)
+			return exp;
+
+		if (!(wol & LPI_STATUS_RSV12) ||
+		    ((exp & EXPANSION_NWAY) && !(lpa & LPA_LPACK))) {
+			/* Looks like aneg failed after all */
+			pr_info("LPA corruption: wol(0x%x), exp(0x%x), lpa(0x%x)\n",
+				wol, exp, lpa);
+			genphy_restart_aneg(phydev);
+			return 0;
+		}
+	}
+	return 1;
+}
+
+void do_wol_test(struct phy_device *phydev)
+{
 	struct intenal_phy_priv *priv = phydev->priv;
-	/*read clear interrupt status to reenable interrupt*/
-	phy_read(phydev, 0x1d);
+	int wol_reg12;
+	int val;
+
+	/* Skip test in 'Force Good Link State' */
+	val = phy_read(phydev, 0x11);
+	if (val & 0x4)
+		return;
+
 	/* Update the link, but return if there was an error */
 	/* Bit 15: READ*/
 	/*Bit 14: Write*/
@@ -1152,7 +1274,18 @@ static int internal_phy_read_status(struct phy_device *phydev)
 		}
 	} else
 		priv->internal_phy_count_start = 0;
+}
 
+static int internal_phy_read_status(struct phy_device *phydev)
+{
+	int err;
+	int reg31 = 0;
+	int linkup = 0;
+	int val;
+	struct intenal_phy_priv *priv = phydev->priv;
+	/*read clear interrupt status to reenable interrupt*/
+	phy_read(phydev, 0x1d);
+	do_wol_test(phydev);
 	if (priv->read_count%15 == 0 && ethernet_debug) {
 		am_net_dump_phyreg();
 		am_net_dump_phy_extended_reg();
@@ -1161,6 +1294,11 @@ static int internal_phy_read_status(struct phy_device *phydev)
 	}
 	priv->read_count++;
 	linkup = phydev->link;
+
+	val = internal_phy_fix_autoneg(phydev);
+	if (val < 1)
+		return 0;
+
 	err = genphy_update_link(phydev);
 	if (err)
 		return err;
@@ -1346,18 +1484,27 @@ static int internal_config_init(struct phy_device *phydev)
 	return genphy_config_init(phydev);
 }
 
+#define PHY_PDOWN_CTRL_REG 0x18
 static int internal_phy_resume(struct phy_device *phydev)
 {
-	int rc;
-	rc = genphy_resume(phydev);
+	int value;
+
+	mutex_lock(&phydev->lock);
+
+	value = phy_read(phydev, PHY_PDOWN_CTRL_REG);
+	phy_write(phydev, PHY_PDOWN_CTRL_REG, value & ~0x1);
+
+	mutex_unlock(&phydev->lock);
+
 	phy_init_hw(phydev);
-	return rc;
+	return 0;
 }
 
 
 int internal_phy_suspend(struct phy_device *phydev)
 {
 	int value;
+
 	/*disable link interrupt*/
 	value = phy_read(phydev, 0x1E);
 	phy_write(phydev, 0x1E, value & ~0x50);
@@ -1367,8 +1514,8 @@ int internal_phy_suspend(struct phy_device *phydev)
 
 	mutex_lock(&phydev->lock);
 
-	value = phy_read(phydev, MII_BMCR);
-	phy_write(phydev, MII_BMCR, value | BMCR_PDOWN);
+	value = phy_read(phydev, PHY_PDOWN_CTRL_REG);
+	phy_write(phydev, PHY_PDOWN_CTRL_REG, value | 0x1);
 
 	mutex_unlock(&phydev->lock);
 
