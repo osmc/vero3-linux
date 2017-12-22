@@ -18,9 +18,12 @@ struct DTMB_SYNC_TS_GAIN_BITS {
 	    ts_fixpn_en:1,
 	    ts_fixpn:2, reserved2:1, ts_cfo_cut:4, ts_cfo_pn2_modify:16;
 };
-struct DTMB_SYNC_FE_CONFIG_BITS {
+union DTMB_SYNC_FE_CONFIG_BITS {
+	unsigned int d32;
+	struct {
 	unsigned int fe_lock_len:4,
 	    fe_sat_shift:3, reserved3:1, fe_cut:4, reserved4:4, fe_modify:16;
+	} b;
 };
 struct DTMB_SYNC_PNPHASE_OFFSET_BITS {
 	unsigned int pnphase_offset2:4,

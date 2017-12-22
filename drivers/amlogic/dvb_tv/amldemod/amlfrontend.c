@@ -1475,8 +1475,12 @@ int Gxtv_Demod_Dtmb_Init(struct aml_fe_dev *dev)
 	memset(&demod_status, 0, sizeof(demod_status));
 	/* 0 -DVBC, 1-DVBT, ISDBT, 2-ATSC*/
 	demod_status.dvb_mode = Gxtv_Dtmb;
-	if (is_meson_txl_cpu() || is_meson_txhd_cpu()) {
-		sys.adc_clk = Adc_Clk_25M;      /*Adc_Clk_26M;*/
+	/*if (is_meson_txl_cpu() || is_meson_txhd_cpu())*/
+	if (is_meson_txl_cpu()) {
+		sys.adc_clk = Adc_Clk_25M;	/*Adc_Clk_26M;*/
+		sys.demod_clk = Demod_Clk_225M;
+	} else if (is_meson_txhd_cpu()) {
+		sys.adc_clk = Adc_Clk_24M;	/*Adc_Clk_26M;*/
 		sys.demod_clk = Demod_Clk_225M;
 	} else {
 		sys.adc_clk = Adc_Clk_25M;      /*Adc_Clk_26M;*/

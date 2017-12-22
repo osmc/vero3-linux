@@ -833,7 +833,52 @@ int dtmb_read_reg(int reg_addr)
 	return demod_read_reg_rlt(reg_addr);
 }
 
+void dtmb_set_fe_config_modify(unsigned int modify)
+{
+	union DTMB_SYNC_FE_CONFIG_BITS fe_cofig;
 
+	fe_cofig.d32 = dtmb_read_reg(DTMB_SYNC_FE_CONFIG);
+	fe_cofig.b.fe_modify = modify;
+
+	dtmb_write_reg(DTMB_SYNC_FE_CONFIG, fe_cofig.d32);
+	pr_dbg("set modiy=0x%x,0x%x\n", modify, fe_cofig.d32);
+}
+/* formula: fs(MHz)
+ *  2*7.56*2^23/fs/256
+ *	24MHz: 0x50a3
+ *	25MHz: 0x4d6a
+ */
+void dtmb_clk_set(unsigned int adc_clk)
+{
+	unsigned int fe_modify = 0x4d6a;
+
+	if (adc_clk)
+		fe_modify = 3963617280 / (adc_clk << 3);
+
+	dtmb_set_fe_config_modify(fe_modify);
+
+}
+#if 0
+void dtmb_clk_set(unsigned int adc_clk)
+{
+	unsigned int fe_modify = 0x4d6a;
+
+	switch (adc_clk) {
+	case Adc_Clk_24M:
+		fe_modify = 0x50a3;
+		break;
+	case Adc_Clk_25M:
+		fe_modify = 0x4d6a;
+		break;
+	default:
+		pr_error("error:%s:not support,adc_clk=%d\n",
+				__func__, adc_clk);
+		fe_modify = 0x4d6a;
+		break;
+	}
+	dtmb_set_fe_config_modify(fe_modify);
+}
+#endif
 void dtmb_all_reset(void)
 {
 	int temp_data = 0;
@@ -855,6 +900,7 @@ void dtmb_all_reset(void)
 		/*fix agc problem,skip warm_up status*/
 		dtmb_write_reg(DTMB_FRONT_46_CONFIG, 0x1a000f0f);
 		dtmb_write_reg(DTMB_FRONT_ST_FREQ, 0xf2400000);
+		dtmb_clk_set(Adc_Clk_25M);
 	} else if (is_meson_txhd_cpu()) {
 		/* dtmb_write_reg(DTMB_FRONT_AFIFO_ADC, 0x1f); */
 		dtmb_write_reg(DTMB_FRONT_AFIFO_ADC, 0x1e);
@@ -878,6 +924,7 @@ void dtmb_all_reset(void)
 		/*fix agc problem,skip warm_up status*/
 		dtmb_write_reg(DTMB_FRONT_46_CONFIG, 0x1a000f0f);
 		dtmb_write_reg(DTMB_FRONT_ST_FREQ, 0xf2400000);
+		dtmb_clk_set(Adc_Clk_24M);
 	} else {
 		dtmb_write_reg(DTMB_FRONT_AGC_CONFIG1, 0x10127);
 		dtmb_write_reg(DTMB_CHE_IBDFE_CONFIG6, 0x943228cc);
