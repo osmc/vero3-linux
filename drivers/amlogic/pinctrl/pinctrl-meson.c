@@ -273,8 +273,7 @@ static int meson_pmx_set_mux(struct pinctrl_dev *pcdev,
 		"group->reg = 0x%x; group->bit = %d; desc->muxval = %d\n",
 		group->reg, group->bit, desc->muxval);
 
-	/* Function 0 (GPIO) doesn't need any additional setting */
-	if (func_num && (group->bit != 0xff)) {
+	if (group->bit != 0xff) {
 		ret = regmap_update_bits(domain->reg_mux, group->reg * 4,
 				MESON_MUX_MASK(group->bit),
 				MESON_MUX_VAL(desc->muxval, group->bit));
