@@ -55,6 +55,8 @@ void aml_spdif_pinmux_init(struct device *dev)
 {
 	if (!spdif_pinmux) {
 		spdif_pinmux = 1;
+		if (pin_spdif_ctl)
+			devm_pinctrl_put(pin_spdif_ctl);
 		pin_spdif_ctl = devm_pinctrl_get_select(dev, "aml_audio_spdif");
 		if (IS_ERR(pin_spdif_ctl)) {
 			pin_spdif_ctl = NULL;
@@ -70,6 +72,12 @@ void aml_spdif_pinmux_deinit(struct device *dev)
 		spdif_pinmux = 0;
 		if (pin_spdif_ctl)
 			devm_pinctrl_put(pin_spdif_ctl);
+		pin_spdif_ctl =
+			devm_pinctrl_get_select(dev, "aml_audio_spdif_mute");
+		if (IS_ERR(pin_spdif_ctl)) {
+			pin_spdif_ctl = NULL;
+			pr_info("aml_spdif_mute_pinmux_init can't get pinctrl\n");
+		}
 	}
 }
 bool aml_audio_spdif_mute_flag = 0;
