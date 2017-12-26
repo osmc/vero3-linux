@@ -6164,7 +6164,7 @@ static void _set_video_window(int *p)
 	/* pr_info(KERN_DEBUG "%s: %u
 	get vinfo(%d,%d).\n", __func__, __LINE__,
 	info->width, info->height); */
-	if (reverse) {
+	if (reverse && (parsed[0] != parsed[2]) && (parsed[1] != parsed[3])) {
 		temp = parsed[0];
 		temp1 = parsed[1];
 		parsed[0] = info->width - parsed[2] - 1;
