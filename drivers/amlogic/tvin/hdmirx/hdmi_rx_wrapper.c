@@ -998,6 +998,8 @@ static int hdmi_rx_ctrl_irq_handler(struct hdmi_rx_ctrl *ctx)
 	if (!rx.open_fg) {
 		if (log_level & 0x1000)
 			rx_pr("[isr] ingore dwc isr ---\n");
+		if (irq_need_clr)
+			error = 1;
 		return error;
 	}
 
