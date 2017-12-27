@@ -191,6 +191,7 @@ static u32 tsync_pcr_jiffes_diff;
 static u32 tysnc_pcr_systime_diff;
 static u32 tsync_last_play_mode;
 
+static u32 tsync_pcr_debug;
 static DEFINE_SPINLOCK(tsync_pcr_lock);
 
 
@@ -318,9 +319,9 @@ void tsync_pcr_get_delta(void)
 		tsync_pcr_stream_delta =
 		    (int64_t) (jiffies * TIME_UNIT90K) / HZ - (int64_t) cur_pcr;
 	}
-
-	pr_info("[%s:%d]tsync_pcr_stream_delta = %lld\n", __func__, __LINE__,
-		tsync_pcr_stream_delta);
+	if (tsync_pcr_debug & 0x01)
+		pr_info("[%s:%d]tsync_pcr_stream_delta = %lld\n", __func__,
+		__LINE__, tsync_pcr_stream_delta);
 }
 
 void tsync_pcr_pcrscr_set(void)
@@ -350,7 +351,8 @@ void tsync_pcr_pcrscr_set(void)
 		if (cur_checkin_apts == 0xffffffff)
 			return;
 	} else {
-		pr_info("now and the cur_checkin_apts is %x\n ",
+		if (tsync_pcr_debug & 0x01)
+			pr_info("now and the cur_checkin_apts is %x\n ",
 			cur_checkin_apts);
 	}
 
@@ -381,15 +383,16 @@ void tsync_pcr_pcrscr_set(void)
 
 		init_check_first_systemtime = ref_pcr;
 		init_check_first_demuxpcr = tsdemux_pcrscr_get();
-
-		pr_info("check init.first_pcr=0x%x, first_apts=0x%x, ",
-		     first_pcr, first_apts);
-		pr_info("first_vpts=0x%x, cur_pcr = 0x%x, checkin_vpts=0x%x, ",
-		     first_vpts, cur_pcr, cur_checkin_vpts);
-		pr_info("checkin_apts=0x%x alevel=%d vlevel=%d\n",
-		     cur_checkin_apts, abuf_level, vbuf_level);
-		pr_info("[%d]init by pcr. pcr=%x usepcr=%d\n", __LINE__,
+		if (tsync_pcr_debug & 0x01) {
+			pr_info("check init.first_pcr=0x%x, first_apts=0x%x, ",
+			first_pcr, first_apts);
+			pr_info("first_vpts=0x%x, cur_pcr = 0x%x, checkin_vpts=0x%x, ",
+			first_vpts, cur_pcr, cur_checkin_vpts);
+			pr_info("checkin_apts=0x%x alevel=%d vlevel=%d\n",
+			cur_checkin_apts, abuf_level, vbuf_level);
+			pr_info("[%d]init by pcr. pcr=%x usepcr=%d\n", __LINE__,
 			ref_pcr, tsync_pcr_usepcr);
+		}
 	}
 
 	if (first_apts && !(tsync_pcr_inited_flag & complete_init_flag)
@@ -458,7 +461,8 @@ static u8 tsync_process_checkspeed(void)
 	u32 checkin_vpts = 0;
 	u32 checkout_vpts = 0;
 	u32 checkout_apts = 0;
-
+	u32 apts_cache = 0;
+	u32 vpts_cache = 0;
 	if (tsync_pcr_first_jiffes == 0)
 		return tsync_last_play_mode;
 
@@ -477,10 +481,11 @@ static u8 tsync_process_checkspeed(void)
 
 		if (diff_delta > PLAY_MODE_THRESHOLD) {
 			tsync_last_play_mode = PLAY_MODE_SPEED;
-			pr_info("pcr_diff %x ", demuxpcr_diff);
-			pr_info("jiffies_diff %x ", jiffies_diff);
-			pr_info("normal_count %d\n", normal_count);
-
+			if (tsync_pcr_debug & 0x01) {
+				pr_info("pcr_diff %x ", demuxpcr_diff);
+				pr_info("jiffies_diff %x ", jiffies_diff);
+				pr_info("normal_count %d\n", normal_count);
+			}
 
 		} else {
 			tsync_last_play_mode = PLAY_MODE_NORMAL;
@@ -491,9 +496,11 @@ static u8 tsync_process_checkspeed(void)
 		u32 diff_delta = jiffies_diff - demuxpcr_diff;
 		if (diff_delta > PLAY_MODE_THRESHOLD) {
 			tsync_last_play_mode = PLAY_MODE_SLOW;
-			pr_info("pcr_diff %x ", demuxpcr_diff);
-			pr_info("jiffies_diff %x ", jiffies_diff);
-			pr_info("normal_count %d\n", normal_count);
+			if (tsync_pcr_debug & 0x01) {
+				pr_info("pcr_diff %x ", demuxpcr_diff);
+				pr_info("jiffies_diff %x ", jiffies_diff);
+				pr_info("normal_count %d\n", normal_count);
+			}
 
 		} else {
 			tsync_last_play_mode = PLAY_MODE_NORMAL;
@@ -513,9 +520,10 @@ static u8 tsync_process_checkspeed(void)
 			if ((checkin_apts - checkout_apts) >
 			    (PLAY_MODE_THRESHOLD * 90)) {
 				tsync_last_play_mode = PLAY_MODE_SPEED;
-				pr_info(" audio cache time %d normal_count %d\n",
-				     (checkin_apts - checkout_apts),
-				     normal_count);
+				apts_cache = checkin_apts - checkout_apts;
+				if (tsync_pcr_debug & 0x01)
+					pr_info("audio cache time %d normal_count %d\n",
+					apts_cache, normal_count);
 			} else {
 				tsync_last_play_mode = PLAY_MODE_NORMAL;
 			}
@@ -525,9 +533,10 @@ static u8 tsync_process_checkspeed(void)
 			if ((checkin_vpts - checkout_vpts) >
 			    (PLAY_MODE_THRESHOLD * 90)) {
 				tsync_last_play_mode = PLAY_MODE_SPEED;
-				pr_info(" video cached time %d normal_count %d\n",
-				     (checkin_vpts - checkout_vpts),
-				     normal_count);
+				vpts_cache = checkin_vpts - checkout_vpts;
+				if (tsync_pcr_debug & 0x01)
+					pr_info("video cached time %d normal_count %d\n",
+				    vpts_cache, normal_count);
 			} else {
 				tsync_last_play_mode = PLAY_MODE_NORMAL;
 			}
@@ -562,19 +571,23 @@ static void tsync_process_discontinue(void)
 	} else if (tsdemux_pcraudio_valid()) {
 		if ((tsync_pcr_tsdemuxpcr_discontinue & AUDIO_DISCONTINUE)
 		    == AUDIO_DISCONTINUE) {
-			pr_info(" now audio discontinue\n");
+			if (tsync_pcr_debug & 0x02)
+				pr_info(" now audio discontinue\n");
 			timestamp_pcrscr_set(cur_apts);
 			tsync_pcr_tsdemuxpcr_discontinue = 0;
-			pr_info("after discontinue, pcr = 0x%x,apts=0x%x\n",
+			if (tsync_pcr_debug & 0x02)
+				pr_info("after discontinue, pcr = 0x%x,apts=0x%x\n",
 				timestamp_pcrscr_get(), cur_apts);
 		}
 	} else {
 		if ((tsync_pcr_tsdemuxpcr_discontinue & VIDEO_DISCONTINUE)
 		    == VIDEO_DISCONTINUE) {
-			pr_info(" now video discontinue\n");
+			if (tsync_pcr_debug & 0x02)
+				pr_info(" now video discontinue\n");
 			timestamp_pcrscr_set(cur_vpts);
 			tsync_pcr_tsdemuxpcr_discontinue = 0;
-			pr_info("after discontinue, pcr = 0x%x,vpts=0x%x\n",
+			if (tsync_pcr_debug & 0x02)
+				pr_info("after discontinue, pcr = 0x%x,vpts=0x%x\n",
 				timestamp_pcrscr_get(), cur_vpts);
 		}
 	}
@@ -866,17 +879,17 @@ static unsigned long tsync_pcr_check(void)
 				tsync_pcr_discontinue_waited = TIME_UNIT90K * 3;
 			else
 				tsync_pcr_discontinue_waited = TIME_UNIT90K * 5;
-
-			pr_info("[tsync_pcr_check] refpcr_discontinue.\n");
-			pr_info("tsdemux_pcr_diff=%x, last refpcr=%x,\n",
-			     tsdemux_pcr_diff, tsync_pcr_last_tsdemuxpcr);
-			pr_info("repcr=%x,waited=%x\n",
+			if (tsync_pcr_debug & 0x02) {
+				pr_info("[tsync_pcr_check] refpcr_discontinue.\n");
+				pr_info("tsdemux_pcr_diff=%x, last refpcr=%x,\n",
+				tsdemux_pcr_diff, tsync_pcr_last_tsdemuxpcr);
+				pr_info("repcr=%x,waited=%x\n",
 				tsdemux_pcr, tsync_pcr_discontinue_waited);
-			pr_info("last checkin vpts:%d\n",
+				pr_info("last checkin vpts:%d\n",
 				(u32) get_last_checkin_pts(PTS_TYPE_VIDEO));
-			pr_info("last checkin apts:%d\n",
+				pr_info("last checkin apts:%d\n",
 				(u32) get_last_checkin_pts(PTS_TYPE_AUDIO));
-
+			}
 			tsync_pcr_discontinue_local_point =
 			    timestamp_pcrscr_get();
 			tsync_pcr_discontinue_point =
@@ -888,13 +901,15 @@ static unsigned long tsync_pcr_check(void)
 			    (timestamp_pcrscr_get() -
 			     tsync_pcr_discontinue_local_point) >
 			    tsync_pcr_discontinue_waited) {
-				pr_info("[tsync_pcr_check] audio or video");
-				pr_info(" discontinue didn't happen, waited=%x\n",
-				     tsync_pcr_discontinue_waited);
-				pr_info(" timestamp_pcrscr_get() =%x\n",
-				     timestamp_pcrscr_get());
-				pr_info(" tsync_pcr_discontinue_local_point =%x\n",
-				     tsync_pcr_discontinue_local_point);
+			    if (tsync_pcr_debug & 0x02) {
+					pr_info("[tsync_pcr_check] audio or video");
+					pr_info("discontinue didn't happen, waited=%x\n",
+						tsync_pcr_discontinue_waited);
+					pr_info("timestamp_pcrscr_get() =%x\n",
+						timestamp_pcrscr_get());
+					pr_info("tsync_pcr_discontinue_local_point=%x\n",
+					tsync_pcr_discontinue_local_point);
+			    }
 				/* the v-discontinue did'n happen */
 				tsync_pcr_tsdemuxpcr_discontinue = 0;
 				tsync_pcr_discontinue_point = 0;
@@ -1250,6 +1265,22 @@ static ssize_t tsync_pcr_discontinue_show(struct class *cla,
 	return sprintf(buf, "0x%x\n", tsync_pcr_tsdemuxpcr_discontinue);
 }
 
+static ssize_t tsync_pcr_debug_store(struct class *cla,
+					  struct class_attribute *attr,
+					  const char *buf, size_t count)
+{
+	size_t r;
+	r = sscanf(buf, "%d", &tsync_pcr_debug);
+	if (1 != r)
+		return -EINVAL;
+	return count;
+}
+static ssize_t tsync_pcr_debug_show(struct class *cla,
+					  struct class_attribute *attr,
+					  char *buf)
+{
+	return sprintf(buf, "%d\n", tsync_pcr_debug);
+}
 /* ----------------------------------------------------------------------- */
 /* define of tsync pcr module */
 
@@ -1271,6 +1302,8 @@ static struct class_attribute tsync_pcr_class_attrs[] = {
 	       tsync_apts_adj_value_show, tsync_apts_adj_value_store),
 	__ATTR(tsync_pcr_adj_value, S_IRUGO | S_IWUSR,
 	       tsync_pcr_adj_value_show, tsync_pcr_adj_value_store),
+	__ATTR(tsync_pcr_debug, S_IRUGO|S_IWUSR,
+	       tsync_pcr_debug_show, tsync_pcr_debug_store),
 	__ATTR_RO(tsync_pcr_discontinue),
 	__ATTR_RO(pcr_diff),
 	__ATTR_NULL
@@ -1297,6 +1330,7 @@ static int __init tsync_pcr_init(void)
 	timestamp_vpts_set(0);
 	timestamp_pcrscr_set(0);
 	wait_pcr_count = 0;
+	tsync_pcr_debug = 0;
 	pr_info("[tsync_pcr_init]init success.\n");
 	return 0;
 }
