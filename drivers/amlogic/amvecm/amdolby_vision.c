@@ -1542,7 +1542,7 @@ static int dolby_core2_set(
 
 	VSYNC_WR_MPEG_REG(DOLBY_CORE2A_CLKGATE_CTRL, 0);
 	VSYNC_WR_MPEG_REG(DOLBY_CORE2A_SWAP_CTRL0, 0);
-	if (is_meson_gxm_cpu()) {
+	if (is_meson_gxm_cpu() || reset) {
 		VSYNC_WR_MPEG_REG(DOLBY_CORE2A_SWAP_CTRL1,
 			((hsize + g_htotal_add) << 16)
 			| (vsize + g_vtotal_add + g_vsize_add));
