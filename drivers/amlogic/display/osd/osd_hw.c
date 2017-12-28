@@ -64,6 +64,7 @@
 #include "osd_hw.h"
 #include "osd_hw_def.h"
 
+
 #ifdef CONFIG_AML_VSYNC_FIQ_ENABLE
 #define FIQ_VSYNC
 #endif
@@ -2245,6 +2246,27 @@ static bool osd_direct_compose_pan_display(struct osd_fence_map_s *fence_map)
 	return freescale_update;
 }
 
+static bool update_color_format(u32 index, u32 format)
+{
+	bool update = false;
+	const struct color_bit_define_s *color = NULL;
+
+	color = convert_hal_format(format);
+	if (color) {
+		if (color->color_index !=
+			osd_hw.color_backup[index]->color_index) {
+			update = true;
+			osd_hw.color_backup[index] = color;
+		}
+		osd_hw.color_info[index] = color;
+	} else {
+		osd_log_err("color format error %d\n",
+			format);
+	}
+
+	return update;
+}
+
 static void osd_pan_display_fence(struct osd_fence_map_s *fence_map)
 {
 	s32 ret = 1;
@@ -2252,11 +2274,10 @@ static void osd_pan_display_fence(struct osd_fence_map_s *fence_map)
 	u32 index = fence_map->fb_index;
 	u32 xoffset = fence_map->xoffset;
 	u32 yoffset = fence_map->yoffset;
-	const struct color_bit_define_s *color = NULL;
-	bool color_mode = false;
 	bool freescale_update = false;
 	u32 osd_enable = 0;
 	bool skip = false;
+	bool color_mode = false;
 	const struct vinfo_s *vinfo;
 
 	if (index >= 2)
@@ -2286,13 +2307,6 @@ static void osd_pan_display_fence(struct osd_fence_map_s *fence_map)
 			osd_hw.fb_gem[index].canvas_idx =
 				extern_canvas[ext_canvas_id];
 			ext_canvas_id ^= 1;
-			color = convert_hal_format(fence_map->format);
-			if (color) {
-				osd_hw.color_info[index] = color;
-			}
-			else
-				osd_log_err("fence color format error %d\n",
-					fence_map->format);
 
 			if (DIRECT_COMPOSE_MODE ==
 				fence_map->compose_type)
@@ -2306,7 +2320,7 @@ static void osd_pan_display_fence(struct osd_fence_map_s *fence_map)
 				osd_hw.osd_afbcd[index].enable == ENABLE)
 				osd_hw.osd_afbcd[index].phy_addr =
 					fence_map->ext_addr;
-
+			/* need always update color mode(canvas_id changed)*/
 			osd_hw.reg[index][OSD_COLOR_MODE].update_func();
 			osd_hw.reg[index][DISP_GEOMETRY].update_func();
 			if ((osd_hw.free_scale_enable[index]
@@ -2414,19 +2428,8 @@ static void osd_pan_display_fence(struct osd_fence_map_s *fence_map)
 					osd_hw.osd_afbcd[index].frame_height];
 			}
 
-			color = convert_hal_format(fence_map->format);
-			if (color) {
-				if (color != osd_hw.color_backup[index]) {
-					color_mode = true;
-					osd_hw.color_backup[index] = color;
-				}
-				osd_hw.color_info[index] = color;
-			} else {
-				osd_log_err("fence color format error %d\n",
-					fence_map->format);
-			}
-
-			if (color_mode)
+			if (update_color_format(index, fence_map->format)
+				|| color_mode)
 				osd_hw.reg[index][OSD_COLOR_MODE].update_func();
 			osd_hw.reg[index][DISP_GEOMETRY].update_func();
 			if ((osd_hw.free_scale_enable[index]
@@ -2457,6 +2460,14 @@ static void osd_pan_display_fence(struct osd_fence_map_s *fence_map)
 					osd_hw.reg[index][OSD_ENABLE]
 					.update_func();
 			}
+			if (update_color_format(index, fence_map->format))
+				osd_hw.reg[index][OSD_COLOR_MODE].update_func();
+			spin_unlock_irqrestore(&osd_lock, lock_flags);
+			osd_wait_vsync_hw();
+		} else {
+			spin_lock_irqsave(&osd_lock, lock_flags);
+			if (update_color_format(index, fence_map->format))
+				osd_hw.reg[index][OSD_COLOR_MODE].update_func();
 			spin_unlock_irqrestore(&osd_lock, lock_flags);
 			osd_wait_vsync_hw();
 		}
@@ -3858,7 +3869,7 @@ void osd_init_hw(u32 logo_loaded)
 		MESON_CPU_MAJOR_ID_GXM)
 		backup_regs_init(HW_RESET_OSD1_REGS);
 	else if ((get_cpu_type() >= MESON_CPU_MAJOR_ID_GXL)
-		&& (get_cpu_type() <= MESON_CPU_MAJOR_ID_TXLX))
+		&& (get_cpu_type() <= MESON_CPU_MAJOR_ID_TXL))
 		backup_regs_init(HW_RESET_OSD1_REGS);
 	else
 		backup_regs_init(HW_RESET_NONE);
