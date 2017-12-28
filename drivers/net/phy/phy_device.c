@@ -1112,16 +1112,17 @@ void wol_test(struct phy_device *phydev)
 unsigned long rx_packets_internal_phy = 0;
 unsigned long tx_packets_internal_phy = 0;
 
-static int internal_phy_read_status(struct phy_device *phydev)
+void do_wol_test(struct phy_device *phydev)
 {
-	int err;
-	int reg31 = 0;
-	int wol_reg12;
-	int linkup = 0;
-	int val;
 	struct intenal_phy_priv *priv = phydev->priv;
-	/*read clear interrupt status to reenable interrupt*/
-	phy_read(phydev, 0x1d);
+	int wol_reg12;
+	int val;
+
+	/* Skip test in 'Force Good Link State' */
+	val = phy_read(phydev, 0x11);
+	if (val & 0x4)
+		return;
+
 	/* Update the link, but return if there was an error */
 	/* Bit 15: READ*/
 	/*Bit 14: Write*/
@@ -1152,7 +1153,18 @@ static int internal_phy_read_status(struct phy_device *phydev)
 		}
 	} else
 		priv->internal_phy_count_start = 0;
+}
 
+static int internal_phy_read_status(struct phy_device *phydev)
+{
+	int err;
+	int reg31 = 0;
+	int linkup = 0;
+	int val;
+	struct intenal_phy_priv *priv = phydev->priv;
+	/*read clear interrupt status to reenable interrupt*/
+	phy_read(phydev, 0x1d);
+	do_wol_test(phydev);
 	if (priv->read_count%15 == 0 && ethernet_debug) {
 		am_net_dump_phyreg();
 		am_net_dump_phy_extended_reg();
