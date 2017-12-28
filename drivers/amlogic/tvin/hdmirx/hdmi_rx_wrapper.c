@@ -4249,14 +4249,10 @@ void hdmirx_hw_init(enum tvin_port_e port)
 		*/
 		if (hdmi5v_lost_flag)
 			hdmirx_hw_config();
-		/* when open port and signal is unstable, */
-		/* force to do hpd reset for hdcp compliance*/
 		if (rx.state >= FSM_SIG_STABLE)
 			rx.state = FSM_SIG_STABLE;
-		else {
-			rx_set_hpd(0);
-			rx.state = FSM_INIT;
-		}
+		else if (rx.state >= FSM_HPD_HIGH)
+			rx.state = FSM_HPD_HIGH;
 	}
 	edid_update_flag = 0;
 	hdmi5v_lost_flag = FALSE;

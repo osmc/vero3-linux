@@ -39,6 +39,7 @@
 #include <linux/amlogic/tvin/tvin.h>
 #include <linux/amlogic/amports/vframe.h>
 #include <linux/of_gpio.h>
+#include <linux/earlysuspend.h>
 
 /* Local include */
 #include "hdmirx_drv.h"
@@ -1624,6 +1625,27 @@ static int hdmirx_switch_pinmux(struct device  dev)
 	return ret;
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void hdmirx_early_suspend(struct early_suspend *h)
+{
+	rx_pr("hdmirx_early_suspend ok\n");
+}
+
+static void hdmirx_late_resume(struct early_suspend *h)
+{
+	/* after early suspend & late resuem, also need to */
+	/* do hpd reset when open port for hdcp compliance */
+	pre_port = 0xff;
+	rx_pr("hdmirx_late_resume ok\n");
+};
+
+static struct early_suspend hdmirx_early_suspend_handler = {
+	/* .level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN - 10, */
+	.suspend = hdmirx_early_suspend,
+	.resume = hdmirx_late_resume,
+	/* .param = &hdmirx_device, */
+};
+#endif
 
 static int hdmirx_probe(struct platform_device *pdev)
 {
@@ -1877,7 +1899,9 @@ static int hdmirx_probe(struct platform_device *pdev)
 
 	hdmirx_hw_probe();
 	hdmirx_switch_pinmux(pdev->dev);
-
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	register_early_suspend(&hdmirx_early_suspend_handler);
+#endif
 	mutex_init(&hdevp->rx_lock);
 	register_pm_notifier(&aml_hdcp22_pm_notifier);
 
@@ -1937,7 +1961,9 @@ static int hdmirx_remove(struct platform_device *pdev)
 
 	cancel_delayed_work_sync(&esm_dwork);
 	destroy_workqueue(esm_wq);
-
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	unregister_early_suspend(&hdmirx_early_suspend_handler);
+#endif
 	mutex_destroy(&hdevp->rx_lock);
 	device_remove_file(hdevp->dev, &dev_attr_debug);
 	device_remove_file(hdevp->dev, &dev_attr_edid);
