@@ -189,7 +189,7 @@
 			i2c_bus = "i2c_bus_d";
 			cmd_size = <9>;
 			/* init on/off: (type, value..., delay), must match cmd_size for every group */
-			/* type: 0x00=cmd(bit[3:0]=1 for second_addr), 0x10=gpio, 0xff=ending*/
+			/* type: 0x00=cmd(bit[3:0]=1 for second_addr), 0xf0=gpio, 0xff=ending*/
 			/* value: i2c or spi cmd, or gpio index & level, fill 0x0 for no use */
 			/* delay: unit ms */
 			init_on = <0x00 0x20 0x01 0x02 0x00 0x40 0xFF 0x00 0x00
