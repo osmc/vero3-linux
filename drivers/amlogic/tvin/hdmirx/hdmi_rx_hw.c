@@ -1536,6 +1536,17 @@ void hdmirx_hw_probe(void)
 }
 
 /***************************************************
+func: hdmirx_acr_info_update
+	refresh aud_pll by manual N/CTS changing
+***************************************************/
+void hdmirx_acr_info_sw_update(void)
+{
+	hdmirx_wr_dwc(DWC_AUD_CLK_CTRL, 0x10);
+	udelay(100);
+	hdmirx_wr_dwc(DWC_AUD_CLK_CTRL, 0x0);
+}
+
+/***************************************************
 func: hdmirx_audio_pll_sw_update
 	Sent an update pulse to audio pll module.
 	Indicate the ACR info is changed.
@@ -1579,12 +1590,12 @@ bool is_aud_pll_error(void)
 	int32_t aud_512fs = rx.aud_info.real_sample_rate * 512;
 	if (rx.aud_info.real_sample_rate == 0)
 		return false;
-	if	((abs(clk - aud_128fs) < 500000) ||
-		(abs(clk - aud_512fs) < 500000)) {
+	if	((abs(clk - aud_128fs) < AUD_PLL_THRESHOLD) ||
+		(abs(clk - aud_512fs) < AUD_PLL_THRESHOLD)) {
 		ret = false;
 	}
 	if ((ret) && (log_level & AUDIO_LOG))
-		rx_pr("%d,%d,%d,\n", clk, aud_128fs, aud_512fs);
+		rx_pr("clk:%d,128fs:%d,512fs%d,\n", clk, aud_128fs, aud_512fs);
 	return ret;
 }
 

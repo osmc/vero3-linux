@@ -33,7 +33,7 @@
 
 
 
-#define RX_VER0 "Ref.2017/12/11"
+#define RX_VER0 "Ref.2018/01/05"
 /*------------------------------*/
 
 #define RX_VER1 "Ref.2017/11/01"
@@ -118,6 +118,7 @@
 /* aud sample rate stable range */
 #define AUD_SR_RANGE 2000
 #define AUD_SR_STB_MAX 20
+#define AUD_PLL_THRESHOLD	1000000
 /* PHY config */
 #define DVI_FIXED_TO_RGB  1
 
@@ -1032,6 +1033,7 @@ extern bool hdmirx_get_hdmi20_force(int port);
 extern bool esm_print_device_info(void);
 extern void hdmi_rx_ctrl_hdcp_config(const struct hdmi_rx_ctrl_hdcp *hdcp);
 extern void hdmirx_audio_pll_sw_update(void);
+extern void hdmirx_acr_info_sw_update(void);
 extern bool is_afifo_error(void);
 extern bool is_aud_pll_error(void);
 extern void rx_get_audio_status(struct rx_audio_stat_s *aud_sts);

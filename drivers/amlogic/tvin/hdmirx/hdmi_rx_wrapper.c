@@ -774,10 +774,6 @@ void rx_hpd_to_esm_handle(struct work_struct *work)
 	return;
 }
 
-void hdmirx_dv_packet_stop(void)
-{
-}
-
 void rx_getaudinfo(struct aud_info_s *audio_info)
 {
 	/*get AudioInfo */
@@ -1774,8 +1770,6 @@ void packet_update(void)
 	audio_sample_rate = rx.aud_info.real_sample_rate;
 	audio_coding_type = rx.aud_info.coding_type;
 	audio_channel_count = rx.aud_info.channel_count;
-
-	hdmirx_dv_packet_stop();
 }
 
 /*
@@ -2473,21 +2467,24 @@ void hdmirx_hw_monitor(void)
 			rx.aud_sr_stable_cnt = 0;
 			break;
 		}
-		if (rx.aud_sr_stable_cnt <=
-			aud_sr_stb_max) {
+
+		packet_update();
+
+		if (rx.aud_sr_stable_cnt < aud_sr_stb_max) {
 			rx.aud_sr_stable_cnt++;
-			if (rx.aud_sr_stable_cnt ==
-			aud_sr_stb_max) {
-				dump_state(0x2);
-				rx_aud_pll_ctl(1);
-				if (is_afifo_error()) {
-					if (log_level & AUDIO_LOG)
-						rx_pr("afifo err\n");
-				}
-				hdmirx_audio_fifo_rst();
-				rx_pr("update audio\n");
-				hdmirx_audio_pll_sw_update();
+			break;
+		}
+		if (rx.aud_sr_stable_cnt == aud_sr_stb_max) {
+			dump_state(0x2);
+			rx_aud_pll_ctl(1);
+			if (is_afifo_error()) {
+				if (log_level & AUDIO_LOG)
+					rx_pr("afifo err\n");
 			}
+			hdmirx_audio_fifo_rst();
+			rx_pr("update audio\n");
+			hdmirx_audio_pll_sw_update();
+			rx.aud_sr_stable_cnt++;
 		}
 		if (is_aud_pll_error()) {
 			rx.aud_sr_unstable_cnt++;
@@ -2502,6 +2499,7 @@ void hdmirx_hw_monitor(void)
 					} else if (aud_pll_sts == E_PLLRATE_CHG)
 						rx_aud_pll_ctl(1);
 				} else {
+					hdmirx_acr_info_sw_update();
 					hdmirx_audio_pll_sw_update();
 					if (log_level & AUDIO_LOG)
 						rx_pr("update audio-err\n");
@@ -2510,7 +2508,7 @@ void hdmirx_hw_monitor(void)
 			}
 		} else
 			rx.aud_sr_unstable_cnt = 0;
-		packet_update();
+
 		break;
 	default:
 		break;
