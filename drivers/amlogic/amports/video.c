@@ -768,6 +768,7 @@ static const struct vinfo_s *vinfo;
 /* config */
 static struct vframe_s *cur_dispbuf;
 static struct vframe_s *cur_dispbuf2;
+static bool need_disable_vd2;
 int get_video0_frame_info(struct vframe_s *vf)
 {
 	unsigned long flags;
@@ -2573,7 +2574,7 @@ static void vsync_toggle_frame(struct vframe_s *vf)
 				VD2_MEM_POWER_ON();
 			else if (vf_with_el)
 				EnableVideoLayer2();
-			else
+			else if (need_disable_vd2)
 				DisableVideoLayer2();
 		}
 	}
@@ -2587,7 +2588,7 @@ static void vsync_toggle_frame(struct vframe_s *vf)
 				VD2_MEM_POWER_ON();
 			else if (vf_with_el)
 				EnableVideoLayer2();
-			else
+			else if (need_disable_vd2)
 				DisableVideoLayer2();
 		}
 	}
@@ -5491,7 +5492,7 @@ cur_dev->vpp_off,0,VPP_VD2_ALPHA_BIT,9);//vd2 alpha must set
 		VPP_HSC_START_PHASE_STEP + cur_dev->vpp_off);
 		v_phase_step = READ_VCBUS_REG(
 		VPP_VSC_START_PHASE_STEP + cur_dev->vpp_off);
-		if ((vpp_filter->vpp_hsc_start_phase_step != h_phase_step) ||
+		if ((vpp_filter->vpp_hf_start_phase_step != h_phase_step) ||
 		(vpp_filter->vpp_vsc_start_phase_step != v_phase_step)) {
 			video_property_changed = true;
 			/*pr_info("frame info register rdma write fail!\n");*/
@@ -5662,6 +5663,7 @@ cur_dev->vpp_off,0,VPP_VD2_ALPHA_BIT,9);//vd2 alpha must set
 		last_el_status = 0;
 		if (cur_dispbuf2 && (cur_dispbuf2 == &vf_local2))
 			cur_dispbuf2 = NULL;
+		need_disable_vd2 = false;
 	}
 	if (video1_off_req) {
 		/*video layer off, swith off afbc,
@@ -5872,6 +5874,10 @@ static void video_vf_unreg_provider(void)
 		cur_dispbuf = &vf_local;
 		cur_dispbuf->video_angle = 0;
 	}
+
+	if (cur_dispbuf2)
+		need_disable_vd2 = true;
+
 	if (is_dolby_vision_enable()) {
 		if (cur_dispbuf2 == &vf_local2)
 			cur_dispbuf2 = NULL;
