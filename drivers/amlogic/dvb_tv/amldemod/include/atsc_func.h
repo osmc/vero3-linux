@@ -13,8 +13,9 @@ enum atsc_state_machine {
 };
 
 enum atsc_performance {
-	TASK4_TASK5_AWGN = 1,
-	TASK8_R22
+	TASK4_TASK5 = 1,
+	AWGN,
+	TASK8_R22,
 };
 
 #define Lock	1

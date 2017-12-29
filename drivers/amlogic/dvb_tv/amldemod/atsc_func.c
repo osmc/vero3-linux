@@ -555,9 +555,11 @@ if (!field_test_version) {
 	atsc_write_reg(0xf6f, 0xc0);
 	atsc_write_reg(0xf6e, 0x09);
 	atsc_write_reg(0x562, 0x08);
-	if (awgn_flag == TASK4_TASK5_AWGN)
-		atsc_set_performance_register(TASK4_TASK5_AWGN, 1);
-	else
+	if (awgn_flag == TASK4_TASK5)
+		atsc_set_performance_register(TASK4_TASK5, 1);
+	else if (awgn_flag == AWGN)
+		atsc_set_performance_register(AWGN, 1);
+	else if (awgn_flag == TASK4_TASK5)
 		atsc_set_performance_register(TASK8_R22, 1);
 } else
 	pr_dbg("!!!!!! field test !!!!!!!!!");
@@ -830,6 +832,9 @@ int cfo_run(void)
 		max_count = 5;
 	else
 		max_count = 7;
+	/*for field test do 3 times*/
+	if (field_test_version)
+		max_count = 3;
 	Fcent = Si2176_5M_If*1000;/*if*/
 	Fs = Adc_Clk_24M;/*crystal*/
 	cfo_sta = 0;
@@ -1015,10 +1020,14 @@ void atsc_set_r22_register(int flag)
 
 void atsc_set_performance_register(int flag, int init)
 {
-	if (flag == TASK4_TASK5_AWGN) {
+	if (flag == TASK4_TASK5) {
+		atsc_write_reg(0x912, 0x00);
+		atsc_write_reg(0x5bc, 0x02);
+		awgn_flag = TASK4_TASK5;
+	} else if (flag == AWGN) {
 		atsc_write_reg(0x912, 0x00);
 		atsc_write_reg(0x5bc, 0x01);
-		awgn_flag = TASK4_TASK5_AWGN;
+		awgn_flag = AWGN;
 	} else {
 		atsc_write_reg(0x912, 0x50);
 		if (init == 0) {
@@ -1065,7 +1074,7 @@ void atsc_thread(void)
 		/*step:check AR*/
 		if (ar_enable)
 			AR_run();
-		if (cci_enable)
+		if (cci_enable && !field_test_version)
 			ret = cci_run();
 		atsc_reset();
 		time[1] = jiffies_to_msecs(jiffies);
@@ -1124,14 +1133,14 @@ void atsc_thread(void)
 			pr_dbg("snr_now is %d\n", snr_now);
 			if ((snr_now <= 16) && snr_now >= 10) {
 				atsc_set_performance_register
-				(TASK4_TASK5_AWGN, 0);
+				(AWGN, 0);
 			} else if (snr_now < 10) {
 				atsc_set_performance_register
-				(TASK4_TASK5_AWGN, 0);
+				(TASK4_TASK5, 0);
 			} else {
 				if (snr_now > 23) {
 					atsc_set_performance_register
-					(TASK4_TASK5_AWGN, 0);
+					(TASK4_TASK5, 0);
 					pr_dbg("snr(23)\n");
 				} else if ((snr_now > 16) && (snr_now <= 23)) {
 					atsc_set_performance_register
