@@ -1271,11 +1271,13 @@ void retrieve_vpll_carrier_lock(int *lock)
 
 void retrieve_vpll_carrier_line_lock(int *lock)
 {
+	unsigned long data = 0;
 	int line_lock = 0;
 	int line_lock_strong = 0;
 
-	line_lock = atv_dmd_rd_byte(APB_BLOCK_ADDR_VDAGC, 0x4f) & 0x10;
-	line_lock_strong = atv_dmd_rd_byte(APB_BLOCK_ADDR_VDAGC, 0x4f) & 0x8;
+	data = atv_dmd_rd_byte(APB_BLOCK_ADDR_VDAGC, 0x4f);
+	line_lock = data & 0x10;
+	line_lock_strong = data & 0x8;
 
 	pr_info("line_status = 0x%x, line_lock_strong = 0x%x\n",
 			line_lock, line_lock_strong);
@@ -1283,14 +1285,39 @@ void retrieve_vpll_carrier_line_lock(int *lock)
 	*lock = (line_lock | line_lock_strong);
 }
 
+void retrieve_vpll_carrier_audio_power(int *power)
+{
+	unsigned long data = atv_dmd_rd_reg(APB_BLOCK_ADDR_SIF_STG_2, 0x02);
+	if (!(data & 0x80)) {
+		atv_dmd_wr_reg(APB_BLOCK_ADDR_SIF_STG_2, 0x02, data | 0x80);
+
+		usleep_range(10000, 10000 + 100);
+
+		data = atv_dmd_rd_reg(APB_BLOCK_ADDR_SIF_STG_2, 0x03);
+		*power = data & 0xffff;
+
+		data = atv_dmd_rd_reg(APB_BLOCK_ADDR_SIF_STG_2, 0x02);
+		atv_dmd_wr_reg(APB_BLOCK_ADDR_SIF_STG_2, 0x02, data & (~0x80));
+	} else {
+		data = atv_dmd_rd_reg(APB_BLOCK_ADDR_SIF_STG_2, 0x03);
+		*power = data & 0xffff;
+	}
+
+	pr_info("retrieve_vpll_carrier_audio_power: %d.\n", *power);
+}
+
 int retrieve_vpll_carrier_afc(void)
 {
 	int data_ret, pll_lock, field_lock, line_lock, line_lock_strong;
+	unsigned long vd_lock = 0;
 	unsigned int data_h, data_l, data_exg = 0;
+
 	pll_lock = atv_dmd_rd_byte(APB_BLOCK_ADDR_CARR_RCVY, 0x43)&0x1;
-	field_lock = atv_dmd_rd_byte(APB_BLOCK_ADDR_VDAGC, 0x4f)&0x4;
-	line_lock = atv_dmd_rd_byte(APB_BLOCK_ADDR_VDAGC, 0x4f)&0x10;
-	line_lock_strong = atv_dmd_rd_byte(APB_BLOCK_ADDR_VDAGC, 0x4f)&0x8;
+	vd_lock = atv_dmd_rd_byte(APB_BLOCK_ADDR_VDAGC, 0x4f);
+	field_lock = vd_lock & 0x4;
+	line_lock = vd_lock & 0x10;
+	line_lock_strong = vd_lock & 0x8;
+
 	/* if((atv_dmd_rd_byte(APB_BLOCK_ADDR_CARR_RCVY,0x43)&0x1) == 1){ */
 	if ((pll_lock == 1) || (line_lock == 0x10)) {
 		/*if pll unlock, afc is invalid*/

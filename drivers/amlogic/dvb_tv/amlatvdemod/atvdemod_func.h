@@ -180,6 +180,7 @@ extern void atvdemod_uninit(void);
 extern void atv_dmd_set_std(void);
 extern void retrieve_vpll_carrier_lock(int *lock);
 extern void retrieve_vpll_carrier_line_lock(int *lock);
+extern void retrieve_vpll_carrier_audio_power(int *power);
 extern void retrieve_video_lock(int *lock);
 extern int retrieve_vpll_carrier_afc(void);
 

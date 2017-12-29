@@ -307,6 +307,38 @@ struct dvb_frontend *get_si2177_tuner(void)
 }
 EXPORT_SYMBOL(get_si2177_tuner);
 
+/*
+ * add interface for audio driver to get atv audio state.
+ * state:
+ * 0 - no data.
+ * 1 - has data.
+ */
+void aml_fe_get_atvaudio_state(int *state)
+{
+	int power = 0;
+	int vpll_lock = 0;
+	int line_lock = 0;
+	struct aml_dvb *dvb = aml_get_dvb_device();
+	struct dvb_frontend *fe = dvb->fe;
+
+	if (fe != NULL) {
+		if (fe->ops.info.type == FE_ANALOG) {
+			retrieve_vpll_carrier_lock(&vpll_lock);
+			retrieve_vpll_carrier_line_lock(&line_lock);
+			if ((vpll_lock == 0) && (line_lock == 0))
+				retrieve_vpll_carrier_audio_power(&power);
+		}
+	}
+
+	if (power >= 150)
+		*state = 1;
+	else
+		*state = 0;
+
+	pr_info("aml_fe_get_atvaudio_state: %d.\n", *state);
+}
+EXPORT_SYMBOL(aml_fe_get_atvaudio_state);
+
 void set_aft_thread_enable(int enable, u32_t delay)
 {
 	aft_thread_enable = enable;
@@ -497,7 +529,7 @@ void aml_timer_hander(unsigned long arg)
 	aml_timer.expires = jiffies + AML_INTERVAL*delay_ms;
 	add_timer(&aml_timer);
 	if (!aft_thread_enable) {
-		pr_info("%s, stop aft thread\n", __func__);
+		/*pr_info("%s, stop aft thread\n", __func__);*/
 		return;
 	}
 	if (aft_thread_delaycnt > 0) {
@@ -2662,6 +2694,8 @@ static ssize_t setting_store(struct class *class, struct class_attribute *attr,
 					   &fm->atv_demod[id]);
 			aml_fe_dev_release(dvb, AM_DEV_TUNER, &fm->tuner[id]);
 		}
+	} else if (strstr(buf, "atvaudio_state")) {
+		aml_fe_get_atvaudio_state(&val);
 	}
 
 	return size;

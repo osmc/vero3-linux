@@ -216,4 +216,5 @@ extern int amlogic_gpio_request(unsigned int pin, const char *label);
 */
 extern void vdac_enable(bool on, unsigned int module_sel);
 extern void set_aft_thread_enable(int enable, u32_t delay);
+extern void aml_fe_get_atvaudio_state(int *state);
 #endif /*_AML_FE_H_*/
