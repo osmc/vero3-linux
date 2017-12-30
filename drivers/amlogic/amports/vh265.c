@@ -746,7 +746,7 @@ bit [20]: for DOLBY_VISION_META
 #define MAX_INT 0x7FFFFFFF
 
 #define RPM_BEGIN                                              0x100
-#define modification_list_cur                                  0x140
+#define modification_list_cur                                  0x148
 #define RPM_END                                                0x180
 
 #define RPS_USED_BIT        14
@@ -792,8 +792,8 @@ union param_u {
 		unsigned short tiles_enabled_flag;
 		unsigned short num_tile_columns_minus1;
 		unsigned short num_tile_rows_minus1;
-		unsigned short tile_width[4];
-		unsigned short tile_height[4];
+		unsigned short tile_width[8];
+		unsigned short tile_height[8];
 		unsigned short misc_flag0;
 		unsigned short pps_beta_offset_div2;
 		unsigned short pps_tc_offset_div2;
@@ -1246,8 +1246,8 @@ struct PIC_s {
 	u32 double_write_mode;
 } /*PIC_t */;
 
-#define MAX_TILE_COL_NUM    5
-#define MAX_TILE_ROW_NUM    5
+#define MAX_TILE_COL_NUM    10
+#define MAX_TILE_ROW_NUM    20
 struct tile_s {
 	int width;
 	int height;
