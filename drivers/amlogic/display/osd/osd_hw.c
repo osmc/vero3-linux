@@ -2321,6 +2321,7 @@ static void osd_pan_display_fence(struct osd_fence_map_s *fence_map)
 				osd_hw.osd_afbcd[index].phy_addr =
 					fence_map->ext_addr;
 			/* need always update color mode(canvas_id changed)*/
+			update_color_format(index, fence_map->format);
 			osd_hw.reg[index][OSD_COLOR_MODE].update_func();
 			osd_hw.reg[index][DISP_GEOMETRY].update_func();
 			if ((osd_hw.free_scale_enable[index]
