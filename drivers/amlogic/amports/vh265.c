@@ -6723,10 +6723,8 @@ static int prepare_display_buf(struct hevc_state_s *hevc, struct PIC_s *pic)
 		/* hevc_print(hevc, 0,
 			"aaa: %d/%d, %d/%d\n",
 		   vf->width,vf->height, pic->width, pic->height); */
-		vf->width = pic->width /
-			get_double_write_ratio(hevc, pic->double_write_mode);
-		vf->height = pic->height /
-			get_double_write_ratio(hevc, pic->double_write_mode);
+		vf->width = pic->width;
+		vf->height = pic->height;
 
 		if (force_w_h != 0) {
 			vf->width = (force_w_h >> 16) & 0xffff;
@@ -6781,8 +6779,15 @@ static int prepare_display_buf(struct hevc_state_s *hevc, struct PIC_s *pic)
 					hevc->param.p.conf_win_top_offset,
 					hevc->param.p.conf_win_bottom_offset,
 					vf->width, vf->height);
+
+			vf->compWidth = vf->width;
+			vf->compHeight = vf->height;
 		}
 
+		vf->width = vf->width /
+			get_double_write_ratio(hevc, pic->double_write_mode);
+		vf->height = vf->height /
+			get_double_write_ratio(hevc, pic->double_write_mode);
 #ifdef HEVC_PIC_STRUCT_SUPPORT
 		if (pic->pic_struct == 3 || pic->pic_struct == 4) {
 			struct vframe_s *vf2;
