@@ -466,6 +466,21 @@ static void vbi_slicer_task(unsigned long arg)
 		pr_info("[vbi..]: Start parsing, bytes_buffer:%d, rptr:0x%p...\n",
 		bytes_buffer, rptr);
 	while (bytes_buffer) {
+		if (bytes_buffer >= devp->mem_size + VBI_WRITE_BURST_BYTE) {
+			pr_info("[vbi..]: illegal bytes_buffer!!:%d...\n",
+				bytes_buffer);
+			return;
+		}
+		if (devp->vbi_start == false ||
+			tvafe_clk_status == false)
+			return;
+		if (!local_rptr ||
+			local_rptr > devp->pac_addr_start +
+			(devp->mem_size*2) - 1) {
+			pr_info("[vbi..]: illegal addr!!local_rptr:0x%p...\n",
+				local_rptr);
+			return;
+		}
 		vbi_get_byte(local_rptr, bytes_buffer, rbyte);
 		vbi_skip_bytes(rptr, bytes_buffer, devp, 1);
 		sync_code <<= 8;
@@ -761,13 +776,15 @@ static ssize_t vbi_buffer_read(struct vbi_ringbuffer_s *src,
 
 	if (tvafe_clk_status == false) {
 		ret = -EWOULDBLOCK;
-		pr_info("[vbi..] %s: tvafe is closed.\n", __func__);
+		if (vbi_dbg_en)
+			pr_err("[vbi..] %s: tvafe is closed.\n", __func__);
 		return ret;
 	}
 	if (src->error) {
 		ret = src->error;
 		vbi_ringbuffer_flush(src);
-		pr_info("[vbi..] %s: read buffer error\n", __func__);
+		if (vbi_dbg_en)
+			pr_err("[vbi..] %s: read buffer error\n", __func__);
 		return ret;
 	}
 	if (vbi_dbg_en)
@@ -824,12 +841,10 @@ static int vbi_open(struct inode *inode, struct file *file)
 		return -ERESTARTSYS;
 	}
 	tasklet_enable(&vbi_dev->tsklt_slicer);
-	mutex_init(&vbi_dev->slicer->mutex);
 	vbi_ringbuffer_init(&vbi_dev->slicer->buffer, NULL,
 		VBI_DEFAULT_BUFFER_PACKEGE_NUM);
 	vbi_dev->slicer->type = VBI_TYPE_NULL;
 	vbi_slicer_state_set(vbi_dev, VBI_STATE_ALLOCATED);
-	spin_lock_init(&vbi_dev->vbi_isr_lock);
 	/*disable data capture function*/
 	vbi_dev->tasklet_enable = false;
 	vbi_dev->vbi_start = false;
@@ -854,7 +869,7 @@ static int vbi_release(struct inode *inode, struct file *file)
 
 	vbi_dev->tasklet_enable = false;
 	vbi_dev->vbi_start = false;  /*disable data capture function*/
-	tasklet_disable_nosync(&vbi_dev->tsklt_slicer);
+	tasklet_disable(&vbi_dev->tsklt_slicer);
 	ret = vbi_slicer_free(vbi_dev, vbi_slicer);
 	/* free irq */
 	if (vbi_dev->irq_free_status == 1)
@@ -918,10 +933,10 @@ static long vbi_ioctl(struct file *file,
 			pr_err("[vbi..] %s: slicer mutex error\n", __func__);
 			return -ERESTARTSYS;
 		}
-		ret = vbi_slicer_stop(vbi_slicer);
 		/* disable data capture function */
 		vbi_dev->tasklet_enable = false;
 		vbi_dev->vbi_start = false;
+		ret = vbi_slicer_stop(vbi_slicer);
 		/* manuel reset vbi */
 		/*W_VBI_APB_REG(ACD_REG_22, 0x82080000);*/
 		/* vbi reset release, vbi agent enable*/
@@ -942,12 +957,16 @@ static long vbi_ioctl(struct file *file,
 		}
 		if (copy_from_user(&vbi_slicer->type, argp, sizeof(int))) {
 			ret = -EFAULT;
+			mutex_unlock(&vbi_slicer->mutex);
 			break;
 		}
-		if (tvafe_clk_status)
+		if (tvafe_clk_status) {
 			ret = vbi_slicer_set(vbi_dev, vbi_slicer);
-		else
+		} else {
 			ret = -EFAULT;
+			pr_err("[vbi..] %s: tvafeclose, no vbi_slicer_set\n",
+				__func__);
+		}
 		mutex_unlock(&vbi_slicer->mutex);
 		pr_info("[vbi..] %s: set slicer type to %d ,state:%d\n",
 			__func__, vbi_slicer->type, vbi_slicer->state);
@@ -961,6 +980,7 @@ static long vbi_ioctl(struct file *file,
 		}
 		if (copy_from_user(&buffer_size_t, argp, sizeof(int))) {
 			ret = -EFAULT;
+			mutex_unlock(&vbi_slicer->mutex);
 			break;
 		}
 		ret = vbi_set_buffer_size(vbi_dev, buffer_size_t);
@@ -1254,7 +1274,6 @@ static ssize_t vbi_store(struct device *dev,
 			VBI_DEFAULT_BUFFER_PACKEGE_NUM);
 		devp->slicer->type = VBI_TYPE_NULL;
 		vbi_slicer_state_set(devp, VBI_STATE_ALLOCATED);
-		spin_lock_init(&devp->vbi_isr_lock);
 		/*disable data capture function*/
 		devp->tasklet_enable = false;
 		devp->vbi_start = false;
@@ -1356,6 +1375,7 @@ static int vbi_probe(struct platform_device *pdev)
 
 	mutex_init(&vbi_dev->mutex);
 	spin_lock_init(&vbi_dev->lock);
+	spin_lock_init(&vbi_dev->vbi_isr_lock);
 
 	/* init drv data */
 	dev_set_drvdata(vbi_dev->dev, vbi_dev);
@@ -1376,6 +1396,7 @@ static int vbi_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto fail_alloc_mem;
 	}
+	mutex_init(&vbi_dev->slicer->mutex);
 	vbi_dev->slicer->buffer.data = NULL;
 	vbi_dev->slicer->state = VBI_STATE_FREE;
 
@@ -1409,6 +1430,8 @@ static int vbi_remove(struct platform_device *pdev)
 	struct vbi_dev_s *vbi_dev;
 	vbi_dev = platform_get_drvdata(pdev);
 
+	mutex_destroy(&vbi_dev->slicer->mutex);
+	mutex_destroy(&vbi_dev->mutex);
 	tasklet_kill(&vbi_dev->tsklt_slicer);
 	if (vbi_dev->pac_addr_start)
 		iounmap(vbi_dev->pac_addr_start);
