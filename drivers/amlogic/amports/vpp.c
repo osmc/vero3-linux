@@ -913,6 +913,10 @@ RESTART:
 		orig_aspect = aspect_factor;
 		screen_aspect = 0x90;
 	}
+	if (super_debug)
+		pr_info("aspect_factor=%d,%d,%d,%d,%d,%d\n",
+			aspect_factor, w_in, height_out,
+			width_out, h_in, aspect_ratio_out);
 
 	if ((aspect_factor == 0)
 		|| (wide_mode == VIDEO_WIDEOPTION_FULL_STRETCH)
@@ -1759,6 +1763,7 @@ int vpp_set_super_scaler_regs(int scaler_path_sel,
 
 	return 0;
 }
+
 static void vpp_set_super_scaler(const struct vinfo_s *vinfo,
 			struct vpp_frame_par_s *next_frame_par)
 {
@@ -1772,6 +1777,12 @@ static void vpp_set_super_scaler(const struct vinfo_s *vinfo,
 
 	/*for sr adjust*/
 	vpp_super_scaler_support();
+
+	/*patch for width align 2*/
+	if (super_scaler && (width_out%2)) {
+		next_frame_par->VPP_hsc_endp++;
+		width_out++;
+	}
 
 	hor_sc_multiple_num = (1 << PPS_FRAC_BITS) /
 		next_frame_par->vpp_filter.vpp_hsc_start_phase_step;
