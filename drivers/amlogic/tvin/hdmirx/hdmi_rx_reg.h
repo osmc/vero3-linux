@@ -889,6 +889,7 @@
 #define DWC_HDCP_SETTINGS		(0x0C4UL)
 /*fast mode*/
 #define HDCP_FAST_MODE			_BIT(12)
+#define HDCP_BCAPS				_BIT(13)
 /** Register address: key description seed */
 #define DWC_HDCP_SEED			(0x0C8UL)
 /** Register address: receiver key selection */

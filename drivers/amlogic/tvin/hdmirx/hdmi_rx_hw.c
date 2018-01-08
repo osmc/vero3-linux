@@ -858,8 +858,14 @@ void hdmi_rx_ctrl_hdcp_config(const struct hdmi_rx_ctrl_hdcp *hdcp)
 	int error = 0;
 	unsigned i = 0;
 	unsigned k = 0;
-
 	hdmirx_wr_bits_dwc(DWC_HDCP_SETTINGS, HDCP_FAST_MODE, 0);
+	/* Enable hdcp bcaps bit(bit7). In hdcp1.4 spec: Use of
+	 * this bit is reserved, hdcp Receivers not capable of
+	 * supporting HDMI must clear this bit to 0. For YAMAHA
+	 * RX-V377 amplifier, enable this bit is needed, in case
+	 * the amplifier won't do hdcp1.4 interaction occasionally.
+	 */
+	hdmirx_wr_bits_dwc(DWC_HDCP_SETTINGS, HDCP_BCAPS, 1);
 	hdmirx_wr_bits_dwc(DWC_HDCP_CTRL, ENCRIPTION_ENABLE, 0);
 	/* hdmirx_wr_bits_dwc(ctx, DWC_HDCP_CTRL, KEY_DECRYPT_ENABLE, 1); */
 	hdmirx_wr_bits_dwc(DWC_HDCP_CTRL, KEY_DECRYPT_ENABLE, 0);
