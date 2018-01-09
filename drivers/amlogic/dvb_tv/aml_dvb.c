@@ -802,7 +802,7 @@ static ssize_t demux##i##_show_pcr(struct class *class,  \
 		f = READ_MPEG_REG(PCR_DEMUX_2);\
 	else if (i == 2)\
 		f = READ_MPEG_REG(PCR_DEMUX_3);\
-	return sprintf(buf, "%08x\n", f);\
+	return sprintf(buf, "0x%08x\n", f);\
 }
 
 /*Show the STB input source*/

@@ -62,6 +62,7 @@ static u32 first_pcr;
 static u8 pcrscr_valid;
 static u8 pcraudio_valid;
 static u8 pcrvideo_valid;
+static u8 pcr_init_flag;
 
 static int demux_skipbyte;
 
@@ -221,6 +222,7 @@ static int tsdemux_config(void)
 	return 0;
 }
 
+static void tsdemux_pcr_set(unsigned int pcr);
 /*TODO irq*/
 static irqreturn_t tsdemux_isr(int irq, void *dev_id)
 {
@@ -294,6 +296,11 @@ static irqreturn_t tsdemux_isr(int irq, void *dev_id)
 		/* TODO: put data to somewhere */
 		/* pr_info("subtitle pes ready\n"); */
 		wakeup_sub_poll();
+	}
+	if (int_status & (1<<PCR_READY)) {
+		unsigned int pcr_pts = 0xffffffff;
+		pcr_pts = DMX_READ_REG(id, PCR_DEMUX);
+		tsdemux_pcr_set(pcr_pts);
 	}
 
 	if (!enable_demux_driver())
@@ -444,6 +451,7 @@ s32 tsdemux_init(u32 vid, u32 aid, u32 sid, u32 pcrid, bool is_hevc,
 	u32 parser_sub_rp;
 	pcrvideo_valid = 0;
 	pcraudio_valid = 0;
+	pcr_init_flag = 0;
 
 	/* #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6 */
 	/*TODO clk */
@@ -684,6 +692,7 @@ void tsdemux_release(void)
 {
 	pcrscr_valid = 0;
 	first_pcr = 0;
+	pcr_init_flag = 0;
 
 	WRITE_PARSER_REG(PARSER_INT_ENABLE, 0);
 	WRITE_PARSER_REG(PARSER_VIDEO_HOLE, 0);
@@ -1124,3 +1133,13 @@ u8 tsdemux_pcrvideo_valid(void)
 {
 	return pcrvideo_valid;
 }
+
+void tsdemux_pcr_set(unsigned int pcr)
+{
+	if (pcr_init_flag == 0) {
+		timestamp_pcrscr_set(pcr);
+		timestamp_pcrscr_enable(1);
+		pcr_init_flag = 1;
+	}
+}
+

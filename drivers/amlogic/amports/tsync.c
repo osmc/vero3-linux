@@ -34,6 +34,7 @@
 #include "tsync_pcr.h"
 #include "arch/register.h"
 #include "amports_priv.h"
+#include "tsdemux.h"
 
 
 /* #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6 */
@@ -1396,6 +1397,8 @@ static ssize_t dobly_store_sync(struct class *class,
 static ssize_t show_pcrscr(struct class *class,
 		struct class_attribute *attr, char *buf)
 {
+	if (tsdemux_pcrscr_valid())
+		return sprintf(buf, "0x%x\n", timestamp_pcrscr_get()+500*90);
 	return sprintf(buf, "0x%x\n", timestamp_pcrscr_get());
 }
 

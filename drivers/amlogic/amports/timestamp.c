@@ -22,6 +22,8 @@
 #include "vdec_reg.h"
 #include "arch/register.h"
 #include "amports_priv.h"
+#include "tsync_pcr.h"
+#include "tsdemux.h"
 
 
 u32 acc_apts_inc = 0;
@@ -113,7 +115,13 @@ EXPORT_SYMBOL(timestamp_apts_started);
 
 u32 timestamp_pcrscr_get(void)
 {
-	return system_time;
+	if (tsdemux_pcrscr_valid()) {
+		if (tsync_pcr_demux_pcr_used() == 0)
+			return system_time;
+		else
+			return tsdemux_pcrscr_get()-500*90;
+	} else
+		return system_time;
 }
 EXPORT_SYMBOL(timestamp_pcrscr_get);
 

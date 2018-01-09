@@ -28,4 +28,6 @@ extern int tsync_pcr_set_apts(unsigned pts);
 
 extern int get_vsync_pts_inc_mode(void);
 
+extern int tsync_pcr_demux_pcr_used(void);
+
 #endif
