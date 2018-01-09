@@ -1310,7 +1310,6 @@ int retrieve_vpll_carrier_afc(void)
 {
 	int data_ret, pll_lock, field_lock, line_lock, line_lock_strong;
 	unsigned long vd_lock = 0;
-	unsigned int data_h, data_l, data_exg = 0;
 
 	pll_lock = atv_dmd_rd_byte(APB_BLOCK_ADDR_CARR_RCVY, 0x43)&0x1;
 	vd_lock = atv_dmd_rd_byte(APB_BLOCK_ADDR_VDAGC, 0x4f);
@@ -1324,23 +1323,18 @@ int retrieve_vpll_carrier_afc(void)
 		data_ret = 0xffff;/* 500; */
 		return data_ret;
 	}
-	data_h = atv_dmd_rd_byte(APB_BLOCK_ADDR_CARR_RCVY, 0x40);
-	data_l = atv_dmd_rd_byte(APB_BLOCK_ADDR_CARR_RCVY, 0x41);
-	data_exg = ((data_h&0x7) << 8) | data_l;
-	if (data_h&0x8) {
-		data_ret = (((~data_exg)&0x7ff) - 1);
-		data_ret = data_ret*488*(-1)/1000;
-	} else {
-		data_ret = data_exg;
-		data_ret = data_ret*488/1000;
-	}
+
+	retrieve_frequency_offset(&data_ret);
+
 	if ((abs(data_ret) < 50) && (line_lock_strong == 0x8) &&
 		(field_lock == 0x4)) {
 		data_ret = 100;
 		return data_ret;
 	}
+
 	return data_ret;
 }
+
 void set_pll_lpf(unsigned int lock)
 {
 	atv_dmd_wr_byte(APB_BLOCK_ADDR_CARR_RCVY, 0x24, lock);
@@ -1348,23 +1342,22 @@ void set_pll_lpf(unsigned int lock)
 
 void retrieve_frequency_offset(int *freq_offset)
 {
-	/*unsigned int data;
-	data = atv_dmd_rd_word(APB_BLOCK_ADDR_CARR_RCVY,0x40);
-	*freq_offset = (int)data;*/
 	unsigned int data_h, data_l, data_exg;
 	int data_ret;
+
 	data_h = atv_dmd_rd_byte(APB_BLOCK_ADDR_CARR_RCVY, 0x40);
 	data_l = atv_dmd_rd_byte(APB_BLOCK_ADDR_CARR_RCVY, 0x41);
-	data_exg = ((data_h&0x7)<<8) | data_l;
-	if (data_h&0x8) {
-		data_ret = (((~data_exg) & 0x7ff)  - 1);
-		data_ret = data_ret*(-1);
-		/* data_ret = data_ret*488*(-1) /1000; */
-	} else
-		data_ret = data_exg;/* data_ret = data_ret*488/100; */
-	*freq_offset = data_ret;
+	data_exg = ((data_h & 0x7) << 8) | data_l;
+	if (data_h & 0x8) {
+		data_ret = (((~data_exg) & 0x7ff) - 1);
+		*freq_offset = data_ret * 488 * (-1) / 1000;
+	} else {
+		data_ret = data_exg * 488 / 1000;
+		*freq_offset = data_ret;
+	}
 }
 EXPORT_SYMBOL(retrieve_frequency_offset);
+
 void retrieve_video_lock(int *lock)
 {
 	unsigned int data, wlock, slock;
@@ -1373,6 +1366,7 @@ void retrieve_video_lock(int *lock)
 	slock = data & 0x80;
 	*lock = wlock & slock;
 }
+
 void retrieve_field_lock(int *lock)
 {
 	unsigned int data, field_lock, line_lock;
@@ -1381,6 +1375,7 @@ void retrieve_field_lock(int *lock)
 	line_lock = data & 0x4;
 	*lock = ((field_lock == 0) && (line_lock == 0));
 }
+
 void retrieve_fh_frequency(int *fh)
 {
 	unsigned long data1, data2;
@@ -1407,7 +1402,6 @@ void atvdemod_afc_tune(void)
 		pr_info("%s visual carrier lock:unlocked\n", __func__);
 	/* set_pll_lpf(lock); */
 	retrieve_frequency_offset(&freq_offset);
-	freq_offset = freq_offset*488/1000;
 	/* pr_info("visual carrier offset:%d Hz\n",
 	freq_offset*48828125/100000); */
 	/* retrieve_video_lock(&lock); */

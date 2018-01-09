@@ -330,6 +330,7 @@ static int aml_atvdemod_enter_mode(struct aml_fe *fe, int mode)
 	}
 
 	set_aft_thread_enable(1, 0);
+	memset(&(amlatvdemod_devp->parm), 0, sizeof(amlatvdemod_devp->parm));
 	atvdemod_state = ATVDEMOD_STATE_WORK;
 	return 0;
 }
@@ -347,6 +348,7 @@ static int aml_atvdemod_leave_mode(struct aml_fe *fe, int mode)
 	adc_set_pll_cntl(0, 0x1, NULL);
 	if (is_meson_txlx_cpu() || is_meson_txhd_cpu())
 		aud_demod_clk_gate(0);
+	memset(&(amlatvdemod_devp->parm), 0, sizeof(amlatvdemod_devp->parm));
 	atvdemod_state = ATVDEMOD_STATE_IDEL;
 	return 0;
 }
@@ -597,10 +599,6 @@ void aml_atvdemod_set_params(struct dvb_frontend *fe,
 			(p->tuner_id == AM_TUNER_R840) ||
 			(p->tuner_id == AM_TUNER_SI2151) ||
 			(p->tuner_id == AM_TUNER_MXL661)) {
-			amlatvdemod_devp->parm.std  = p->std;
-			amlatvdemod_devp->parm.if_freq = p->if_freq;
-			amlatvdemod_devp->parm.if_inv = p->if_inv;
-			amlatvdemod_devp->parm.tuner_id = p->tuner_id;
 			/* open AGC if needed */
 			if (amlatvdemod_devp->pin != NULL)
 				devm_pinctrl_put(amlatvdemod_devp->pin);
@@ -608,9 +606,21 @@ void aml_atvdemod_set_params(struct dvb_frontend *fe,
 				amlatvdemod_devp->pin =
 				devm_pinctrl_get_select(amlatvdemod_devp->dev,
 						amlatvdemod_devp->pin_name);
-			atv_dmd_set_std();
+
 			last_frq = c->frequency;
 			last_std = c->analog.std;
+
+			if (p->std != amlatvdemod_devp->parm.std) {
+				amlatvdemod_devp->parm.std = p->std;
+				amlatvdemod_devp->parm.if_freq = p->if_freq;
+				amlatvdemod_devp->parm.if_inv = p->if_inv;
+				amlatvdemod_devp->parm.tuner_id = p->tuner_id;
+				atv_dmd_set_std();
+			} else {
+				atv_dmd_soft_reset();
+				return;
+			}
+
 			if (!is_atvdemod_scan_mode()) {
 				atvauddemod_init();
 			}
