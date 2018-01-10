@@ -1725,7 +1725,9 @@ static void vh264_isr(void)
 
 				h264_pts_count++;
 			} else {
-				if (!idr_flag)
+				/* non-idr or non-I frame will set pts_valid */
+				if ((!idr_flag) &&
+					(!(slice_type == SLICE_TYPE_I)))
 					pts_valid = 0;
 			}
 
