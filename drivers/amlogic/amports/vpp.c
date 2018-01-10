@@ -2517,8 +2517,10 @@ void vpp_bypass_ratio_config(void)
 	if (is_meson_gxbb_cpu() || is_meson_gxl_cpu() ||
 		is_meson_gxm_cpu() || is_meson_gxlx_cpu())
 		bypass_ratio = 125;
-	else if (is_meson_txlx_cpu() || is_meson_txl_cpu())
+	else if (is_meson_txl_cpu())
 		bypass_ratio = 247;/*0x110 * (100/110)=0xf7*/
+	else if (is_meson_txlx_cpu())
+		bypass_ratio = 235;
 	else
 		bypass_ratio = 205;
 }
