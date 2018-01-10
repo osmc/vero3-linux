@@ -129,7 +129,7 @@ void irq_trace_start(unsigned long flags)
 	cpu = get_cpu();
 	put_cpu();
 	softirq =  task_thread_info(current)->preempt_count & SOFTIRQ_MASK;
-	if ((t_idle[cpu] && !softirq) || t_i_d[cpu])
+	if ((t_idle[cpu] && !softirq) || t_i_d[cpu] || cpu_is_offline(cpu))
 		return;
 
 	memset(&irq_trace[cpu], 0, sizeof(irq_trace[cpu]));
@@ -173,7 +173,7 @@ void irq_trace_stop(unsigned long flag)
 	t = (t_i_e - t_i_d[cpu]);
 	softirq =  task_thread_info(current)->preempt_count & SOFTIRQ_MASK;
 
-	if (!(t_idle[cpu] && !softirq) && (t > irq_dis_thr)) {
+	if (!(t_idle[cpu] && !softirq) && (t > irq_dis_thr) && t_i_d[cpu]) {
 		out_cnt++;
 		if (t_i_e >= t_d_out + OUT_WIN) {
 			t_d_out = t_i_e;
