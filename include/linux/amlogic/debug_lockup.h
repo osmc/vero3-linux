@@ -25,5 +25,6 @@ void lockup_hook(int cpu);
 void isr_in_hook(unsigned int cpu, unsigned long *tin, unsigned int irq);
 void isr_out_hook(unsigned int cpu, unsigned long tin, unsigned int irq);
 void irq_trace_en(int en);
-
+void sirq_in_hook(unsigned int cpu, unsigned long *tin, void *p);
+void sirq_out_hook(unsigned int cpu, unsigned long tin, void *p);
 #endif

@@ -26,7 +26,8 @@
 
 /*isr trace*/
 #define ns2ms			(1000 * 1000)
-#define LONG_ISR		(200 * ns2ms)
+#define LONG_ISR		(500 * ns2ms)
+#define LONG_SIRQ		(500 * ns2ms)
 #define CHK_WINDOW		(1000 * ns2ms)
 #define IRQ_CNT			256
 #define CCCNT_WARN		1000
@@ -36,9 +37,10 @@ static unsigned long t_isr[IRQ_CNT];
 static unsigned long t_total[IRQ_CNT];
 static unsigned int cnt_total[IRQ_CNT];
 static int cpu_irq[CPU] = {0};
+static void *cpu_sirq[CPU] = {NULL};
 
 /*irq disable trace*/
-#define LONG_IRQDIS		(500 * 1000000)	/*500 ms*/
+#define LONG_IRQDIS		(1000 * 1000000)	/*500 ms*/
 #define OUT_WIN			(500 * 1000000)	/*500 ms*/
 #define LONG_IDLE		(5000000000)	/*5 sec*/
 #define ENTRY			10
@@ -53,10 +55,14 @@ static unsigned long isr_thr = LONG_ISR;
 core_param(isr_thr, isr_thr, ulong, 0644);
 static unsigned long irq_dis_thr = LONG_IRQDIS;
 core_param(irq_dis_thr, irq_dis_thr, ulong, 0644);
+static unsigned long sirq_thr = LONG_SIRQ;
+core_param(sirq_thr, sirq_thr, ulong, 0644);
 static int irq_check_en = 1;
 core_param(irq_check_en, irq_check_en, int, 0644);
 static int isr_check_en = 1;
 core_param(isr_check_en, isr_check_en, int, 0644);
+static unsigned long out_thr = OUT_WIN;
+core_param(out_thr, out_thr, ulong, 0644);
 
 void isr_in_hook(unsigned int cpu, unsigned long *tin, unsigned int irq)
 {
@@ -109,6 +115,21 @@ void isr_out_hook(unsigned int cpu, unsigned long tin, unsigned int irq)
 	cnt_total[irq] = 0;
 }
 
+void sirq_in_hook(unsigned int cpu, unsigned long *tin, void *p)
+{
+	cpu_sirq[cpu] = p;
+	*tin = sched_clock();
+}
+void sirq_out_hook(unsigned int cpu, unsigned long tin, void *p)
+{
+	unsigned long tout = sched_clock();
+
+	if (cpu_sirq[cpu] && tin && (tout > tin + sirq_thr)) {
+		pr_err("SIRQLong___ERR. sirq:%p  tout-tin:%ld ms\n",
+			p, (tout - tin) / ns2ms);
+	}
+	cpu_sirq[cpu] = NULL;
+}
 
 void irq_trace_en(int en)
 {
@@ -129,7 +150,8 @@ void irq_trace_start(unsigned long flags)
 	cpu = get_cpu();
 	put_cpu();
 	softirq =  task_thread_info(current)->preempt_count & SOFTIRQ_MASK;
-	if ((t_idle[cpu] && !softirq) || t_i_d[cpu] || cpu_is_offline(cpu))
+	if ((t_idle[cpu] && !softirq) || t_i_d[cpu] || cpu_is_offline(cpu) ||
+		(softirq_count() && !cpu_sirq[cpu]))
 		return;
 
 	memset(&irq_trace[cpu], 0, sizeof(irq_trace[cpu]));
@@ -173,9 +195,10 @@ void irq_trace_stop(unsigned long flag)
 	t = (t_i_e - t_i_d[cpu]);
 	softirq =  task_thread_info(current)->preempt_count & SOFTIRQ_MASK;
 
-	if (!(t_idle[cpu] && !softirq) && (t > irq_dis_thr) && t_i_d[cpu]) {
+	if (!(t_idle[cpu] && !softirq) && (t > irq_dis_thr) && t_i_d[cpu] &&
+		!(softirq_count() && !cpu_sirq[cpu])) {
 		out_cnt++;
-		if (t_i_e >= t_d_out + OUT_WIN) {
+		if (t_i_e >= t_d_out + out_thr) {
 			t_d_out = t_i_e;
 			pr_err("\n\nDisIRQ___ERR:%ld ms <%ld %ld> %d:\n",
 				t / ns2ms, t_i_e / ns2ms, t_i_d[cpu] / ns2ms,
@@ -227,10 +250,11 @@ void pr_lockup_info(int c)
 		unsigned long t_cur = sched_clock();
 		struct task_struct *p = (cpu_rq(cpu)->curr);
 		int preempt = task_thread_info(p)->preempt_count;
-		pr_err("\ndump_cpu[%d] ISR:%3d <%x h:%x, s:%x> %s\n",
+		pr_err("\ndump_cpu[%d] ISR:%3d <%x h:%x, s:%x> %s <%p>\n",
 			cpu, cpu_irq[cpu], preempt,
 			(int)(preempt & HARDIRQ_MASK),
-			(int)(preempt & SOFTIRQ_MASK), current->comm);
+			(int)(preempt & SOFTIRQ_MASK), current->comm,
+			cpu_sirq[cpu]);
 		if (t_i_d[cpu]) {
 			pr_err("IRQ____ERR[%d]. <%ld %ld>.\n",
 				cpu,  t_i_d[cpu] / ns2ms,
@@ -302,4 +326,72 @@ void test_sirq_long(void)
 }
 #endif
 
+#include <linux/debugfs.h>
+#include <linux/module.h>
+#include <linux/uaccess.h>
+static struct dentry *debug_lockup;
 
+
+#define debug_fs(x)					\
+static ssize_t x##_write(struct file *file, const char __user *userbuf,\
+				   size_t count, loff_t *ppos)	\
+{							\
+	char buf[20];					\
+	int ret;						\
+	count = min_t(size_t, count, (sizeof(buf)-1));		\
+	if (copy_from_user(buf, userbuf, count))		\
+		return -EFAULT;				\
+	buf[count] = 0;					\
+	ret = sscanf(buf, "%ld", &x);			\
+	pr_info("%s:%ld\n", __func__, x);			\
+	return count;					\
+}							\
+static ssize_t x##_read(struct file *file, char __user *userbuf,	\
+				 size_t count, loff_t *ppos)	\
+{							\
+	char buf[20];					\
+	ssize_t len;					\
+	len = snprintf(buf, sizeof(buf), "%ld\n", x);		\
+	pr_info("%s:%ld\n", __func__, x);			\
+	return simple_read_from_buffer(userbuf, count, ppos, buf, len);\
+}							\
+static const struct file_operations x##_debug_ops = {		\
+	.open		= simple_open,			\
+	.read		= x##_read,			\
+	.write		= x##_write,			\
+};
+debug_fs(isr_thr);
+debug_fs(irq_dis_thr);
+debug_fs(sirq_thr);
+debug_fs(out_thr);
+
+static int __init debug_lockup_init(void)
+{
+	debug_lockup = debugfs_create_dir("lockup", NULL);
+	if (IS_ERR_OR_NULL(debug_lockup)) {
+		pr_warn("failed to create debug_lockup\n");
+		debug_lockup = NULL;
+		return -1;
+	}
+	debugfs_create_file("isr_thr", S_IFREG | S_IRUGO,
+			    debug_lockup, NULL, &isr_thr_debug_ops);
+	debugfs_create_file("irq_dis_thr", S_IFREG | S_IRUGO,
+			    debug_lockup, NULL, &irq_dis_thr_debug_ops);
+	debugfs_create_file("sirq_thr", S_IFREG | S_IRUGO,
+			    debug_lockup, NULL, &sirq_thr_debug_ops);
+	debugfs_create_file("out_thr", S_IFREG | S_IRUGO,
+			    debug_lockup, NULL, &out_thr_debug_ops);
+	return 0;
+}
+
+static void __exit debug_lockup_exit(void)
+{
+}
+
+
+module_init(debug_lockup_init);
+module_exit(debug_lockup_exit);
+
+MODULE_DESCRIPTION("Amlogic debug lockup module");
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Jianxin Pan <jianxin.pan@amlogic.com>");
