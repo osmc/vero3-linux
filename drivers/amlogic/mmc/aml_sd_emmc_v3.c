@@ -1196,8 +1196,8 @@ static int emmc_ds_core_align(struct mmc_host *mmc)
 	u32 ds_count = 0, cmd_count = 0;
 	ds_count = fbinary(pdata->align[8]);
 	if (ds_count == 0)
-		if ((pdata->align[8] & 0xf0) == 0)
-			return 0;
+		if ((pdata->align[8] & 0x1e0) == 0)
+			goto out_cmd;
 	emmc_dbg(AMLSD_DBG_V3, "ds_count:%d,delay1:0x%x,delay2:0x%x\n",
 			ds_count, sd_emmc_regs->gdelay1, sd_emmc_regs->gdelay2);
 	if (ds_count < 20) {
@@ -1230,6 +1230,8 @@ static int emmc_ds_core_align(struct mmc_host *mmc)
 
 	delay1 += (count<<0)|(count<<6)|(count<<12)|(count<<18)|(count<<24);
 	delay2 += (count<<0)|(count<<6)|(count<<12);
+
+out_cmd:
 
 	cmd_count = fbinary(pdata->align[9]);
 	if (cmd_count <= (pdata->count/3))
