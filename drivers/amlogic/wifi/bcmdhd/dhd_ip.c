@@ -197,7 +197,7 @@ _tdata_psh_info_pool_deq(tcpack_sup_module_t *tcpack_sup_mod)
 
 	tdata_psh_info = tcpack_sup_mod->tdata_psh_info_free;
 	if (tdata_psh_info == NULL)
-		DHD_ERROR(("%s %d: Out of tdata_disc_grp\n", __FUNCTION__, __LINE__));
+		DHD_TRACE(("%s %d: Out of tdata_disc_grp\n", __FUNCTION__, __LINE__));
 	else {
 		tcpack_sup_mod->tdata_psh_info_free = tdata_psh_info->next;
 		tdata_psh_info->next = NULL;
@@ -1089,7 +1089,7 @@ dhd_tcpdata_info_get(dhd_pub_t *dhdp, void *pkt)
 #endif /* DHDTCPACK_SUP_DBG */
 
 	if (tdata_psh_info == NULL) {
-		DHD_ERROR(("%s %d: No more free tdata_psh_info!!\n", __FUNCTION__, __LINE__));
+		DHD_TRACE(("%s %d: No more free tdata_psh_info!!\n", __FUNCTION__, __LINE__));
 		ret = BCME_ERROR;
 		dhd_os_tcpackunlock(dhdp, flags);
 		goto exit;
