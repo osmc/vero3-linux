@@ -57,18 +57,21 @@ mmc_host_clk_release(struct mmc_host *host)
 #include <drivers/mmc/core/host.h>
 #else
 #include <linux/mmc/host.h>
-static inline void mmc_host_clk_hold(struct mmc_host *host)
+/*static inline void mmc_host_clk_hold(struct mmc_host *host)
 {
 }
+
 
 static inline void mmc_host_clk_release(struct mmc_host *host)
 {
 }
 
+
 static inline unsigned int mmc_host_clk_rate(struct mmc_host *host)
 {
         return host->ios.clock;
 }
+*/
 #endif /* (LINUX_VERSION_CODE <= KERNEL_VERSION(3, 0, 0)) */
 #include <linux/mmc/card.h>
 #include <linux/mmc/sdio_func.h>

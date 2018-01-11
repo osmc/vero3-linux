@@ -9,7 +9,7 @@
 #include <802.11.h>
 
 #define FW_PATH_AUTO_SELECT 1
-//#define CONFIG_PATH_AUTO_SELECT
+#define CONFIG_PATH_AUTO_SELECT
 extern char firmware_path[MOD_PARAM_PATHLEN];
 extern uint dhd_rxbound;
 extern uint dhd_txbound;
