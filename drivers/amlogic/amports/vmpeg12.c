@@ -73,6 +73,7 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 #define MREG_FRAME_OFFSET   AV_SCRATCH_D
 #define MREG_WAIT_BUFFER    AV_SCRATCH_E
 #define MREG_FATAL_ERROR    AV_SCRATCH_F
+#define MREG_FORCE_I_RDY    AV_SCRATCH_G
 
 #define PICINFO_ERROR       0x80000000
 #define PICINFO_TYPE_MASK   0x00030000
@@ -1003,6 +1004,7 @@ static int vmpeg12_prot_init(void)
 		WRITE_VREG(MREG_CMD, (frame_width << 16) | frame_height);
 	else
 		WRITE_VREG(MREG_CMD, 0);
+	WRITE_VREG(MREG_FORCE_I_RDY, (force_first_i_ready & 0x01));
 	/* clear error count */
 	WRITE_VREG(MREG_ERROR_COUNT, 0);
 	WRITE_VREG(MREG_FATAL_ERROR, 0);
