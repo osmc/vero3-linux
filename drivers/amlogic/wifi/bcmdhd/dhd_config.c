@@ -67,6 +67,8 @@ uint config_msg_level = CONFIG_ERROR_LEVEL;
 #define CONFIG_BCM4358A3 "config_4358.txt"
 #define CONFIG_BCM4359B1 "config_4359b1.txt"
 #define CONFIG_BCM4359C0 "config_4359c0.txt"
+/* Allow NVRAM revision updates across Vero 3 */
+#define BCM43455C0_NVRAM_NAME "nvram_43455c0.txt"
 #endif
 
 #ifdef BCMSDIO
@@ -577,6 +579,45 @@ dhd_conf_set_clm_name_by_chip(dhd_pub_t *dhd, char *clm_path)
 
 	CONFIG_TRACE(("%s: clm_path=%s\n", __FUNCTION__, clm_path));
 }
+
+#ifdef CONFIG_PATH_AUTO_SELECT
+void
+nazarko_dhd_conf_set_nv_name_by_chip(dhd_pub_t *dhd, char *nv_path)
+{
+       uint chip, chiprev;
+       int i;
+
+       chip = dhd->conf->chip;
+       chiprev = dhd->conf->chiprev;
+
+       if (nv_path[0] == '\0') {
+               printf("no nvpath to work on\n");
+               return;
+        }
+
+       /* find out the last '/' */
+       i = strlen(nv_path);
+       while (i > 0) {
+               if (nv_path[i] == '/') break;
+               i--;
+       }
+
+       switch (chip) {
+#ifdef BCMSDIO
+               /* Only handling Vero 4k versions in the wild */
+               case BCM4345_CHIP_ID:
+               case BCM43454_CHIP_ID:
+                       if (chiprev == BCM43455C0_CHIP_REV)
+                               strcpy(&nv_path[i+1], BCM43455C0_NVRAM_NAME);
+                       break;
+#endif
+       }
+
+       printf("%s: nvram_path=%s\n", __FUNCTION__, nv_path);
+}
+#endif
+
+
 
 void
 dhd_conf_set_nv_name_by_chip(dhd_pub_t *dhd, char *nv_path)

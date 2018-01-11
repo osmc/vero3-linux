@@ -8268,11 +8268,11 @@ dhd_set_path_params(struct dhd_bus *bus)
 	dhd_conf_read_config(bus->dhd, bus->dhd->conf_path);
 
 	dhd_conf_set_fw_name_by_chip(bus->dhd, bus->fw_path);
-	dhd_conf_set_nv_name_by_chip(bus->dhd, bus->nv_path);
+	nazarko_dhd_conf_set_nv_name_by_chip(bus->dhd, bus->nv_path);
 	dhd_conf_set_clm_name_by_chip(bus->dhd, bus->dhd->clm_path);
 
 	dhd_conf_set_fw_name_by_mac(bus->dhd, bus->sdh, bus->fw_path);
-	dhd_conf_set_nv_name_by_mac(bus->dhd, bus->sdh, bus->nv_path);
+	//dhd_conf_set_nv_name_by_mac(bus->dhd, bus->sdh, bus->nv_path);
 
 	printf("Final fw_path=%s\n", bus->fw_path);
 	printf("Final nv_path=%s\n", bus->nv_path);
