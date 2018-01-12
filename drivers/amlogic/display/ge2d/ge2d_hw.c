@@ -784,28 +784,55 @@ void ge2d_set_cmd(struct ge2d_cmd_s *cfg)
 		}
 	} else {
 		/* #else */
-		if (x_yc_ratio) {
-			if ((cfg->src1_x_rev + cfg->dst_x_rev) == 1) {
-				x_extra_bit_start = 3;
-				x_extra_bit_end   = 2;
-				x_chr_phase = 0x08;
-			} else {
-				x_extra_bit_start = 2;
-				x_extra_bit_end   = 3;
-				x_chr_phase = 0x08;
+		/* src:yuv , dst: rgb */
+		if ((cfg->src1_fmt & GE2D_FORMAT_YUV) &&
+			((cfg->dst_fmt & GE2D_FORMAT_YUV) == 0)) {
+			if (x_yc_ratio) {
+				if ((cfg->src1_x_rev + cfg->dst_x_rev) == 1) {
+					x_extra_bit_start = 3;
+					x_extra_bit_end   = 2;
+					x_chr_phase = 0x4c;
+				} else {
+					x_extra_bit_start = 2;
+					x_extra_bit_end   = 3;
+					x_chr_phase = 0xc4;
+				}
 			}
-		}
+			if (y_yc_ratio) {
+				if ((cfg->src1_y_rev + cfg->dst_y_rev) == 1) {
+					y_extra_bit_start = 3;
+					y_extra_bit_end   = 2;
+					y_chr_phase = 0x4c;
+				} else {
+					y_extra_bit_start = 2;
+					y_extra_bit_end   = 3;
+					y_chr_phase = 0xc4;
+				}
+			}
+		} else {
+			if (x_yc_ratio) {
+				if ((cfg->src1_x_rev + cfg->dst_x_rev) == 1) {
+					x_extra_bit_start = 3;
+					x_extra_bit_end   = 2;
+					x_chr_phase = 0x08;
+				} else {
+					x_extra_bit_start = 2;
+					x_extra_bit_end   = 3;
+					x_chr_phase = 0x08;
+				}
+			}
+			if (y_yc_ratio) {
+				if ((cfg->src1_y_rev + cfg->dst_y_rev) == 1) {
+					y_extra_bit_start = 3;
+					y_extra_bit_end   = 2;
+					y_chr_phase = 0x4c;
+				} else {
+					y_extra_bit_start = 2;
+					y_extra_bit_end   = 3;
+					y_chr_phase = 0x4c;
+				}
+			}
 
-		if (y_yc_ratio) {
-			if ((cfg->src1_y_rev + cfg->dst_y_rev) == 1) {
-				y_extra_bit_start = 3;
-				y_extra_bit_end   = 2;
-				y_chr_phase = 0x4c;
-			} else {
-				y_extra_bit_start = 2;
-				y_extra_bit_end   = 3;
-				y_chr_phase = 0x4c;
-			}
 		}
 	}
 	/* #endif */
