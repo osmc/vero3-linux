@@ -286,16 +286,12 @@ void rx_init_reg_map(void)
 		reg_maps[rx.chip_id][i].p = ioremap(
 			reg_maps[rx.chip_id][i].phy_addr,
 			reg_maps[rx.chip_id][i].size);
-		if (!reg_maps[rx.chip_id][i].p) {
-			rx_pr("hdmirx: failed Mapped PHY: 0x%x , maped:%p\n",
-			reg_maps[rx.chip_id][i].phy_addr,
-			reg_maps[rx.chip_id][i].p);
-		} else {
+		if (reg_maps[rx.chip_id][i].p)
 			reg_maps[rx.chip_id][i].flag = 1;
-			rx_pr("hdmirx: Mapped PHY: 0x%x , maped:%p\n",
-			reg_maps[rx.chip_id][i].phy_addr,
-			reg_maps[rx.chip_id][i].p);
-		}
+		else
+			rx_pr("hdmirx: failed Mapped PHY: 0x%x , maped:%p\n",
+				reg_maps[rx.chip_id][i].phy_addr,
+				reg_maps[rx.chip_id][i].p);
 	}
 }
 
@@ -1560,11 +1556,9 @@ static void hdmirx_get_base_addr(struct device_node *node)
 	/*get base addr from dts*/
 	if (node)
 		node_sub = of_get_child_by_name(node, "hdmirx_port");
-	rx_pr("node_p = %p\n", node_sub);
 	if (node_sub) {
 		ret = of_property_read_u32_array(node_sub,
 				"reg", reg_arry, 2);
-		rx_pr("hdmirx_port:%#x,%#x\n", reg_arry[0], reg_arry[1]);
 		if (!ret && reg_arry[0]) {
 			hdmirx_addr_port = reg_arry[0];
 			reg_maps[rx.chip_id][MAP_ADDR_MODULE_TOP].phy_addr =
@@ -1572,23 +1566,21 @@ static void hdmirx_get_base_addr(struct device_node *node)
 			reg_maps[rx.chip_id][MAP_ADDR_MODULE_TOP].size =
 				reg_arry[1];
 		}
-	}
+	} else
+		rx_pr("get hdmirx_port fail\n");
 	if (node)
 		node_sub = of_get_child_by_name(node, "hiu_io");
-	rx_pr("node_p = %p\n", node_sub);
 	if (node_sub) {
 		ret = of_property_read_u32_array(node_sub,
 				"reg", reg_arry, 2);
-		rx_pr("hiu addr:%#x,%#x\n", reg_arry[0], reg_arry[1]);
 		if (!ret && reg_arry[0]) {
 			reg_maps[rx.chip_id][MAP_ADDR_MODULE_HIU].phy_addr =
 				reg_arry[0];
 			reg_maps[rx.chip_id][MAP_ADDR_MODULE_HIU].size =
 				reg_arry[1];
 		}
-	}
-	rx_pr("hiu_base_addr:%#x\n",
-			reg_maps[rx.chip_id][MAP_ADDR_MODULE_HIU].phy_addr);
+	} else
+		rx_pr("get hiu_io fail\n");
 	if (node) {
 		if (hdmirx_addr_port == 0) {
 			ret = of_property_read_u32(node,
@@ -1608,8 +1600,6 @@ static void hdmirx_get_base_addr(struct device_node *node)
 			hdmirx_data_port = hdmirx_addr_port + 4;
 			hdmirx_ctrl_port = hdmirx_data_port + 8;
 		}
-		rx_pr("port addr:%#x ,data:%#x, ctrl:%#x\n",
-			hdmirx_addr_port, hdmirx_data_port, hdmirx_ctrl_port);
 	}
 	reg_maps[rx.chip_id][MAP_ADDR_MODULE_TOP].phy_addr = hdmirx_addr_port;
 }
@@ -1627,7 +1617,8 @@ static int hdmirx_switch_pinmux(struct device  dev)
 					    0, &pin_name);
 		if (!ret) {
 			pin = devm_pinctrl_get_select(&dev, pin_name);
-			rx_pr("hdmirx: pinmux:%p, name:%s\n", pin, pin_name);
+			/* rx_pr("hdmirx: pinmux:%p, name:%s\n", */
+				/* pin, pin_name); */
 		}
 	}
 	return ret;
@@ -1786,19 +1777,13 @@ static int hdmirx_probe(struct platform_device *pdev)
 	xtal_clk = clk_get(&pdev->dev, "xtal");
 	if (IS_ERR(xtal_clk))
 		rx_pr("get xtal err\n");
-	else {
+	else
 		clk_rate = clk_get_rate(xtal_clk);
-		pr_info("%s: xtal_clk is %d MHZ\n", __func__,
-				clk_rate/1000000);
-	}
 	fclk_div5_clk = clk_get(&pdev->dev, "fclk_div5");
 	if (IS_ERR(fclk_div5_clk))
 		rx_pr("get fclk_div5_clk err\n");
-	else {
+	else
 		clk_rate = clk_get_rate(fclk_div5_clk);
-		pr_info("%s: fclk_div5_clk is %d MHZ\n", __func__,
-				clk_rate/1000000);
-	}
 	hdevp->modet_clk = clk_get(&pdev->dev, "hdmirx_modet_clk");
 	if (IS_ERR(hdevp->modet_clk))
 		rx_pr("get modet_clk err\n");
@@ -1806,8 +1791,6 @@ static int hdmirx_probe(struct platform_device *pdev)
 		clk_set_parent(hdevp->modet_clk, xtal_clk);
 		clk_set_rate(hdevp->modet_clk, 24000000);
 		clk_rate = clk_get_rate(hdevp->modet_clk);
-		pr_info("%s: modet_clk is %d MHZ\n", __func__,
-				clk_rate/1000000);
 	}
 
 	hdevp->cfg_clk = clk_get(&pdev->dev, "hdmirx_cfg_clk");
@@ -1817,8 +1800,6 @@ static int hdmirx_probe(struct platform_device *pdev)
 		clk_set_parent(hdevp->cfg_clk, fclk_div5_clk);
 		clk_set_rate(hdevp->cfg_clk, 133333333);
 		clk_rate = clk_get_rate(hdevp->cfg_clk);
-		pr_info("%s: cfg_clk is %d MHZ\n", __func__,
-				clk_rate/1000000);
 	}
 
 	if (is_meson_txlx_cpu() || is_meson_txhd_cpu()) {
@@ -1831,7 +1812,6 @@ static int hdmirx_probe(struct platform_device *pdev)
 		else {
 			clk_set_parent(hdevp->aud_out_clk, tmds_clk_fs);
 			clk_rate = clk_get_rate(hdevp->aud_out_clk);
-			pr_info("%s: aud_out_clk is set ok\n", __func__);
 		}
 	}
 
@@ -1855,8 +1835,6 @@ static int hdmirx_probe(struct platform_device *pdev)
 		clk_set_parent(hdevp->audmeas_clk, fclk_div5_clk);
 		clk_set_rate(hdevp->audmeas_clk, 200000000);
 		clk_rate = clk_get_rate(hdevp->audmeas_clk);
-		pr_info("%s: audmeas_clk is %d MHZ\n", __func__,
-				clk_rate/1000000);
 	}
 
 	pd_fifo_buf = kmalloc(PFIFO_SIZE * sizeof(uint32_t), GFP_KERNEL);
@@ -1881,22 +1859,20 @@ static int hdmirx_probe(struct platform_device *pdev)
 	ret = of_property_read_u32(pdev->dev.of_node,
 				"en_4k_2_2k", &en_4k_2_2k);
 	if (ret) {
-		pr_err("%s:don't find  en_4k_2_2k.\n", __func__);
+		rx_pr("en_4k_2_2k not found.\n");
 		en_4k_2_2k = 0;
 	}
 
 	ret = of_property_read_u32(pdev->dev.of_node,
 				"en_4k_timing", &en_4k_timing);
-	if (ret) {
-		pr_err("%s:don't find  en_4k_timing.\n", __func__);
+	if (ret)
 		en_4k_timing = 1;
-	}
 
 	ret = of_property_read_u32(pdev->dev.of_node,
 					"arc_port", &arc_port_id);
-		if (ret) {
-			pr_err("%s:no arc port info.\n", __func__);
-			arc_port_id = 2;
+	if (ret) {
+		pr_err("arc_port not found\n");
+		arc_port_id = 2;
 	}
 
 	hdmirx_hw_probe();

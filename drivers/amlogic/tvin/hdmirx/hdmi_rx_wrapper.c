@@ -2800,14 +2800,16 @@ unsigned char *rx_get_edid(int edid_index)
 
 	memcpy(edid_temp, rx_get_edid_buffer(edid_index),
 				rx_get_edid_size(edid_index));
-	rx_pr("index=%d,get size=%d,edid_size=%d,rept=%d\n",
-				edid_index,
-				rx_get_edid_size(edid_index),
-				edid_size, hdmirx_repeat_support());
+	if (log_level & EDID_LOG) {
+		rx_pr("index=%d,get size=%d,edid_size=%d,rept=%d\n",
+					edid_index,
+					rx_get_edid_size(edid_index),
+					edid_size, hdmirx_repeat_support());
 
 
-	rx_pr("edid update port map:%#x,up_phy_addr=%#x\n",
-				port_map, up_phy_addr);
+		rx_pr("edid update port map:%#x,up_phy_addr=%#x\n",
+					port_map, up_phy_addr);
+	}
 	return edid_temp;
 }
 
@@ -2888,7 +2890,8 @@ unsigned int rx_edid_cal_phy_addr(
 				(root_offset - 1)*4));
 
 			phy_addr[i] = rx_exchange_bits(phy_addr[i]);
-			rx_pr("port %d phy:%d\n", i, phy_addr[i]);
+			if (log_level & EDID_LOG)
+				rx_pr("port %d phy:%d\n", i, phy_addr[i]);
 		}
 	} else {
 		for (i = 0; i < E_PORT_NUM; i++)
@@ -2956,7 +2959,7 @@ void rx_edid_update_overlay(
 						u_int *pphy_addr,
 						u_char *pchecksum)
 {
-	u_int i;
+	/* u_int i; */
 
 	if (!(pphy_addr && pchecksum))
 		return;
@@ -3009,10 +3012,10 @@ void rx_edid_update_overlay(
 			pchecksum[E_PORT0]|(pchecksum[E_PORT1]<<8)|
 			(pchecksum[E_PORT2]<<16) | (pchecksum[E_PORT3] << 24));
 
-	for (i = 0; i < E_PORT_NUM; i++) {
-		rx_pr(">port %d,addr 0x%x,checksum 0x%x\n",
-					i, pphy_addr[i], pchecksum[i]);
-	}
+	/* for (i = 0; i < E_PORT_NUM; i++) { */
+		/* rx_pr(">port %d,addr 0x%x,checksum 0x%x\n", */
+					/* i, pphy_addr[i], pchecksum[i]); */
+	/* } */
 }
 
 unsigned char get_atmos_offset(unsigned char *p_edid)
@@ -3076,7 +3079,8 @@ unsigned char rx_parse_arc_aud_type(const unsigned char *buff)
 			if (rx.open_fg) {
 				hdmi_rx_ctrl_edid_update();
 				rx_send_hpd_pulse();
-				rx_pr("*update edid-atmos*\n");
+				if (log_level & EDID_LOG)
+					rx_pr("*update edid-atmos*\n");
 			} else
 				pre_port = 0xff;
 		}
@@ -3086,7 +3090,8 @@ unsigned char rx_parse_arc_aud_type(const unsigned char *buff)
 			if (rx.open_fg) {
 				hdmi_rx_ctrl_edid_update();
 				rx_send_hpd_pulse();
-				rx_pr("*update edid-no atmos*\n");
+				if (log_level & EDID_LOG)
+					rx_pr("*update edid-no atmos*\n");
 			} else
 				pre_port = 0xff;
 		}
@@ -3179,7 +3184,8 @@ int hdmirx_read_key_buf(char *buf, int max_size)
 		return 0;
 	}
 	memcpy(buf, key_buf, key_size);
-	rx_pr("HDMIRX: read key buf\n");
+	if (log_level & EDID_LOG)
+		rx_pr("HDMIRX: read key buf\n");
 	return key_size;
 }
 
@@ -3198,7 +3204,8 @@ void hdmirx_fill_key_buf(const char *buf, int size)
 	} else {
 		memcpy(key_buf, buf, size);
 		key_size = size;
-		rx_pr("HDMIRX: fill key buf, size %d\n", size);
+		if (log_level & EDID_LOG)
+			rx_pr("HDMIRX: fill key buf, size %d\n", size);
 	}
 }
 
@@ -3230,8 +3237,9 @@ void hdmirx_fill_edid_buf(const char *buf, int size)
 	memcpy(edid_buf, buf, size);
 
 	edid_size = size;
-	rx_pr("HDMIRX: fill edid buf, size %d\n",
-		size);
+	if (log_level & EDID_LOG)
+		rx_pr("HDMIRX: fill edid buf, size %d\n",
+			size);
 }
 
 /********************

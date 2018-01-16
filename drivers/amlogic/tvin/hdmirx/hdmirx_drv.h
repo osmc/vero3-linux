@@ -42,7 +42,7 @@
 #define RX_VER2 "Ref.2018/1/5"
 /*------------------------------*/
 
-#define RX_VER3 "Ref.2017/12/26"
+#define RX_VER3 "Ref.2018/01/16"
 /*------------------------------*/
 
 #define RX_VER4 "Ref.2017/10/19"
@@ -62,6 +62,7 @@
 #define EQ_LOG		0x20
 #define REG_LOG		0x40
 #define ERR_LOG		0x80
+#define EDID_LOG	0x100
 #define VSI_LOG		0x800
 
 /* stable_check_lvl */

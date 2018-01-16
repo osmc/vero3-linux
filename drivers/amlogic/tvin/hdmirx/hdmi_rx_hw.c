@@ -1538,7 +1538,7 @@ void hdmirx_hw_probe(void)
 	hdmirx_wr_top(TOP_PORT_SEL, 0x10);
 	hdmirx_wr_top(TOP_INTR_STAT_CLR, ~0);
 	hdmirx_wr_top(TOP_INTR_MASKN, top_intr_maskn_value);
-	rx_pr("%s Done!\n", __func__);
+	/* rx_pr("%s Done!\n", __func__); */
 }
 
 /***************************************************
