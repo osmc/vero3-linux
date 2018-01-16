@@ -938,9 +938,11 @@ static void vh264_set_params(struct work_struct *work)
 
 	mb_total = (mb_width >> 8) & 0xffff;
 	max_reference_size = (mb_width >> 24) & 0x7f;
+	/*
 	mb_mv_byte = (mb_width & 0x80000000) ? 24 : 96;
 	if (ucode_type == UCODE_IP_ONLY_PARAM)
-		mb_mv_byte = 96;
+	*/
+	mb_mv_byte = 96;
 	mb_width = mb_width & 0xff;
 	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXTVBB) {
 		if (!mb_width && mb_total)
