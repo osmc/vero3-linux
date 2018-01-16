@@ -562,7 +562,6 @@
 		pinctrl-0 = <&emmc_clk_cmd_pins>;
 		pinctrl-1 = <&emmc_conf_pull_up &emmc_conf_pull_done>;
 		emmc {
-			status = "disabled";
 			pinname = "emmc";
 			ocr_avail = <0x200080>; /**VDD voltage 3.3 ~ 3.4 */
 			caps = "MMC_CAP_8_BIT_DATA","MMC_CAP_MMC_HIGHSPEED",
@@ -592,7 +591,6 @@
 		pinctrl-0 = <&sd_clk_cmd_pins>;
 		pinctrl-1 = <&sd_all_pins>;
 		sd {
-			status = "disabled";
 	   		pinname = "sd";
 	   		ocr_avail = <0x00200080>; // 3.3:0x200000, 1.8+3.3:0x00200080
 	   		caps = "MMC_CAP_4_BIT_DATA","MMC_CAP_MMC_HIGHSPEED",
