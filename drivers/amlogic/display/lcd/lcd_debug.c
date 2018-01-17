@@ -1112,6 +1112,26 @@ static void lcd_debug_clk_change(unsigned int pclk)
 		&lcd_drv->lcd_info->mode);
 }
 
+static void lcd_power_interface_ctrl(int state)
+{
+	struct aml_lcd_drv_s *lcd_drv = aml_lcd_get_driver();
+
+	mutex_lock(&lcd_power_mutex);
+	LCDPR("%s: %d\n", __func__, state);
+	if (state) {
+		if (lcd_drv->lcd_status & LCD_STATUS_ENCL_ON) {
+			aml_lcd_notifier_call_chain(
+				LCD_EVENT_IF_POWER_ON, NULL);
+		} else {
+			LCDERR("%s: can't power on when controller is off\n",
+				__func__);
+		}
+	} else {
+		aml_lcd_notifier_call_chain(LCD_EVENT_IF_POWER_OFF, NULL);
+	}
+	mutex_unlock(&lcd_power_mutex);
+}
+
 static ssize_t lcd_debug_store(struct class *class,
 		struct class_attribute *attr, const char *buf, size_t count)
 {
@@ -1319,16 +1339,7 @@ static ssize_t lcd_debug_store(struct class *class,
 	case 'p': /* power */
 		ret = sscanf(buf, "power %d", &temp);
 		if (ret == 1) {
-			mutex_lock(&lcd_power_mutex);
-			LCDPR("power: %d\n", temp);
-			if (temp) {
-				aml_lcd_notifier_call_chain(
-					LCD_EVENT_IF_POWER_ON, NULL);
-			} else {
-				aml_lcd_notifier_call_chain(
-					LCD_EVENT_IF_POWER_OFF, NULL);
-			}
-			mutex_unlock(&lcd_power_mutex);
+			lcd_power_interface_ctrl(temp);
 		} else {
 			LCDERR("invalid data\n");
 			return -EINVAL;
@@ -1546,8 +1557,8 @@ static ssize_t lcd_debug_resume_show(struct class *class,
 	struct aml_lcd_drv_s *lcd_drv = aml_lcd_get_driver();
 
 	return sprintf(buf, "lcd resume flag: %d(%s)\n",
-		lcd_drv->lcd_resume_flag,
-		lcd_drv->lcd_resume_flag ? "workqueue" : "directly");
+		lcd_drv->lcd_resume_type,
+		lcd_drv->lcd_resume_type ? "workqueue" : "directly");
 }
 
 static ssize_t lcd_debug_resume_store(struct class *class,
@@ -1559,8 +1570,8 @@ static ssize_t lcd_debug_resume_store(struct class *class,
 
 	ret = sscanf(buf, "%d", &temp);
 	if (ret == 1) {
-		lcd_drv->lcd_resume_flag = (unsigned char)temp;
-		LCDPR("set lcd resume flag: %d\n", lcd_drv->lcd_resume_flag);
+		lcd_drv->lcd_resume_type = (unsigned char)temp;
+		LCDPR("set lcd resume flag: %d\n", lcd_drv->lcd_resume_type);
 	} else {
 		LCDERR("invalid data\n");
 		return -EINVAL;
@@ -2473,7 +2484,7 @@ static struct class_attribute lcd_debug_class_attrs[] = {
 		lcd_debug_change_store),
 	__ATTR(enable,      S_IRUGO | S_IWUSR, lcd_debug_enable_show,
 		lcd_debug_enable_store),
-	__ATTR(resume,      S_IRUGO | S_IWUSR, lcd_debug_resume_show,
+	__ATTR(resume_type, S_IRUGO | S_IWUSR, lcd_debug_resume_show,
 		lcd_debug_resume_store),
 	__ATTR(power,       S_IRUGO | S_IWUSR,
 		lcd_debug_power_show, lcd_debug_power_store),

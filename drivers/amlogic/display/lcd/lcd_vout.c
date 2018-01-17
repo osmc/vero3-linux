@@ -532,11 +532,17 @@ static int lcd_interface_notifier(struct notifier_block *nb,
 	if (event & LCD_EVENT_IF_ON) {
 		if (lcd_debug_print_flag)
 			LCDPR("%s: 0x%lx\n", __func__, event);
-		lcd_driver->power_tiny_ctrl(1);
+		if (lcd_driver->lcd_status & LCD_STATUS_ENCL_ON) {
+			lcd_power_tiny_ctrl(1);
+		} else {
+			LCDERR("%s: can't power on when controller is off\n",
+				__func__);
+			return NOTIFY_DONE;
+		}
 	} else if (event & LCD_EVENT_IF_OFF) {
 		if (lcd_debug_print_flag)
 			LCDPR("%s: 0x%lx\n", __func__, event);
-		lcd_driver->power_tiny_ctrl(0);
+		lcd_power_tiny_ctrl(0);
 	} else {
 		return NOTIFY_DONE;
 	}
@@ -953,12 +959,11 @@ static int lcd_config_probe(void)
 	lcd_driver->lcd_config = &lcd_config_dft;
 	lcd_driver->vpp_sel = 0;
 	lcd_driver->lcd_test_flag = 0;
-	lcd_driver->lcd_resume_flag = 1; /* default workqueue */
+	lcd_driver->lcd_resume_type = 1; /* default workqueue */
 	lcd_driver->lcd_vmode_change_flag = 0;
 	lcd_driver->lcd_vmode_vsync_en = 0; /* default disable */
 	lcd_driver->power_ctrl = lcd_power_ctrl;
 	lcd_driver->module_reset = lcd_module_reset;
-	lcd_driver->power_tiny_ctrl = lcd_power_tiny_ctrl;
 	lcd_driver->module_tiny_reset = lcd_module_tiny_reset;
 	lcd_config_default();
 	lcd_init_vout();
@@ -1058,7 +1063,7 @@ static int lcd_remove(struct platform_device *pdev)
 static int lcd_resume(struct platform_device *pdev)
 {
 	/*queue_work(lcd_driver->workqueue, &(lcd_driver->lcd_resume_work));*/
-	if (lcd_driver->lcd_resume_flag) {
+	if (lcd_driver->lcd_resume_type) {
 		lcd_resume_flag = 1;
 		if (lcd_driver->workqueue) {
 			queue_delayed_work(lcd_driver->workqueue,

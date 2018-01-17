@@ -443,9 +443,9 @@ struct lcd_duration_s {
 	unsigned int duration_den;
 };
 
-#define LCD_STATUS_IF_ON     (1<<0)
-#define LCD_STATUS_MOD_ON    (1<<1)
-#define LCD_STATUS_ON    (LCD_STATUS_IF_ON | LCD_STATUS_MOD_ON)
+#define LCD_STATUS_IF_ON      (1 << 0)
+#define LCD_STATUS_ENCL_ON    (1 << 1)
+#define LCD_STATUS_ON    (LCD_STATUS_IF_ON | LCD_STATUS_ENCL_ON)
 
 #define LCD_VMODE_SWITCH         1
 #define LCD_VFRAME_RATE_AUTO     2
@@ -459,7 +459,7 @@ struct aml_lcd_drv_s {
 	unsigned char lcd_config_load;
 	unsigned char vpp_sel; /*0:vpp, 1:vpp2 */
 	unsigned char lcd_test_flag;
-	unsigned char lcd_resume_flag; /* 0=directly, 1=workqueue */
+	unsigned char lcd_resume_type; /* 0=directly, 1=workqueue */
 	unsigned char lcd_mute;
 	unsigned char lcd_vmode_change_flag;
 	unsigned char lcd_vmode_vsync_en;
@@ -477,7 +477,6 @@ struct aml_lcd_drv_s {
 	void (*driver_disable)(void);
 	int (*driver_change)(void);
 	void (*module_reset)(void);
-	void (*power_tiny_ctrl)(int status);
 	void (*driver_tiny_enable)(void);
 	void (*driver_tiny_disable)(void);
 	void (*module_tiny_reset)(void);
