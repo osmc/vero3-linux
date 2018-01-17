@@ -24,9 +24,9 @@ obj-$(CONFIG_AM_VDEC_MPEG12) += amvdec_mpeg12.o
 amvdec_mpeg12-objs := vmpeg12.o
 amvdec_mpeg12-y    := vmpeg12.o
 
-#obj-$(CONFIG_AM_VDEC_MMPEG12) += amvdec_mmpeg12.o
-#amvdec_mmpeg12-objs := vmmpeg12.o
-#amvdec_mmpeg12-y    := vmmpeg12.o
+obj-$(CONFIG_AM_VDEC_MMPEG12) += amvdec_mmpeg12.o
+amvdec_mmpeg12-objs := vmmpeg12.o
+amvdec_mmpeg12-y    := vmmpeg12.o
 
 obj-$(CONFIG_AM_VDEC_MPEG4) += amvdec_mpeg4.o
 amvdec_mpeg4-objs := vmpeg4.o

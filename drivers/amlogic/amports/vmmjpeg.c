@@ -59,7 +59,10 @@
 #define MREG_TO_AMRISC      AV_SCRATCH_8
 #define MREG_FROM_AMRISC    AV_SCRATCH_9
 #define MREG_FRAME_OFFSET   AV_SCRATCH_A
-#define DEC_STATUS_REG      AV_SCRATCH_J
+#define DEC_STATUS_REG      AV_SCRATCH_F
+#define MREG_PIC_WIDTH      AV_SCRATCH_B
+#define MREG_PIC_HEIGHT     AV_SCRATCH_C
+#define DECODE_STOP_POS     AV_SCRATCH_K
 
 #define PICINFO_BUF_IDX_MASK        0x0007
 #define PICINFO_AVI1                0x0080
@@ -73,6 +76,7 @@
 
 #define DEFAULT_MEM_SIZE	(32*SZ_1M)
 static int debug_enable;
+static u32 udebug_flag;
 #define DECODE_ID(hw) (hw_to_vdec(hw)->id)
 
 static struct vframe_s *vmjpeg_vf_peek(void *);
@@ -82,6 +86,39 @@ static int vmjpeg_vf_states(struct vframe_states *states, void *);
 static int vmjpeg_event_cb(int type, void *data, void *private_data);
 static void vmjpeg_work(struct work_struct *work);
 static int pre_decode_buf_level = 0x800;
+#undef pr_info
+#define pr_info printk
+unsigned int mmjpeg_debug_mask = 0xff;
+#define PRINT_FLAG_ERROR              0x0
+#define PRINT_FLAG_RUN_FLOW           0X0001
+#define PRINT_FLAG_TIMEINFO           0x0002
+#define PRINT_FLAG_UCODE_DETAIL		  0x0004
+#define PRINT_FLAG_VLD_DETAIL         0x0008
+#define PRINT_FLAG_DEC_DETAIL         0x0010
+#define PRINT_FLAG_BUFFER_DETAIL      0x0020
+#define PRINT_FLAG_RESTORE            0x0040
+#define PRINT_FRAME_NUM               0x0080
+#define PRINT_FLAG_FORCE_DONE         0x0100
+#define PRINT_FRAMEBASE_DATA          0x0400
+static int counter_max = 4;
+
+int mmjpeg_debug_print(int index, int debug_flag, const char *fmt, ...)
+{
+	if (((debug_enable & debug_flag) &&
+		((1 << index) & mmjpeg_debug_mask))
+		|| (debug_flag == PRINT_FLAG_ERROR)) {
+		unsigned char buf[512];
+		int len = 0;
+		va_list args;
+		va_start(args, fmt);
+		len = sprintf(buf, "%d: ", index);
+		vsnprintf(buf + len, 512-len, fmt, args);
+		pr_info("%s", buf);
+		va_end(args);
+	}
+	return 0;
+}
+
 
 static const char vmjpeg_dec_id[] = "vmmjpeg-dev";
 
@@ -155,12 +192,27 @@ struct vdec_mjpeg_hw_s {
 	u8 eos;
   	u32 frame_num;
   	u32 put_num;
+	u32 timer_counter;
+	u32 run_count;
+	u32	not_run_ready;
+	u32	input_empty;
+	u32 peek_num;
+	u32 get_num;
 };
 
 static void set_frame_info(struct vdec_mjpeg_hw_s *hw, struct vframe_s *vf)
 {
-	vf->width = hw->frame_width;
-	vf->height = hw->frame_height;
+	u32 temp;
+	temp = READ_VREG(MREG_PIC_WIDTH);
+	if (temp > 1920)
+		vf->width = hw->frame_width = 1920;
+	else if (temp > 0)
+		vf->width = hw->frame_width = temp;
+	temp = READ_VREG(MREG_PIC_HEIGHT);
+	if (temp > 1088)
+		vf->height = hw->frame_height = 1088;
+	else if (temp > 0)
+		vf->height = hw->frame_height = temp;
 	vf->duration = hw->frame_dur;
 	vf->ratio_control = 0;
 	vf->duration_pulldown = 0;
@@ -186,10 +238,15 @@ static irqreturn_t vmjpeg_isr(struct vdec_s *vdec)
 	u32 index, offset = 0, pts;
 	u64 pts_us64;
 
-	if (debug_enable & 0x1)
-		pr_info("%s: %d\n", __func__, __LINE__);
-
 	WRITE_VREG(ASSIST_MBOX1_CLR_REG, 1);
+	if (READ_VREG(AV_SCRATCH_D) != 0 &&
+		(debug_enable & PRINT_FLAG_UCODE_DETAIL)) {
+		pr_info("dbg%x: %x\n", READ_VREG(AV_SCRATCH_D),
+		READ_VREG(AV_SCRATCH_E));
+		WRITE_VREG(AV_SCRATCH_D, 0);
+		return IRQ_HANDLED;
+	}
+	hw->timer_counter = 0;
 
 	if (!hw)
 		return IRQ_HANDLED;
@@ -237,6 +294,10 @@ static irqreturn_t vmjpeg_isr(struct vdec_s *vdec)
 	kfifo_put(&hw->display_q, (const struct vframe_s *)vf);
 
 	hw->frame_num++;
+	mmjpeg_debug_print(DECODE_ID(hw), PRINT_FRAME_NUM,
+	"%s:frame num:%d,pts=%d,pts64=%lld. dur=%d\n",
+	__func__, hw->frame_num,
+	vf->pts, vf->pts_us64, vf->duration);
 	vf_notify_receiver(vdec->vf_provider_name,
 			VFRAME_EVENT_PROVIDER_VFRAME_READY,
 			NULL);
@@ -256,7 +317,7 @@ static struct vframe_s *vmjpeg_vf_peek(void *op_arg)
 
 	if (!hw)
 		return NULL;
-
+	hw->peek_num++;
 	if (kfifo_peek(&hw->display_q, &vf))
 		return vf;
 
@@ -271,7 +332,7 @@ static struct vframe_s *vmjpeg_vf_get(void *op_arg)
 
 	if (!hw)
 		return NULL;
-
+	hw->get_num++;
 	if (kfifo_get(&hw->display_q, &vf))
 		return vf;
 
@@ -282,7 +343,9 @@ static void vmjpeg_vf_put(struct vframe_s *vf, void *op_arg)
 {
 	struct vdec_s *vdec = op_arg;
 	struct vdec_mjpeg_hw_s *hw = (struct vdec_mjpeg_hw_s *)vdec->private;
-
+	mmjpeg_debug_print(DECODE_ID(hw), PRINT_FRAME_NUM,
+	"%s:put_num:%d\n",
+	__func__, hw->put_num);
 	hw->vfbuf_use[vf->index]--;
 	kfifo_put(&hw->newframe_q, (const struct vframe_s *)vf);
 	hw->put_num++;
@@ -498,11 +561,102 @@ static void init_scaler(void)
 	WRITE_VREG(PSCALE_RST, 0x7);
 	WRITE_VREG(PSCALE_RST, 0x0);
 }
+static void vmjpeg_dump_state(struct vdec_s *vdec)
+{
+	struct vdec_mjpeg_hw_s *hw =
+		(struct vdec_mjpeg_hw_s *)(vdec->private);
+	mmjpeg_debug_print(DECODE_ID(hw), 0,
+		"====== %s\n", __func__);
+	mmjpeg_debug_print(DECODE_ID(hw), 0,
+		"width/height (%d/%d)\n",
+		hw->frame_width,
+		hw->frame_height
+		);
+	mmjpeg_debug_print(DECODE_ID(hw), 0,
+		"is_framebase(%d), eos %d, state 0x%x, dec_result 0x%x dec_frm %d put_frm %d run %d not_run_ready %d input_empty %d\n",
+		input_frame_based(vdec),
+		hw->eos,
+		hw->stat,
+		hw->dec_result,
+		hw->frame_num,
+		hw->put_num,
+		hw->run_count,
+		hw->not_run_ready,
+		hw->input_empty
+		);
+	if (vf_get_receiver(vdec->vf_provider_name)) {
+		enum receviver_start_e state =
+		vf_notify_receiver(vdec->vf_provider_name,
+			VFRAME_EVENT_PROVIDER_QUREY_STATE,
+			NULL);
+		mmjpeg_debug_print(DECODE_ID(hw), 0,
+			"\nreceiver(%s) state %d\n",
+			vdec->vf_provider_name,
+			state);
+	}
+	mmjpeg_debug_print(DECODE_ID(hw), 0,
+	"%s, newq(%d/%d), dispq(%d/%d) vf peek/get/put (%d/%d/%d)\n",
+	__func__,
+	kfifo_len(&hw->newframe_q),
+	VF_POOL_SIZE,
+	kfifo_len(&hw->display_q),
+	VF_POOL_SIZE,
+	hw->peek_num,
+	hw->get_num,
+	hw->put_num
+	);
+	mmjpeg_debug_print(DECODE_ID(hw), 0,
+		"VIFF_BIT_CNT=0x%x\n",
+		READ_VREG(VIFF_BIT_CNT));
+	mmjpeg_debug_print(DECODE_ID(hw), 0,
+		"VLD_MEM_VIFIFO_LEVEL=0x%x\n",
+		READ_VREG(VLD_MEM_VIFIFO_LEVEL));
+	mmjpeg_debug_print(DECODE_ID(hw), 0,
+		"VLD_MEM_VIFIFO_WP=0x%x\n",
+		READ_VREG(VLD_MEM_VIFIFO_WP));
+	mmjpeg_debug_print(DECODE_ID(hw), 0,
+		"VLD_MEM_VIFIFO_RP=0x%x\n",
+		READ_VREG(VLD_MEM_VIFIFO_RP));
+	mmjpeg_debug_print(DECODE_ID(hw), 0,
+		"PARSER_VIDEO_RP=0x%x\n",
+		READ_PARSER_REG(PARSER_VIDEO_RP));
+	mmjpeg_debug_print(DECODE_ID(hw), 0,
+		"PARSER_VIDEO_WP=0x%x\n",
+		READ_PARSER_REG(PARSER_VIDEO_WP));
+	if (input_frame_based(vdec) &&
+		debug_enable & PRINT_FRAMEBASE_DATA
+		) {
+		int jj;
+		if (hw->chunk && hw->chunk->block &&
+			hw->chunk->size > 0) {
+			u8 *data =
+			((u8 *)hw->chunk->block->start_virt) +
+				hw->chunk->offset;
+			mmjpeg_debug_print(DECODE_ID(hw), 0,
+				"frame data size 0x%x\n",
+				hw->chunk->size);
+			for (jj = 0; jj < hw->chunk->size; jj++) {
+				if ((jj & 0xf) == 0)
+					mmjpeg_debug_print(DECODE_ID(hw),
+					PRINT_FRAMEBASE_DATA,
+						"%06x:", jj);
+				mmjpeg_debug_print(DECODE_ID(hw),
+				PRINT_FRAMEBASE_DATA,
+					"%02x ", data[jj]);
+				if (((jj + 1) & 0xf) == 0)
+					mmjpeg_debug_print(DECODE_ID(hw),
+					PRINT_FRAMEBASE_DATA,
+						"\n");
+			}
+		}
+	}
+}
 
 static void timeout_process(struct vdec_mjpeg_hw_s *hw)
 {
 	amvdec_stop();
-	pr_info("%s decoder timeout\n", __func__);
+	mmjpeg_debug_print(DECODE_ID(hw), PRINT_FLAG_ERROR,
+	"%s decoder timeout\n", __func__);
 	hw->dec_result = DEC_RESULT_DONE;
 
 	vdec_schedule_work(&hw->work);
@@ -512,27 +666,26 @@ static void check_timer_func(unsigned long arg)
 {
 	struct vdec_mjpeg_hw_s *hw = (struct vdec_mjpeg_hw_s *)arg;
 	struct vdec_s *vdec = hw_to_vdec(hw);
-	if ((debug_enable & 0x2) != 0) {
-		pr_info("%s: status:nstatus=%d:%d\n",
-			__func__, vdec->status, vdec->next_status);
-		pr_info("%s: %d,buftl=%x:%x:%x:%x\n",
-			__func__, __LINE__,
-			READ_VREG(VLD_MEM_VIFIFO_BUF_CNTL),
-			READ_PARSER_REG(PARSER_VIDEO_WP),
-			READ_VREG(VLD_MEM_VIFIFO_LEVEL),
-			READ_VREG(VLD_MEM_VIFIFO_WP));
-	}
-	if ((debug_enable & 0x100) != 0) {
-		hw->dec_result = DEC_RESULT_DONE;
-		vdec_schedule_work(&hw->work);
-		pr_info("vdec %d is forced to be disconnected\n",
-			debug_enable & 0xff);
-		debug_enable = 0;
-		return;
-	}
+
+	mmjpeg_debug_print(DECODE_ID(hw), PRINT_FLAG_VLD_DETAIL,
+	"%s: status:nstatus=%d:%d\n",
+	__func__, vdec->status, vdec->next_status);
+	mmjpeg_debug_print(DECODE_ID(hw), PRINT_FLAG_VLD_DETAIL,
+	"%s: %d,buftl=%x:%x:%x:%x\n",
+	__func__, __LINE__,
+	READ_VREG(VLD_MEM_VIFIFO_BUF_CNTL),
+	READ_PARSER_REG(PARSER_VIDEO_WP),
+	READ_VREG(VLD_MEM_VIFIFO_LEVEL),
+	READ_VREG(VLD_MEM_VIFIFO_WP));
+
 
 	if (input_stream_based(vdec)
 		 && READ_VREG(VLD_MEM_VIFIFO_LEVEL) <= 0x80) {
+		if (hw->decode_timeout_count > 0)
+			hw->decode_timeout_count--;
+		if (hw->decode_timeout_count == 0)
+			timeout_process(hw);
+	} else if (debug_enable == 0) {
 		if (hw->decode_timeout_count > 0)
 			hw->decode_timeout_count--;
 		if (hw->decode_timeout_count == 0)
@@ -552,6 +705,20 @@ static void check_timer_func(unsigned long arg)
 		hw->dec_result = DEC_RESULT_FORCE_EXIT;
 		vdec_schedule_work(&hw->work);
 		pr_info("vdec requested to be disconnected\n");
+		return;
+	}
+	hw->timer_counter++;
+	if ((hw->timer_counter > counter_max
+	&& vdec->status == VDEC_STATUS_ACTIVE
+	&& debug_enable == 0)
+	|| (debug_enable & PRINT_FLAG_FORCE_DONE) != 0) {
+		hw->dec_result = DEC_RESULT_DONE;
+		vdec_schedule_work(&hw->work);
+		mmjpeg_debug_print(DECODE_ID(hw), PRINT_FLAG_ERROR,
+		"vdec %d is forced to be disconnected\n",
+			debug_enable & 0xff);
+		if (debug_enable & PRINT_FLAG_FORCE_DONE)
+			debug_enable = 0;
 		return;
 	}
 	mod_timer(&hw->check_timer, jiffies + CHECK_INTERVAL);
@@ -598,12 +765,19 @@ static s32 vmjpeg_init(struct vdec_s *vdec)
 
 	hw->frame_width = hw->vmjpeg_amstream_dec_info.width;
 	hw->frame_height = hw->vmjpeg_amstream_dec_info.height;
-	hw->frame_dur = hw->vmjpeg_amstream_dec_info.rate;
+	hw->frame_dur = ((hw->vmjpeg_amstream_dec_info.rate) ?
+	hw->vmjpeg_amstream_dec_info.rate : 3840);
 	hw->saved_resolution = 0;
 	hw->eos = 0;
 	hw->init_flag = 0;
 	hw->frame_num = 0;
 	hw->put_num = 0;
+	hw->run_count = 0;
+	hw->not_run_ready = 0;
+	hw->input_empty = 0;
+	hw->peek_num = 0;
+	hw->get_num = 0;
+	hw->input_empty = 0;
 	for (i = 0; i < DECODE_BUFFER_NUM_MAX; i++)
 		hw->vfbuf_use[i] = 0;
 
@@ -636,9 +810,11 @@ static s32 vmjpeg_init(struct vdec_s *vdec)
 	hw->check_timer.expires = jiffies + CHECK_INTERVAL;
 	/*add_timer(&hw->check_timer);*/
 	hw->stat |= STAT_TIMER_ARM;
+	WRITE_VREG(DECODE_STOP_POS, udebug_flag);
+	hw->timer_counter = 0;
 
 	INIT_WORK(&hw->work, vmjpeg_work);
-
+	pr_info("w:h=%d:%d\n", hw->frame_width, hw->frame_height);
 	return 0;
 }
 
@@ -646,6 +822,7 @@ static bool run_ready(struct vdec_s *vdec)
 {
 	struct vdec_mjpeg_hw_s *hw =
 		(struct vdec_mjpeg_hw_s *)vdec->private;
+	hw->not_run_ready++;
 	if (hw->eos)
 		return 0;
 	if (vdec_stream_based(vdec) && (hw->init_flag == 0)
@@ -662,6 +839,8 @@ static bool run_ready(struct vdec_s *vdec)
 		if (level < pre_decode_buf_level)
 			return 0;
 	}
+
+	hw->not_run_ready = 0;
 	return true;
 }
 
@@ -674,7 +853,7 @@ static void run(struct vdec_s *vdec,
 
 	hw->vdec_cb_arg = arg;
 	hw->vdec_cb = callback;
-
+	hw->run_count++;
 	for (i = 0; i < DECODE_BUFFER_NUM_MAX; i++) {
 		if (hw->vfbuf_use[i] == 0)
 			break;
@@ -688,19 +867,19 @@ static void run(struct vdec_s *vdec,
 
 	r = vdec_prepare_input(vdec, &hw->chunk);
 	if (r <= 0) {
-		if (debug_enable & 0x1) {
-			pr_info("%s: %d,r=%d,buftl=%x:%x:%x\n",
-			__func__, __LINE__, r,
-			READ_VREG(VLD_MEM_VIFIFO_BUF_CNTL),
-			READ_PARSER_REG(PARSER_VIDEO_WP),
-			READ_VREG(VLD_MEM_VIFIFO_WP));
-		}
+		hw->input_empty++;
+		mmjpeg_debug_print(DECODE_ID(hw), PRINT_FLAG_RUN_FLOW,
+		"%s: %d,r=%d,buftl=%x:%x:%x\n",
+		__func__, __LINE__, r,
+		READ_VREG(VLD_MEM_VIFIFO_BUF_CNTL),
+		READ_PARSER_REG(PARSER_VIDEO_WP),
+		READ_VREG(VLD_MEM_VIFIFO_WP));
 
 		hw->dec_result = DEC_RESULT_AGAIN;
 		schedule_work(&hw->work);
 		return;
 	}
-
+	hw->input_empty = 0;
 	hw->dec_result = DEC_RESULT_NONE;
 
 	if (amvdec_vdec_loadmc_ex(vdec, "vmmjpeg_mc") < 0) {
@@ -716,36 +895,36 @@ static void run(struct vdec_s *vdec,
 	amvdec_start();
 	vdec_enable_input(vdec);
 	mod_timer(&hw->check_timer, jiffies + CHECK_INTERVAL);
-	hw->decode_timeout_count = 2;
+	hw->decode_timeout_count = counter_max;
 	hw->init_flag = 1;
-	if (debug_enable&0x1) {
+	hw->timer_counter = 0;
+	mmjpeg_debug_print(DECODE_ID(hw), PRINT_FLAG_RUN_FLOW,
+	"%s (0x%x 0x%x 0x%x) vldcrl 0x%x bitcnt 0x%x powerctl 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x\n",
+	__func__,
+	READ_VREG(VLD_MEM_VIFIFO_LEVEL),
+	READ_VREG(VLD_MEM_VIFIFO_WP),
+	READ_VREG(VLD_MEM_VIFIFO_RP),
+	READ_VREG(VLD_DECODE_CONTROL),
+	READ_VREG(VIFF_BIT_CNT),
+	READ_VREG(POWER_CTL_VLD),
+	READ_VREG(VLD_MEM_VIFIFO_START_PTR),
+	READ_VREG(VLD_MEM_VIFIFO_CURR_PTR),
+	READ_VREG(VLD_MEM_VIFIFO_CONTROL),
+	READ_VREG(VLD_MEM_VIFIFO_BUF_CNTL),
+	READ_VREG(VLD_MEM_VIFIFO_END_PTR));
 
-		pr_info("%s (0x%x 0x%x 0x%x) vldcrl 0x%x bitcnt 0x%x powerctl 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x\n",
-			__func__,
-			READ_VREG(VLD_MEM_VIFIFO_LEVEL),
-			READ_VREG(VLD_MEM_VIFIFO_WP),
-			READ_VREG(VLD_MEM_VIFIFO_RP),
-			READ_VREG(VLD_DECODE_CONTROL),
-			READ_VREG(VIFF_BIT_CNT),
-			READ_VREG(POWER_CTL_VLD),
-			READ_VREG(VLD_MEM_VIFIFO_START_PTR),
-			READ_VREG(VLD_MEM_VIFIFO_CURR_PTR),
-			READ_VREG(VLD_MEM_VIFIFO_CONTROL),
-			READ_VREG(VLD_MEM_VIFIFO_BUF_CNTL),
-			READ_VREG(VLD_MEM_VIFIFO_END_PTR));
-
-	}
 }
 
 static void vmjpeg_work(struct work_struct *work)
 {
 	struct vdec_mjpeg_hw_s *hw = container_of(work,
 	struct vdec_mjpeg_hw_s, work);
-	if (debug_enable & 0x2)
-		pr_info("%s: result=%d,len=%d:%d\n",
-			__func__, hw->dec_result,
-			kfifo_len(&hw->newframe_q),
-			kfifo_len(&hw->display_q));
+
+	mmjpeg_debug_print(DECODE_ID(hw), PRINT_FLAG_BUFFER_DETAIL,
+	"%s: result=%d,len=%d:%d\n",
+	__func__, hw->dec_result,
+	kfifo_len(&hw->newframe_q),
+	kfifo_len(&hw->display_q));
 	if (hw->dec_result == DEC_RESULT_DONE)
 		vdec_vframe_dirty(hw_to_vdec(hw), hw->chunk);
 	else if (hw->dec_result == DEC_RESULT_AGAIN) {
@@ -804,6 +983,7 @@ static int amvdec_mjpeg_probe(struct platform_device *pdev)
 	pdata->run = run;
 	pdata->run_ready = run_ready;
 	pdata->irq_handler = vmjpeg_isr;
+	pdata->dump_state = vmjpeg_dump_state;
 
 
 	if (pdata->use_vfm_path)
@@ -893,6 +1073,11 @@ MODULE_PARM_DESC(debug_enable, "\n debug enable\n");
 module_param(pre_decode_buf_level, int, 0664);
 MODULE_PARM_DESC(pre_decode_buf_level,
 		"\n ammvdec_h264 pre_decode_buf_level\n");
+module_param(udebug_flag, uint, 0664);
+MODULE_PARM_DESC(udebug_flag, "\n amvdec_mmpeg12 udebug_flag\n");
+module_param(counter_max, int, 0664);
+MODULE_PARM_DESC(counter_max,
+		"\n ammvdec_mjpeg isr timeout max counter,40ms default\n");
 module_init(amvdec_mjpeg_driver_init_module);
 module_exit(amvdec_mjpeg_driver_remove_module);
 
