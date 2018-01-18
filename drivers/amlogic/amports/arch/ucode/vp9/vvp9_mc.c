@@ -20,6 +20,7 @@
 
 /* commit fe6cf7224765b9ef5251e20d13f16968f0de3d75 */
 #define VERSTR "00000012"
+#define VP9_10B_MMU
 const u32  vvp9_mc[] __initconst = {
 #ifndef VP9_10B_MMU
 
