@@ -327,17 +327,7 @@ static int out_fence_create(int *release_fence_fd, u32 *val, u32 buf_num)
 	/* no file descriptor could be used. Error. */
 	if (out_fence_fd < 0)
 		return -1;
-	if (!timeline_created) { /* timeline has not been created */
-		timeline = sw_sync_timeline_create("osd_timeline");
-		cur_streamline_val = 1;
-		if (NULL == timeline)
-			return -1;
-		init_kthread_worker(&buffer_toggle_worker);
-		buffer_toggle_thread = kthread_run(kthread_worker_fn,
-				&buffer_toggle_worker, "aml_buf_toggle");
-		init_kthread_work(&buffer_toggle_work, osd_toggle_buffer);
-		timeline_created = 1;
-	}
+
 	/* install fence map; first ,the simplest. */
 	cur_streamline_val++;
 	*val = cur_streamline_val;
@@ -3861,6 +3851,8 @@ void osd_init_scan_mode(void)
 void osd_init_hw(u32 logo_loaded)
 {
 	u32 group, idx, data32, data2;
+	struct sched_param param = {.sched_priority = 2};
+
 	osd_vpu_power_on();
 
 	if (get_cpu_type() ==
@@ -4078,6 +4070,22 @@ void osd_init_hw(u32 logo_loaded)
 	osd_rdma_enable(1);
 #endif
 
+	if (osd_init_hw_flag == 0) {
+		if (!timeline_created) { /* timeline has not been created */
+			timeline = sw_sync_timeline_create("osd_timeline");
+			cur_streamline_val = 1;
+
+			init_kthread_worker(&buffer_toggle_worker);
+			buffer_toggle_thread = kthread_run(kthread_worker_fn,
+				&buffer_toggle_worker, "aml_buf_toggle");
+			sched_setscheduler(buffer_toggle_thread,
+				SCHED_FIFO, &param);
+			init_kthread_work(&buffer_toggle_work,
+				osd_toggle_buffer);
+			timeline_created = 1;
+		}
+
+	}
 	osd_init_hw_flag = 1;
 	return;
 }

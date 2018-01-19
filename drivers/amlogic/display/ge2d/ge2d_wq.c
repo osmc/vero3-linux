@@ -27,6 +27,7 @@
 #include <linux/of_fdt.h>
 #include <linux/reset.h>
 #include <linux/clk.h>
+#include <linux/sched/rt.h>
 
 /* Amlogic Headers */
 #include <linux/amlogic/vout/color.h>
@@ -481,6 +482,7 @@ static int ge2d_monitor_thread(void *data)
 static int ge2d_start_monitor(void)
 {
 	int ret = 0;
+	struct sched_param param = {.sched_priority = 3};
 
 	ge2d_log_info("ge2d start monitor\n");
 	ge2d_manager.process_queue_state = GE2D_PROCESS_QUEUE_START;
@@ -491,6 +493,7 @@ static int ge2d_start_monitor(void)
 		ret = PTR_ERR(ge2d_manager.ge2d_thread);
 		ge2d_log_err("ge2d failed to start kthread (%d)\n", ret);
 	}
+	sched_setscheduler(ge2d_manager.ge2d_thread, SCHED_FIFO, &param);
 	return ret;
 }
 
