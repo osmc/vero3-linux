@@ -3851,7 +3851,9 @@ void osd_init_scan_mode(void)
 void osd_init_hw(u32 logo_loaded)
 {
 	u32 group, idx, data32, data2;
+#ifdef CONFIG_FB_OSD_SUPPORT_SYNC_FENCE
 	struct sched_param param = {.sched_priority = 2};
+#endif
 
 	osd_vpu_power_on();
 
@@ -4069,7 +4071,7 @@ void osd_init_hw(u32 logo_loaded)
 #ifdef CONFIG_FB_OSD_VSYNC_RDMA
 	osd_rdma_enable(1);
 #endif
-
+#ifdef CONFIG_FB_OSD_SUPPORT_SYNC_FENCE
 	if (osd_init_hw_flag == 0) {
 		if (!timeline_created) { /* timeline has not been created */
 			timeline = sw_sync_timeline_create("osd_timeline");
@@ -4086,6 +4088,7 @@ void osd_init_hw(u32 logo_loaded)
 		}
 
 	}
+#endif
 	osd_init_hw_flag = 1;
 	return;
 }
