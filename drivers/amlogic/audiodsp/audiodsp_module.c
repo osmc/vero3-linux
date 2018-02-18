@@ -823,6 +823,14 @@ static ssize_t digital_codec_store(struct class *class,
 	 * need trigger pcm hw prepare to re-init hw configuration
 	 */
 	pr_info("last mode %d,now %d\n", mode_codec, IEC958_mode_codec);
+	/* reset audio chip for pcm if necessary */
+	if (IEC958_mode_codec == 0) {
+	    pr_info("putting chip back to PCM state");
+	    aml_alsa_hw_reprepare();
+	    struct audiodsp_priv *priv = audiodsp_privdata();
+            priv->decoded_nb_frames = 0;
+            priv->format_wait_count = 0;
+	}
 
 	return count;
 }
