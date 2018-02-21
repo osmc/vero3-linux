@@ -240,7 +240,7 @@ static struct early_suspend hdmitx_early_suspend_handler = {
 
 #define INIT_FLAG_NOT_LOAD 0x80
 
-int hdmi_ch = 1;		/* 1: 2ch */
+int hdmi_ch = 0;		/* 0: 2ch */
 
 static unsigned char init_flag;
 #undef DISABLE_AUDIO
@@ -1639,24 +1639,51 @@ static ssize_t show_dv_cap(struct device *dev,
 	return pos;
 }
 
+const char *speaker_layouts[20] = {
+	"stereo",
+	"2.1 FL,FR,LFE",
+	"3.0 FL,FR,FC",
+	"3.1 FL,FR,LFE,FC",
+	"3.0-rear FL,FR,RC",
+	"3.1-rear FL,FR,LFE,RC",
+	"4.0-rear FL,FR,FC,RC",
+	"4.1-rear FL,FR,LFE,FC,RC",
+	"4.0-quad FL,FR,RL,RR",
+	"4.1-quad FL,FR,LFE,RL,RR",
+	"5.0-rear FL,FR,FC,RL,RR",
+	"5.1-rear FL,FR,LFE,FC,RL,RR",
+	"5.0-side FL,FR,RL,RR,RC",
+	"5.1-side FL,FR,LFE,RL,RR,RC",
+	"6.0-side FL,FR,FC,RL,RR,RC",
+	"6.1-side FL,FR,LFE,FC,RL,RR,RC",
+	"6.0-rear FL,FR,RL,RR,RLC,RRC",
+	"6.1-rear FL,FR,LFE,RL,RR,RLC,RRC",
+	"7.0 FL,FR,FC,RL,RR,RLC,RRC",
+	"7.1 FL,FR,LFE,FC,RL,RR,RLC,RRC"
+};
+
+
 static ssize_t show_aud_ch(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	   int pos = 0;
-	   pos += snprintf(buf + pos, PAGE_SIZE,
-		"hdmi_channel = %d ch\n", hdmi_ch ? hdmi_ch + 1 : 0);
+	   if (hdmi_ch >= 0){
+			pos += snprintf(buf + pos, PAGE_SIZE,
+			"speaker layout = %s\n", speaker_layouts[hdmi_ch]);
+	   }
 	   return pos;
 }
 
 static ssize_t store_aud_ch(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
-	if (strncmp(buf, "6ch", 3) == 0)
-		hdmi_ch = 5;
-	else if (strncmp(buf, "8ch", 3) == 0)
-		hdmi_ch = 7;
-	else if (strncmp(buf, "2ch", 3) == 0)
-		hdmi_ch = 1;
+	int ret;
+	ret = kstrtoint(buf, 0, &hdmi_ch);
+	if (ret){
+		// limit to CEA-861-D values
+		if (hdmi_ch > 0x13)
+			hdmi_ch = 0;
+	}
 	else
 		return count;
 

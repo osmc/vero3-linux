@@ -2354,22 +2354,26 @@ static void set_aud_info_pkt(struct hdmitx_dev *hdev,
 			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x13);
 		else
 			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x00);
-		/* Refer to CEA861-D P90 */
-		switch (GET_OUTCHN_NO(hdev->aud_output_ch)) {
-		case 2:
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x00);
-			break;
-		case 4:
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x03);
-			break;
-		case 6:
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x0b);
-			break;
-		case 8:
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x13);
-			break;
-		default:
-			break;
+		if (hdev->speaker_layout >= 0)
+			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, hdev->speaker_layout);
+		else {
+			/* Refer to CEA861-D P90 */
+			switch (GET_OUTCHN_NO(hdev->aud_output_ch)) {
+				case 2:
+					hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x00);
+					break;
+				case 4:
+					hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x03);
+					break;
+				case 6:
+					hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x0b);
+					break;
+				case 8:
+					hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x13);
+					break;
+				default:
+					break;
+			}
 		}
 		break;
 	case CT_DTS:

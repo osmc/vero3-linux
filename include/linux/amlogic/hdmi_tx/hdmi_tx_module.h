@@ -280,6 +280,7 @@ struct hdmitx_dev {
 	/* configure for I2S: 8ch in, 2ch out */
 	/* 0: default setting  1:ch0/1  2:ch2/3  3:ch4/5  4:ch6/7 */
 	unsigned int aud_output_ch;
+	unsigned int speaker_layout;
 	unsigned int hdr_src_feature;
 	unsigned int flag_3dfp:1;
 	unsigned int flag_3dtb:1;
