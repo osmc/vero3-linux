@@ -226,7 +226,7 @@ int hdmitx_set_audio(struct hdmitx_dev *hdmitx_device,
 	for (i = 0; i < (24*2); i++)
 		CHAN_STAT_BUF[i] = 0;
 	// write speaker layout and parse hdmi_ch to aud_output_ch
-	if (hdmi_ch > 0){
+	if (hdmi_ch > 0 && audio_param->channel_num > CC_2CH){
 		hdmitx_device->speaker_layout = hdmi_ch;
 		if (hdmi_ch > 0x0b)
 			hdmitx_device->aud_output_ch = 8 << 4 | 0x0f;
@@ -243,7 +243,7 @@ int hdmitx_set_audio(struct hdmitx_dev *hdmitx_device,
 		audio_param) >= 0) {
 		hdmi_tx_construct_aud_packet(audio_param, AUD_DB,
 			CHAN_STAT_BUF, hdmi_ch);
-		hdmi_print(INF, AUD "Audio Output Channels: %x:%x\n",
+		hdmi_print(INF, AUD "Audio Output Channels set to: %x:%x\n",
 			(hdmitx_device->aud_output_ch >> 4) & 0xf,
 			(hdmitx_device->aud_output_ch & 0xf)); 
 		hdmitx_device->HWOp.SetAudioInfoFrame(AUD_DB, CHAN_STAT_BUF); // this does precisely nothing
