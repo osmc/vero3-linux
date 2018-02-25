@@ -265,7 +265,7 @@ static void pre_bit_mode_config(unsigned char inp,
 		RDMA_WR_BITS(DI_NRWR_CTRL, 0x3, 22, 2);
 }
 
-unsigned int nr2_en = 0x1;
+unsigned int nr2_en = 0x0;
 module_param(nr2_en, uint, 0644);
 MODULE_PARM_DESC(nr2_en, "\n nr2_en\n");
 
