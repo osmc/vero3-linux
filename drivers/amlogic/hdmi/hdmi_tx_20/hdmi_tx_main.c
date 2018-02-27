@@ -2449,8 +2449,8 @@ static int hdmitx_notify_callback_a(struct notifier_block *block,
 
 	if (audio_param->type != cmd) {
 		hdmi_print(INF, AUD "aout notify format %s was %s\n",
-			aud_type_string[audio_param->type & 0xff],
-			aud_type_string[cmd & 0xff]);
+			aud_type_string[cmd & 0xff],
+			aud_type_string[audio_param->type & 0xff]);
 		audio_param->type = cmd;
 		hdmitx_device.audio_param_update_flag = 1;
 	}
@@ -2503,7 +2503,7 @@ static int hdmitx_notify_callback_a(struct notifier_block *block,
 			hdmitx_audio_mute_op(0);
 			hdmitx_set_audio(&hdmitx_device,
 			&(hdmitx_device.cur_audio_param), hdmitx_device.speaker_layout);
-			msleep(300);
+			// msleep(300); // this has no discernable effect on plops
 			hdmitx_audio_mute_op(1);
 		if ((hdmitx_device.audio_notify_flag == 1) ||
 			(hdmitx_device.audio_step == 1)) {

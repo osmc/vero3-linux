@@ -225,14 +225,13 @@ int hdmitx_set_audio(struct hdmitx_dev *hdmitx_device,
 		AUD_DB[i] = 0;
 	for (i = 0; i < (24*2); i++)
 		CHAN_STAT_BUF[i] = 0;
-	// write speaker layout and parse hdmi_ch to aud_output_ch
-	if (hdmi_ch > 0 && audio_param->channel_num > CC_2CH){
-		hdmitx_device->speaker_layout = hdmi_ch;
-		if (hdmi_ch > 0x0b)
+	// parse hdmitx_device->speaker_layout to aud_output_ch
+	if (hdmitx_device->speaker_layout > 0 && audio_param->channel_num > CC_2CH){
+		if (hdmitx_device->speaker_layout > 0x0b)
 			hdmitx_device->aud_output_ch = 8 << 4 | 0x0f;
-		else if (hdmi_ch > 0x03)
+		else if (hdmitx_device->speaker_layout > 0x03)
 			hdmitx_device->aud_output_ch = 6 << 4 | 0x07;
-		else if (hdmi_ch > 0x00)
+		else if (hdmitx_device->speaker_layout > 0x00)
 			hdmitx_device->aud_output_ch = 4 << 4 | 0x03;
 		else
 			hdmitx_device->aud_output_ch = 0; // or maybe 2 << 4 | 0x0f

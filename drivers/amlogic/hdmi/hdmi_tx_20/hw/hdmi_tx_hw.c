@@ -2534,7 +2534,7 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 		return 0;
 	if (!audio_param)
 		return 0;
-	pr_info("hdmtix: set audio %d\n", hdev->tx_aud_cfg);
+	pr_info("hdmtix: setting audio %d\n", hdev->tx_aud_cfg);
 	audio_mute_op(hdev->tx_aud_cfg);
 	/* PCM & 8 ch */
 	if ((audio_param->type == CT_PCM) &&
