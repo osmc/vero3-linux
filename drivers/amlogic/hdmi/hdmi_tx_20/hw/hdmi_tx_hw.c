@@ -2360,22 +2360,36 @@ static void set_aud_info_pkt(struct hdmitx_dev *hdev,
 			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x13);
 		else
 			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x00);
-		/* Refer to CEA861-D P90 */
-		switch (GET_OUTCHN_NO(hdev->aud_output_ch)) {
-		case 2:
+
+		/* bodge to get round i2s driver aborting on 2ch */
+		if (audio_param->channel_num == 1){
+			hdev->speaker_layout = 0;
+			hdev->aud_output_ch = 2 << 4 | 1;
 			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x00);
-			break;
-		case 4:
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x03);
-			break;
-		case 6:
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x0b);
-			break;
-		case 8:
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x13);
-			break;
-		default:
-			break;
+			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0,
+				audio_param->channel_num, 4, 3);
+			/* mask is set in parent method */
+		}
+		else if (hdev->speaker_layout >= 0)
+			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, hdev->speaker_layout);
+		else {
+			/* Refer to CEA861-D P90 */
+			switch (GET_OUTCHN_NO(hdev->aud_output_ch)) {
+				case 2:
+					hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x00);
+					break;
+				case 4:
+					hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x03);
+					break;
+				case 6:
+					hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x0b);
+					break;
+				case 8:
+					hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x13);
+					break;
+				default:
+					break;
+			}
 		}
 		break;
 	case CT_DTS:
@@ -2526,7 +2540,7 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 		return 0;
 	if (!audio_param)
 		return 0;
-	pr_info("hdmtix: set audio\n");
+	pr_info("hdmtix: setting audio %d\n", hdev->tx_aud_cfg);
 	audio_mute_op(hdev->tx_aud_cfg);
 	/* PCM & 8 ch */
 	if ((audio_param->type == CT_PCM) &&
