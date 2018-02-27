@@ -250,6 +250,40 @@ static ssize_t store_audio_channels_mask(struct class *class,
 	return count;
 }
 
+/* Muting for individual i2s channels */
+static ssize_t show_i2s_channels_mask(struct class *class,
+					struct class_attribute *attr, char *buf)
+{
+	ssize_t ret = 0;
+	u32 reg;
+	int i2s_mask;
+
+	reg = read_i2s_mute_swap_reg();
+	i2s_mask = (reg & 0xff00) >> 8;
+
+	ret =
+	    sprintf(buf,
+		    "i2s channel mute mask: 0x%.2x\n", i2s_mask);
+
+	return ret;
+}
+
+static ssize_t store_i2s_channels_mask(struct class *class,
+					 struct class_attribute *attr,
+					 const char *buf, size_t count)
+{
+	unsigned int mask;
+	if (!kstrtoint(buf, 0, &mask))
+	{
+		audio_i2s_set_channel_mask(mask);
+		pr_info("i2s channel mask set to 0x%.2x\n", mask);
+	}
+	else
+		pr_info("i2s channel mask not set - bad value\n");
+
+	return count;
+}
+
 static ssize_t dac_mute_const_show(struct class *cla,
 				   struct class_attribute *attr, char *buf)
 {
@@ -268,6 +302,47 @@ static ssize_t dac_mute_const_store(struct class *class,
 	if (val == 0 || val == 0x800000)
 		dac_mute_const = val;
 	pr_info("dac mute const val set to 0x%x\n", val);
+	return count;
+}
+static ssize_t dac_ch_select_show(struct class *cla,
+				   struct class_attribute *attr, char *buf)
+{
+	ssize_t ret = 0;
+	u32 reg;
+	int dac_ch_select;
+
+	reg = read_i2s_out_cfg();
+	dac_ch_select = reg & 0xff;
+
+	ret =
+	    sprintf(buf,"i2s channel pairs %d,%d,%d,%d routed to DAC\n",
+			   dac_ch_select & 0x03,
+			   dac_ch_select & 0x0c >> 2,
+			   dac_ch_select & 0x30 >> 4,
+			   dac_ch_select & 0xc0 >> 6
+			   );
+
+	return ret;
+}
+
+static ssize_t dac_ch_select_store(struct class *class,
+				    struct class_attribute *attr,
+				    const char *buf, size_t count)
+{
+	unsigned int dac_ch_select;
+	if (!kstrtoint(buf, 0, &dac_ch_select))
+	{
+		dac_ch_select &= 0xff;
+		audio_i2s_set_out_chs(dac_ch_select);
+		pr_info("i2s channel pairs %d,%d,%d,%d routed to DAC\n",
+			   dac_ch_select & 0x03,
+			   dac_ch_select & 0x0c >> 2,
+			   dac_ch_select & 0x30 >> 4,
+			   dac_ch_select & 0xc0 >> 6
+			   );
+	}
+	else
+		pr_info("i2s channel mask still %d - bad value\n", dac_ch_select);
 	return count;
 }
 
@@ -486,8 +561,12 @@ static ssize_t dolby_enable_show(struct class *class,
 static struct class_attribute amaudio_attrs[] = {
 	__ATTR(audio_channels_mask, S_IRUGO | S_IWUSR | S_IWGRP,
 	       show_audio_channels_mask, store_audio_channels_mask),
+	__ATTR(i2s_channels_mask, S_IRUGO | S_IWUSR | S_IWGRP,
+	       show_i2s_channels_mask, store_i2s_channels_mask),
 	__ATTR(dac_mute_const, S_IRUGO | S_IWUSR,
 	       dac_mute_const_show, dac_mute_const_store),
+	__ATTR(dac_ch_select, S_IRUGO | S_IWUSR,
+	       dac_ch_select_show, dac_ch_select_store),
 	__ATTR(record_type, S_IRUGO | S_IWUSR,
 	       record_type_show, record_type_store),
 	__ATTR(debug, S_IRUGO | S_IWUSR | S_IWGRP,
