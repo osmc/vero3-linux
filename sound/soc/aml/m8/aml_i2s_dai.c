@@ -77,19 +77,43 @@ struct channel_speaker_allocation {
 static struct channel_speaker_allocation channel_allocations[] = {
 /*      	       channel:   7     6    5    4    3     2    1    0  */
 { .channels = 2,  .speakers = {  NA,   NA,  NA,  NA,  NA,   NA,  FR,  FL } },
-                                 /* 2.1 */
+                                 /* 2.1 CEA 0x01 */
 { .channels = 3,  .speakers = {  NA,   NA,  NA,  NA,  NA,  LFE,  FR,  FL } },
-                                 /* surround40 */
+                                 /* 3.0 CEA 0x02 */
+{ .channels = 3,  .speakers = {  NA,   NA,  NA,  NA,  FC,   NA,  FR,  FL } },
+                                 /* 3.1 CEA 0x03 */
+{ .channels = 4,  .speakers = {  NA,   NA,  NA,  NA,  FC,  LFE,  FR,  FL } },
+                                 /* 3.0 CEA 0x04 */
+{ .channels = 3,  .speakers = {  NA,   NA,  NA,  RC,  NA,   NA,  FR,  FL } },
+                                 /* 3.1 CEA 0x05 */
+{ .channels = 4,  .speakers = {  NA,   NA,  NA,  RC,  NA,  LFE,  FR,  FL } },
+                                 /* 4.0 CEA 0x06 */
+{ .channels = 4,  .speakers = {  NA,   NA,  NA,  RC,  FC,   NA,  FR,  FL } },
+                                 /* 4.1 CEA 0x07 */
+{ .channels = 5,  .speakers = {  NA,   NA,  NA,  RC,  FC,  LFE,  FR,  FL } },
+                                 /* surround40 CEA 0x08 */
 { .channels = 4,  .speakers = {  NA,   NA,  RR,  RL,  NA,   NA,  FR,  FL } },
-                                 /* surround41 */
+                                 /* surround41 CEA 0x09 */
 { .channels = 5,  .speakers = {  NA,   NA,  RR,  RL,  NA,  LFE,  FR,  FL } },
-                                 /* surround50 */
+                                 /* surround50 CEA 0x0a */
 { .channels = 5,  .speakers = {  NA,   NA,  RR,  RL,  FC,   NA,  FR,  FL } },
-                                 /* surround51 */
+                                 /* surround51 CEA 0x0b */
 { .channels = 6,  .speakers = {  NA,   NA,  RR,  RL,  FC,  LFE,  FR,  FL } },
-                                 /* 6.1 */
-{ .channels = 7,  .speakers = {  NA,   RC,  RR,  RL,  FC,  LFE,  FR,  FL } },
-                                 /* surround71 */
+                                 /* 5.0 CEA 0x0c */
+{ .channels = 5,  .speakers = {  NA,   RC, RRC, RLC,  NA,   NA,  FR,  FL } },
+                                 /* 5.1 CEA 0x0d */
+{ .channels = 6,  .speakers = {  NA,   RC, RRC, RLC,  NA,  LFE,  FR,  FL } },
+                                 /* 6.0 CEA 0x0e */
+{ .channels = 6,  .speakers = {  NA,   RC, RRC, RLC,  FC,   NA,  FR,  FL } },
+                                 /* 6.1 CEA 0x0f*/
+{ .channels = 7,  .speakers = {  NA,   RC, RRC, RLC,  FC,  LFE,  FR,  FL } },
+                                 /* 6.0 CEA 0x10*/
+{ .channels = 6,  .speakers = { RRC,  RLC,  RR,  RL,  NA,   NA,  FR,  FL } },
+                                 /* 6.1 CEA 0x11*/
+{ .channels = 7,  .speakers = { RRC,  RLC,  RR,  RL,  NA,  LFE,  FR,  FL } },
+                                 /* 7.0 CEA 0x12*/
+{ .channels = 7,  .speakers = { RRC,  RLC,  RR,  RL,  FC,   NA,  FR,  FL } },
+                                 /* surround71 CEA 0x13 */
 { .channels = 8,  .speakers = { RRC,  RLC,  RR,  RL,  FC,  LFE,  FR,  FL } },
 };
 
@@ -123,6 +147,18 @@ static void aml_hw_i2s_init(struct snd_pcm_runtime *runtime)
 #endif
 	audio_set_aiubuf(runtime->dma_addr, runtime->dma_bytes,
 			 runtime->channels);
+}
+
+static int get_speaker_mask(struct snd_pcm_runtime *runtime)
+{
+	struct aml_runtime_data *prtd = (struct aml_runtime_data *)runtime->private_data;
+	int speaker_mask = 0;
+	for (int i=0; i<8; i++)
+	{
+		if (strstr(channel_allocations[prtd->chmap_layout].speakers[i], "NA")==NULL)
+			speaker_mask |= 1 << (7-i);
+	}
+	return speaker_mask;
 }
 
 static int aml_dai_i2s_chmap_ctl_tlv(struct snd_kcontrol *kcontrol, int op_flag,

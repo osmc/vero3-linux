@@ -37,6 +37,7 @@
 #include <linux/uaccess.h>
 #include <linux/err.h>
 /* #include <mach/am_regs.h> */
+#include <linux/time.h>
 
 /* #include <linux/amlogic/osd/osd_dev.h> */
 #include <linux/amlogic/aml_gpio_consumer.h>
@@ -45,6 +46,7 @@
 #include "hdmi_tx_hdcp.h"
 
 #include <linux/input.h>
+
 #include <linux/irq.h>
 #include <linux/io.h>
 #include <linux/of.h>
@@ -240,7 +242,7 @@ static struct early_suspend hdmitx_early_suspend_handler = {
 
 #define INIT_FLAG_NOT_LOAD 0x80
 
-int hdmi_ch = 1;		/* 1: 2ch */
+int hdmi_ch = 0;		/* 0: 2ch */
 
 static unsigned char init_flag;
 #undef DISABLE_AUDIO
@@ -1639,26 +1641,50 @@ static ssize_t show_dv_cap(struct device *dev,
 	return pos;
 }
 
+const char *speaker_layouts[20] = {
+	"stereo",
+	"2.1 FL,FR,LFE",
+	"3.0 FL,FR,FC",
+	"3.1 FL,FR,LFE,FC",
+	"3.0-rear FL,FR,RC",
+	"3.1-rear FL,FR,LFE,RC",
+	"4.0-rear FL,FR,FC,RC",
+	"4.1-rear FL,FR,LFE,FC,RC",
+	"4.0-quad FL,FR,RL,RR",
+	"4.1-quad FL,FR,LFE,RL,RR",
+	"5.0-rear FL,FR,FC,RL,RR",
+	"5.1-rear FL,FR,LFE,FC,RL,RR",
+	"5.0-side FL,FR,RL,RR,RC",
+	"5.1-side FL,FR,LFE,RL,RR,RC",
+	"6.0-side FL,FR,FC,RL,RR,RC",
+	"6.1-side FL,FR,LFE,FC,RL,RR,RC",
+	"6.0-rear FL,FR,RL,RR,RLC,RRC",
+	"6.1-rear FL,FR,LFE,RL,RR,RLC,RRC",
+	"7.0 FL,FR,FC,RL,RR,RLC,RRC",
+	"7.1 FL,FR,LFE,FC,RL,RR,RLC,RRC"
+};
+
+
 static ssize_t show_aud_ch(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	   int pos = 0;
-	   pos += snprintf(buf + pos, PAGE_SIZE,
-		"hdmi_channel = %d ch\n", hdmi_ch ? hdmi_ch + 1 : 0);
+	   if (hdmitx_device.speaker_layout >= 0){
+			pos += snprintf(buf + pos, PAGE_SIZE,
+			"speaker layout = %s\nhdmi_ch = %d\n", speaker_layouts[hdmitx_device.speaker_layout], hdmi_ch);
+	   }
 	   return pos;
 }
 
 static ssize_t store_aud_ch(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
-	if (strncmp(buf, "6ch", 3) == 0)
-		hdmi_ch = 5;
-	else if (strncmp(buf, "8ch", 3) == 0)
-		hdmi_ch = 7;
-	else if (strncmp(buf, "2ch", 3) == 0)
-		hdmi_ch = 1;
-	else
-		return count;
+	int ret;
+	ret = kstrtoint(buf, 0, &hdmi_ch);
+	// limit to CEA-861-D values
+	if (hdmi_ch > 0x13)
+		hdmi_ch = 0;
+	pr_info("sysfs set hdmi_ch to %d", hdmi_ch);
 
 	hdmitx_device.audio_param_update_flag = 1;
 	hdmitx_device.force_audio_flag = 1;
@@ -2414,28 +2440,40 @@ static int hdmitx_notify_callback_a(struct notifier_block *block,
 	hdmitx_device.audio_notify_flag = 0;
 
 	if (audio_param->sample_rate != n_rate) {
+		hdmi_print(INF, AUD "aout notify sample rate %d was %d\n",
+				map_fs[n_rate].rate,
+				map_fs[audio_param->sample_rate].rate);
 		audio_param->sample_rate = n_rate;
 		hdmitx_device.audio_param_update_flag = 1;
 	}
 
 	if (audio_param->type != cmd) {
+		hdmi_print(INF, AUD "aout notify format %s was %s\n",
+			aud_type_string[cmd & 0xff],
+			aud_type_string[audio_param->type & 0xff]);
 		audio_param->type = cmd;
-	hdmi_print(INF, AUD "aout notify format %s\n",
-		aud_type_string[audio_param->type & 0xff]);
-	hdmitx_device.audio_param_update_flag = 1;
+		hdmitx_device.audio_param_update_flag = 1;
 	}
 
 	if (audio_param->sample_size != n_size) {
+		hdmi_print(INF, AUD "aout notify sample size %d was %d\n", n_size, audio_param->sample_size);
 		audio_param->sample_size = n_size;
 		hdmitx_device.audio_param_update_flag = 1;
 	}
 
 	if (audio_param->channel_num !=
 		(substream->runtime->channels - 1)) {
+		hdmi_print(INF, AUD "aout notify channels %d was %d\n", substream->runtime->channels, audio_param->channel_num+1);
 		audio_param->channel_num =
 		substream->runtime->channels - 1;
 		hdmitx_device.audio_param_update_flag = 1;
 	}
+	hdmi_print(INF, AUD "hdmi_ch: %d speaker_layout: %d\n", hdmi_ch, hdmitx_device.speaker_layout);
+	if (hdmitx_device.speaker_layout != hdmi_ch){
+		hdmitx_device.speaker_layout = hdmi_ch;
+		hdmitx_device.audio_param_update_flag = 1;
+	}
+
 	if (hdmitx_device.tx_aud_cfg == 2) {
 		hdmi_print(INF, AUD "auto mode\n");
 	/* Detect whether Rx is support current audio format */
@@ -2462,8 +2500,11 @@ static int hdmitx_notify_callback_a(struct notifier_block *block,
 		(hdmitx_device.audio_param_update_flag)) {
 		/* plug-in & update audio param */
 		if (hdmitx_device.hpd_state == 1) {
+			hdmitx_audio_mute_op(0);
 			hdmitx_set_audio(&hdmitx_device,
-			&(hdmitx_device.cur_audio_param), hdmi_ch);
+			&(hdmitx_device.cur_audio_param), hdmitx_device.speaker_layout);
+			// msleep(300); // this has no discernable effect on plops
+			hdmitx_audio_mute_op(1);
 		if ((hdmitx_device.audio_notify_flag == 1) ||
 			(hdmitx_device.audio_step == 1)) {
 			hdmitx_device.audio_notify_flag = 0;
@@ -2558,7 +2599,7 @@ void hdmitx_hpd_plugin_handler(struct work_struct *work)
 		(unsigned long int)bksv_buf);
 	rx_set_receive_hdcp(bksv_buf, 1, 1, 0, 0);
 	set_disp_mode_auto();
-	hdmitx_set_audio(hdev, &(hdev->cur_audio_param), hdmi_ch);
+	hdmitx_set_audio(hdev, &(hdev->cur_audio_param), hdmitx_device.speaker_layout);
 	hdev->hpd_state = 1;
 	switch_set_state(&sdev, 1);
 	switch_set_state(&hdmi_audio, 1);

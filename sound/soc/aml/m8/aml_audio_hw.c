@@ -1043,10 +1043,28 @@ void audio_i2s_swap_left_right(unsigned int flag)
 	aml_cbus_update_bits(AIU_I2S_MUTE_SWAP, 0x3 << 2, flag << 2);
 }
 
+void audio_i2s_set_channel_mask(unsigned int mask)
+{
+	aml_cbus_update_bits(AIU_I2S_MUTE_SWAP, 0xff << 8, mask << 8);
+}
+
 void audio_i2s_958_same_source(unsigned int same)
 {
 	aml_cbus_update_bits(AIU_I2S_MISC, 1 << 3, (!!same) << 3);
 }
+
+/* which channels go to DAC */
+unsigned int read_i2s_out_cfg(void)
+{
+	unsigned int val;
+	val = aml_read_cbus(AIU_I2S_OUT_CFG);
+	return val;
+}
+
+void audio_i2s_set_out_chs(unsigned int channels)
+{
+	aml_cbus_update_bits(AIU_I2S_OUT_CFG, 0xf, channels);
+}	
 
 void set_hw_resample_source(int source)
 {
