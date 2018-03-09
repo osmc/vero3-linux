@@ -99,7 +99,7 @@ static const struct soc_enum DAC_Gain_enum = SOC_ENUM_SINGLE(
 static const struct snd_kcontrol_new T9015_audio_snd_controls[] = {
 
 	/*DAC Digital Volume control */
-	SOC_DOUBLE_TLV("DAC Playback Volume",
+	SOC_DOUBLE_TLV("DAC Digital Volume",
 			   DAC_VOL_CTR_DAC_SOFT_MUTE,
 			   DACL_VC, DACR_VC,
 			   0xff, 0, dac_vol_tlv),
