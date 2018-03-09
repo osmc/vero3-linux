@@ -29,7 +29,7 @@ struct aml_T9015_audio_priv {
 static const struct reg_default t9015_init_list[] = {
 	{AUDIO_CONFIG_BLOCK_ENABLE, 0x0000B00F},
 	{ADC_VOL_CTR_PGA_IN_CONFIG, 0x00000000},
-	{DAC_VOL_CTR_DAC_SOFT_MUTE, 0xFBFB0000},
+	{DAC_VOL_CTR_DAC_SOFT_MUTE, 0xFEFE0000},
 	{LINE_OUT_CONFIG, 0x00001111},
 	{POWER_CONFIG, 0x00010000},
 };
@@ -84,11 +84,11 @@ static int aml_DAC_Gain_set_enum(
 		pr_info("It has risk of distortion!\n");
 	}
 
-	snd_soc_write(codec, val, add);
+	snd_soc_write(codec, add, val);
 	return 0;
 }
 
-static const DECLARE_TLV_DB_SCALE(dac_vol_tlv, -95250, 375, 1);
+static const DECLARE_TLV_DB_SCALE(dac_vol_tlv, -9435, 37, 1);
 
 static const char *const DAC_Gain_texts[] = { "0dB", "6dB", "12dB", "18dB" };
 
@@ -99,13 +99,13 @@ static const struct soc_enum DAC_Gain_enum = SOC_ENUM_SINGLE(
 static const struct snd_kcontrol_new T9015_audio_snd_controls[] = {
 
 	/*DAC Digital Volume control */
-	SOC_DOUBLE_TLV("DAC Digital Playback Volume",
+	SOC_DOUBLE_TLV("DAC Digital Volume",
 			   DAC_VOL_CTR_DAC_SOFT_MUTE,
 			   DACL_VC, DACR_VC,
 			   0xff, 0, dac_vol_tlv),
 
     /*DAC extra Digital Gain control */
-	SOC_ENUM_EXT("DAC Extra Digital Gain",
+	SOC_ENUM_EXT("DAC Extra Gain",
 			   DAC_Gain_enum,
 			   aml_DAC_Gain_get_enum,
 			   aml_DAC_Gain_set_enum),
@@ -348,6 +348,7 @@ static int aml_T9015_audio_probe(struct snd_soc_codec *codec)
 	aml_write_cbus(AIU_ACODEC_CTRL, (1 << 4)
 			   |(1 << 6)
 			   |(1 << 11)
+			   |(1 << 13)
 			   |(1 << 15)
 			   |(2 << 2)
 	);
