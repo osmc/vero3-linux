@@ -188,8 +188,6 @@ static int __uac_clock_find_source(struct snd_usb_audio *chip,
 	if (source) {
 		entity_id = source->bClockID;
 		if (validate && !uac_clock_source_is_valid(chip, entity_id)) {
-			snd_printk(KERN_ERR "usb-audio:%d: clock source %d is not valid, cannot use\n",
-				   chip->dev->devnum, entity_id);
 			return -ENXIO;
 		}
 		return entity_id;

@@ -88,7 +88,7 @@ static int aml_DAC_Gain_set_enum(
 	return 0;
 }
 
-static const DECLARE_TLV_DB_SCALE(dac_vol_tlv, -9435, 37, 1);
+static const DECLARE_TLV_DB_SCALE(dac_vol_tlv, -9398, 37, 1);
 
 static const char *const DAC_Gain_texts[] = { "0dB", "6dB", "12dB", "18dB" };
 
@@ -99,10 +99,10 @@ static const struct soc_enum DAC_Gain_enum = SOC_ENUM_SINGLE(
 static const struct snd_kcontrol_new T9015_audio_snd_controls[] = {
 
 	/*DAC Digital Volume control */
-	SOC_DOUBLE_TLV("DAC Playback Volume",
+	SOC_DOUBLE_TLV("DAC Digital Volume",
 			   DAC_VOL_CTR_DAC_SOFT_MUTE,
 			   DACL_VC, DACR_VC,
-			   0xff, 0, dac_vol_tlv),
+			   0xfe, 0, dac_vol_tlv),
 
     /*DAC extra Digital Gain control */
 	SOC_ENUM_EXT("DAC Extra Gain",
