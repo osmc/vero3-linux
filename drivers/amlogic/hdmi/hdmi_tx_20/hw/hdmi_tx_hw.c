@@ -2469,6 +2469,7 @@ static void set_aud_fifo_rst(void)
 	hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF0, 0, 7, 1);
 	hdmitx_wr_reg(HDMITX_DWC_MC_SWRSTZREQ, 0xe7);
 	/* need reset again */
+	mdelay(20);
 	hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF0, 1, 7, 1);
 	hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF0, 0, 7, 1);
 }
