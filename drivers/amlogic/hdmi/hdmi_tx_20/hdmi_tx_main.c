@@ -2388,7 +2388,7 @@ static unsigned char *aud_type_string[] = {
 	"CT_ATRAC",
 	"CT_ONE_BIT_AUDIO",
 	"CT_DOLBY_D",
-	"CT_DTS_HD",
+	"CT_DTS_HD (HRA/MA/X)",
 	"CT_MAT",
 	"CT_DST",
 	"CT_WMA",
@@ -2470,8 +2470,10 @@ static int hdmitx_notify_callback_a(struct notifier_block *block,
 	}
 	hdmi_print(INF, AUD "hdmi_ch: %d speaker_layout: %d\n", hdmi_ch, hdmitx_device.speaker_layout);
 	if (hdmitx_device.speaker_layout != hdmi_ch){
-		hdmitx_device.speaker_layout = hdmi_ch;
-		hdmitx_device.audio_param_update_flag = 1;
+		if ((hdmi_ch == 0 && substream->runtime->channels == 2) || hdmi_ch > 0) {
+			hdmitx_device.speaker_layout = hdmi_ch;
+			hdmitx_device.audio_param_update_flag = 1;
+		}
 	}
 
 	if (hdmitx_device.tx_aud_cfg == 2) {
@@ -2498,22 +2500,23 @@ static int hdmitx_notify_callback_a(struct notifier_block *block,
 
 	if ((!hdmi_audio_off_flag) &&
 		(hdmitx_device.audio_param_update_flag)) {
+		int aud_cfg = hdmitx_device.tx_aud_cfg;
 		/* plug-in & update audio param */
 		if (hdmitx_device.hpd_state == 1) {
 			hdmitx_audio_mute_op(0);
 			hdmitx_set_audio(&hdmitx_device,
 			&(hdmitx_device.cur_audio_param), hdmitx_device.speaker_layout);
-			// msleep(300); // this has no discernable effect on plops
-			hdmitx_audio_mute_op(1);
 		if ((hdmitx_device.audio_notify_flag == 1) ||
 			(hdmitx_device.audio_step == 1)) {
 			hdmitx_device.audio_notify_flag = 0;
 			hdmitx_device.audio_step = 0;
 		}
 		hdmitx_device.audio_param_update_flag = 0;
+		hdmitx_device.tx_aud_cfg = aud_cfg;
 		hdmi_print(INF, AUD "set audio param\n");
 	}
 	}
+	hdmitx_audio_mute_op(hdmitx_device.tx_aud_cfg);
 
 
 	return 0;

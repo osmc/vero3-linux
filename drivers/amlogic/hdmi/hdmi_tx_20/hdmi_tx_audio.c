@@ -216,7 +216,7 @@ static void hdmi_tx_construct_aud_packet(
 }
 
 int hdmitx_set_audio(struct hdmitx_dev *hdmitx_device,
-	struct hdmitx_audpara *audio_param, int hdmi_ch)
+	struct hdmitx_audpara *audio_param, int hdmi_chs)
 {
 	int i, ret = -1;
 	unsigned char AUD_DB[32];
@@ -225,26 +225,30 @@ int hdmitx_set_audio(struct hdmitx_dev *hdmitx_device,
 		AUD_DB[i] = 0;
 	for (i = 0; i < (24*2); i++)
 		CHAN_STAT_BUF[i] = 0;
-	// parse hdmitx_device->speaker_layout to aud_output_ch
-	if (hdmitx_device->speaker_layout > 0 && audio_param->channel_num > CC_2CH){
+	// resolve speaker layouts and channel masking for PCM
+	if (audio_param->type == CT_PCM){
+		/* stereo and gets round i2s driver aborting on 2ch */
+		if (audio_param->channel_num == 1)
+			hdmitx_device->speaker_layout = 0;
+		else if (hdmitx_device->speaker_layout == 0)
+			hdmitx_device->speaker_layout = 0x13; // default if not set and not stereo
+		// parse hdmitx_device->speaker_layout to aud_output_ch
 		if (hdmitx_device->speaker_layout > 0x0b)
 			hdmitx_device->aud_output_ch = 8 << 4 | 0x0f;
 		else if (hdmitx_device->speaker_layout > 0x03)
 			hdmitx_device->aud_output_ch = 6 << 4 | 0x07;
 		else if (hdmitx_device->speaker_layout > 0x00)
 			hdmitx_device->aud_output_ch = 4 << 4 | 0x03;
-		else
-			hdmitx_device->aud_output_ch = 0; // or maybe 2 << 4 | 0x0f
+		else if (hdmitx_device->speaker_layout == 0)
+			hdmitx_device->aud_output_ch = 0; // or maybe 2 << 4 | 1
+		else hdmitx_device->aud_output_ch = 8 << 4 | 0x0f; // speaker layout not set
 	}
-	else hdmitx_device->aud_output_ch = 0;
+	else hdmitx_device->aud_output_ch = 0; // leave this to hw driver
 
 	if (hdmitx_device->HWOp.SetAudMode(hdmitx_device,
 		audio_param) >= 0) {
 		hdmi_tx_construct_aud_packet(audio_param, AUD_DB,
-			CHAN_STAT_BUF, hdmi_ch);
-		hdmi_print(INF, AUD "Audio Output Channels set to: %x:%x\n",
-			(hdmitx_device->aud_output_ch >> 4) & 0xf,
-			(hdmitx_device->aud_output_ch & 0xf)); 
+			CHAN_STAT_BUF, hdmi_chs);
 		hdmitx_device->HWOp.SetAudioInfoFrame(AUD_DB, CHAN_STAT_BUF); // this does precisely nothing
 		ret = 0;
 	}

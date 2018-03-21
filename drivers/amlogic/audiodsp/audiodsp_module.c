@@ -811,9 +811,28 @@ static ssize_t digital_codec_store(struct class *class,
 		if (kstrtoint(buf, 10, &digital_codec))
 			pr_info("kstrtoint err %s\n", __func__);
 		if (digital_codec < SUPPORT_TYPE_NUM) {
-			IEC958_mode_codec = digital_codec;
 			pr_info("IEC958_mode_codec= %d, IEC958 type %s\n",
 				digital_codec, codec_str[digital_codec]);
+			switch (digital_codec) {
+				case 2:
+					IEC958_mode_codec = 2; //AOUT_EVENT_RAWDATA_AC_3;
+					break;
+				case 3:
+					IEC958_mode_codec = 7; //AOUT_EVENT_RAWDATA_DTS;
+					break;
+				case 4:
+					IEC958_mode_codec = 0xa; //AOUT_EVENT_RAWDATA_DOLBY_DIGITAL_PLUS;
+					break;
+				case 8:
+					IEC958_mode_codec = 0x10b; //AOUT_EVENT_RAWDATA_DTS_HD_MA;
+					break;
+				case 7:
+					IEC958_mode_codec = 0xc; //AOUT_EVENT_RAWDATA_MAT_MLP;
+					break;
+				default:
+					IEC958_mode_codec = 1; //AOUT_EVENT_IEC_60958_PCM;
+			}
+
 		} else {
 			pr_info("IEC958 type set exceed supported range\n");
 		}
@@ -824,7 +843,7 @@ static ssize_t digital_codec_store(struct class *class,
 	 */
 	pr_info("last mode %d,now %d\n", mode_codec, IEC958_mode_codec);
 	/* reset audio chip for pcm if necessary */
-	if (IEC958_mode_codec == 0) {
+	if (IEC958_mode_codec < 2) {
 	    pr_info("putting chip back to PCM state");
 	    aml_alsa_hw_reprepare();
 	    struct audiodsp_priv *priv = audiodsp_privdata();
