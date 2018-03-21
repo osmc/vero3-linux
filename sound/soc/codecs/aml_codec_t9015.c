@@ -160,9 +160,9 @@ static const struct snd_soc_dapm_widget T9015_audio_dapm_widgets[] = {
 
 	/*Output */
 	SND_SOC_DAPM_OUTPUT("Lineout left N"),
-	SND_SOC_DAPM_OUTPUT("Lineout left P"),
+//	SND_SOC_DAPM_OUTPUT("Lineout left P"),
 	SND_SOC_DAPM_OUTPUT("Lineout right N"),
-	SND_SOC_DAPM_OUTPUT("Lineout right P"),
+//	SND_SOC_DAPM_OUTPUT("Lineout right P"),
 
 	/*DAC playback stream */
 	SND_SOC_DAPM_DAC("Left DAC", "HIFI Playback",
@@ -173,49 +173,49 @@ static const struct snd_soc_dapm_widget T9015_audio_dapm_widgets[] = {
 			 DACR_EN, 0),
 
 	/*DRV output */
-	SND_SOC_DAPM_OUT_DRV("LOLP_OUT_EN", SND_SOC_NOPM,
-			     0, 0, NULL, 0),
+//	SND_SOC_DAPM_OUT_DRV("LOLP_OUT_EN", SND_SOC_NOPM,
+//			     0, 0, NULL, 0),
 	SND_SOC_DAPM_OUT_DRV("LOLN_OUT_EN", SND_SOC_NOPM,
 			     0, 0, NULL, 0),
-	SND_SOC_DAPM_OUT_DRV("LORP_OUT_EN", SND_SOC_NOPM,
-			     0, 0, NULL, 0),
+//	SND_SOC_DAPM_OUT_DRV("LORP_OUT_EN", SND_SOC_NOPM,
+//			     0, 0, NULL, 0),
 	SND_SOC_DAPM_OUT_DRV("LORN_OUT_EN", SND_SOC_NOPM,
 			     0, 0, NULL, 0),
 
 	/*MUX output source select */
-	SND_SOC_DAPM_MUX("Lineout left P switch", SND_SOC_NOPM,
-			 0, 0, &line_out_lp_mux),
+//	SND_SOC_DAPM_MUX("Lineout left P switch", SND_SOC_NOPM,
+//			 0, 0, &line_out_lp_mux),
 	SND_SOC_DAPM_MUX("Lineout left N switch", SND_SOC_NOPM,
 			 0, 0, &line_out_ln_mux),
-	SND_SOC_DAPM_MUX("Lineout right P switch", SND_SOC_NOPM,
-			 0, 0, &line_out_rp_mux),
+//	SND_SOC_DAPM_MUX("Lineout right P switch", SND_SOC_NOPM,
+//			 0, 0, &line_out_rp_mux),
 	SND_SOC_DAPM_MUX("Lineout right N switch", SND_SOC_NOPM,
 			 0, 0, &line_out_rn_mux),
 };
 
 static const struct snd_soc_dapm_route T9015_audio_dapm_routes[] = {
     /*Output path*/
-	{"Lineout left P switch", "LOLP_SEL_DACL", "Left DAC"},
-	{"Lineout left P switch", "LOLP_SEL_DACL_INV", "Left DAC"},
+//	{"Lineout left P switch", "LOLP_SEL_DACL", "Left DAC"},
+//	{"Lineout left P switch", "LOLP_SEL_DACL_INV", "Left DAC"},
 
 	{"Lineout left N switch", "LOLN_SEL_DACL_INV", "Left DAC"},
 	{"Lineout left N switch", "LOLN_SEL_DACL", "Left DAC"},
 
-	{"Lineout right P switch", "LORP_SEL_DACR", "Right DAC"},
-	{"Lineout right P switch", "LORP_SEL_DACR_INV", "Right DAC"},
+//	{"Lineout right P switch", "LORP_SEL_DACR", "Right DAC"},
+//	{"Lineout right P switch", "LORP_SEL_DACR_INV", "Right DAC"},
 
 	{"Lineout right N switch", "LORN_SEL_DACR_INV", "Right DAC"},
 	{"Lineout right N switch", "LORN_SEL_DACR", "Right DAC"},
 
 	{"LOLN_OUT_EN", NULL, "Lineout left N switch"},
-	{"LOLP_OUT_EN", NULL, "Lineout left P switch"},
+//	{"LOLP_OUT_EN", NULL, "Lineout left P switch"},
 	{"LORN_OUT_EN", NULL, "Lineout right N switch"},
-	{"LORP_OUT_EN", NULL, "Lineout right P switch"},
+//	{"LORP_OUT_EN", NULL, "Lineout right P switch"},
 
 	{"Lineout left N", NULL, "LOLN_OUT_EN"},
-	{"Lineout left P", NULL, "LOLP_OUT_EN"},
+//	{"Lineout left P", NULL, "LOLP_OUT_EN"},
 	{"Lineout right N", NULL, "LORN_OUT_EN"},
-	{"Lineout right P", NULL, "LORP_OUT_EN"},
+//	{"Lineout right P", NULL, "LORP_OUT_EN"},
 };
 
 static int aml_T9015_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
