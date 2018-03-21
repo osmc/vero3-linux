@@ -149,6 +149,18 @@ static void aml_hw_i2s_init(struct snd_pcm_runtime *runtime)
 			 runtime->channels);
 }
 
+static int get_speaker_mask(struct snd_pcm_runtime *runtime)
+{
+	struct aml_runtime_data *prtd = (struct aml_runtime_data *)runtime->private_data;
+	int speaker_mask = 0;
+	for (int i=0; i<8; i++)
+	{
+		if (strstr(channel_allocations[prtd->chmap_layout].speakers[i], "NA")==NULL)
+			speaker_mask |= 1 << (7-i);
+	}
+	return speaker_mask;
+}
+
 static int aml_dai_i2s_chmap_ctl_tlv(struct snd_kcontrol *kcontrol, int op_flag,
                                      unsigned int size, unsigned int __user *tlv)
 {
@@ -440,18 +452,13 @@ static int aml_dai_i2s_prepare(struct snd_pcm_substream *substream,
 		s->device_type = AML_AUDIO_I2SOUT;
 		audio_out_i2s_enable(0);
 		audio_util_set_dac_i2s_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);
-		IEC958_mode_codec = 0;
 		aml_hw_i2s_init(runtime);
 		/* i2s/958 share the same audio hw buffer when PCM mode */
-		if (IEC958_mode_codec == 0) {
-			aml_hw_iec958_init(substream, 1);
+		if (IEC958_mode_codec < 2) {
 			/* use the hw same sync for i2s/958 */
-			dev_info(substream->pcm->card->dev, "i2s/958 same source\n");
+			pr_info("i2s/958 same source - init spdif\n");
+			aml_hw_iec958_init(substream, 1);
 			audio_i2s_958_same_source(1);
-		}
-		if (runtime->channels == 8) {
-			dev_info(substream->pcm->card->dev,
-				"8ch PCM output->notify HDMI\n");
 			aout_notifier_call_chain(AOUT_EVENT_IEC_60958_PCM,
 				substream);
 		}

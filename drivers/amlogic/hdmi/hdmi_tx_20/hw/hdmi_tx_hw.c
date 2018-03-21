@@ -1968,11 +1968,6 @@ next:
 		hd_set_reg_bits(P_VPU_HDMI_SETTING, 0, 4, 4);
 		hd_set_reg_bits(P_VPU_HDMI_SETTING, 1, 8, 1);
 	}
-	mdelay(1);
-	hd_set_reg_bits(P_VPU_HDMI_FMT_CTRL, 0, 4, 1);
-	mdelay(1);
-        hd_set_reg_bits(P_VPU_HDMI_FMT_CTRL, 1, 10, 1);
-#if 0
 	switch (hdev->cur_video_param->color_depth) {
 	case COLORDEPTH_30B:
 	case COLORDEPTH_36B:
@@ -2011,7 +2006,6 @@ next:
                 }
 		break;
 	}
-#endif
 
 	hdmitx_set_hw(hdev);
 
@@ -2353,30 +2347,27 @@ static void set_aud_info_pkt(struct hdmitx_dev *hdev,
 	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF1, 0, 4, 2); /* SS */
 	switch (audio_param->type) {
 	case CT_MAT:
+		hdmi_print(INF, AUD "Audio Type: MAT(MLP)\n");
 	case CT_DTS_HD_MA:
+		if (audio_param->type == CT_DTS_HD_MA)
+			hdmi_print(INF, AUD "Audio Type: DTS HD MA\n");
 		/* CC: 8ch */
 		hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, 7, 4, 3);
 		hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x13);
 		break;
 	case CT_PCM:
+		hdmi_print(INF, AUD "Audio Type: PCM  Audio Channels: %u, Speaker layout: 0x%x\n",
+				audio_param->channel_num + 1, hdev->speaker_layout);
+		hdmi_print(INF, AUD "Audio Output Channels set to: %x:%x\n",
+			(hdev->aud_output_ch >> 4) & 0xf,
+			(hdev->aud_output_ch & 0xf));
+
 		if (!hdev->aud_output_ch)
 			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0,
 				audio_param->channel_num, 4, 3);
-		if ((audio_param->channel_num == 0x7) && (!hdev->aud_output_ch))
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x13);
-		else
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x00);
-
-		/* bodge to get round i2s driver aborting on 2ch */
-		if (audio_param->channel_num == 1){
-			hdev->speaker_layout = 0;
-			hdev->aud_output_ch = 2 << 4 | 1;
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x00);
-			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0,
-				audio_param->channel_num, 4, 3);
 			/* mask is set in parent method */
-		}
-		else if (hdev->speaker_layout >= 0)
+
+		if (hdev->speaker_layout >= 0)
 			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, hdev->speaker_layout);
 		else {
 			/* Refer to CEA861-D P90 */
@@ -2398,9 +2389,23 @@ static void set_aud_info_pkt(struct hdmitx_dev *hdev,
 			}
 		}
 		break;
-	case CT_DTS:
-	case CT_DTS_HD:
 	default:
+		switch (audio_param->type) {
+			case CT_DTS:
+				hdmi_print(INF, AUD "Audio Type: DTS\n");
+				break;
+			case CT_DTS_HD:
+				hdmi_print(INF, AUD "Audio Type: DTS-HD\n");
+				break;
+			case CT_AC_3:
+				hdmi_print(INF, AUD "Audio Type: AC3\n");
+				break;
+			case CT_DOLBY_D:
+				hdmi_print(INF, AUD "Audio Type: Dolby Digital +\n");
+				break;
+			default:
+				hdmi_print(INF, AUD "Audio Type: #%d\n", audio_param->type);
+		}
 		/* CC: 2ch */
 		hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, 1, 4, 3);
 		hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x0);
@@ -2497,19 +2502,17 @@ static void set_aud_samp_pkt(struct hdmitx_dev *hdev,
 		if ((audio_param->channel_num == 0x7) && (!hdev->aud_output_ch))
 			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, 1, 0, 1);
 		else
-			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, 0, 0, 1);
-		switch (GET_OUTCHN_NO(hdev->aud_output_ch)) {
-		case 2:
-			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, 0, 0, 1);
-			break;
-		case 4:
-		case 6:
-		case 8:
-			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, 1, 0, 1);
-			break;
-		default:
-			break;
-		}
+			switch (GET_OUTCHN_NO(hdev->aud_output_ch)) {
+				case 4:
+				case 6:
+				case 8:
+					hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, 1, 0, 1);
+					break;
+				case 2:
+				default:
+					hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, 0, 0, 1);
+					break;
+			}
 		break;
 	case CT_AC_3:
 	case CT_DOLBY_D:
@@ -2531,7 +2534,7 @@ static void audio_mute_op(bool flag)
 		hdmitx_set_reg_bits(HDMITX_DWC_FC_PACKET_TX_EN, 0, 0, 1);
 		hdmitx_set_reg_bits(HDMITX_DWC_FC_PACKET_TX_EN, 0, 3, 1);
 	} else {
-		hdmitx_set_reg_bits(HDMITX_TOP_CLK_CNTL, 3, 2, 2);
+		hdmitx_set_reg_bits(HDMITX_TOP_CLK_CNTL, tx_aud_src + 1, 2, 2);  // turn on only spdif or i2s
 		hdmitx_set_reg_bits(HDMITX_DWC_FC_PACKET_TX_EN, 1, 0, 1);
 		hdmitx_set_reg_bits(HDMITX_DWC_FC_PACKET_TX_EN, 1, 3, 1);
 	}
@@ -2547,7 +2550,6 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 	if (!audio_param)
 		return 0;
 	pr_info("hdmtix: setting audio %d\n", hdev->tx_aud_cfg);
-	audio_mute_op(hdev->tx_aud_cfg);
 	/* PCM & 8 ch */
 	if ((audio_param->type == CT_PCM) &&
 		(audio_param->channel_num == (8 - 1)))
@@ -2633,6 +2635,8 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 		/* Wait for 40 us for TX I2S decoder to settle */
 		msleep(20);
 	}
+	else
+		hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0, 0xf, 0, 4);
 	set_aud_fifo_rst();
 	udelay(10);
 	hdmitx_wr_reg(HDMITX_DWC_AUD_N1, hdmitx_rd_reg(HDMITX_DWC_AUD_N1));
@@ -3039,27 +3043,27 @@ static void hdmitx_debug(struct hdmitx_dev *hdev, const char *buf)
 			hdmi_print(INF, HPD "hdmitx: unlock hpd\n");
 		}
 		return;
-	} else if (strncmp(tmpbuf, "dither", 6) == 0) {
+	} else if (strncmp(tmpbuf, "dither", 5) == 0) {
 		int dither = 0;
-		if (tmpbuf[7] == '1')
+		if (tmpbuf[6] == '1')
 			dither = 1;
 		hd_set_reg_bits(P_VPU_HDMI_FMT_CTRL, dither, 4, 1);
-		hdmi_print(INF, SYS, "hdmitx: adjust dither = %d\n", dither);
+		hdmi_print(INF, SYS, "hdmitx: adjust dither to %d", dither);
 		return;
         } else if (strncmp(tmpbuf, "round", 5) == 0) {
                 int round = 0;
                 if (tmpbuf[6] == '1')
                         round = 1;
 		hd_set_reg_bits(P_VPU_HDMI_FMT_CTRL, round, 10, 1);
-                hdmi_print(INF, SYS, "hdmitx: adjust round = %d\n", round);
+                hdmi_print(INF, SYS, "hdmitx: adjust round to %d", round);
 		return;
 	} else if (strncmp(tmpbuf, "do2020", 6) == 0) {
-		hdmi_print(INF, SYS, "hdmitx: BT2020 AVI on\n");
+		hdmi_print(INF, SYS, "hdmitx: BT2020 AVI on");
 		hdmitx_set_reg_bits(HDMITX_DWC_FC_AVICONF1, 3, 6, 2);
                 hdmitx_set_reg_bits(HDMITX_DWC_FC_AVICONF2, 6, 4, 3);
 		return;
         } else if (strncmp(tmpbuf, "no2020", 6) == 0) {
-                hdmi_print(INF, SYS, "hdmitx: BT2020 AVI off\n");
+                hdmi_print(INF, SYS, "hdmitx: BT2020 AVI off");
                 hdmitx_set_reg_bits(HDMITX_DWC_FC_AVICONF1, 2, 6, 2);
                 hdmitx_set_reg_bits(HDMITX_DWC_FC_AVICONF2, 0, 4, 3);
 		return;
