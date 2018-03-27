@@ -534,9 +534,9 @@ static void hdmi_hwi_init(struct hdmitx_dev *hdev)
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_DIV, data32);
 
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_SS_SCL_HCNT_1, 0);
-	hdmitx_wr_reg(HDMITX_DWC_I2CM_SS_SCL_HCNT_0, 0x67);
+	hdmitx_wr_reg(HDMITX_DWC_I2CM_SS_SCL_HCNT_0, 0x60);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_SS_SCL_LCNT_1, 0);
-	hdmitx_wr_reg(HDMITX_DWC_I2CM_SS_SCL_LCNT_0, 0x78);
+	hdmitx_wr_reg(HDMITX_DWC_I2CM_SS_SCL_LCNT_0, 0x71);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_FS_SCL_HCNT_1, 0);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_FS_SCL_HCNT_0, 0x0f);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_FS_SCL_LCNT_1, 0);
@@ -2439,13 +2439,13 @@ static void set_aud_acr_pkt(struct hdmitx_dev *hdev,
 		aud_n_para = hdmi_get_aud_n_paras(audio_param->sample_rate,
 			hdev->para->cd, char_rate);
 	/* N must mutiples 4 for DD+ */
-	switch (audio_param->type) {
+/*	switch (audio_param->type) {
 	case CT_DOLBY_D:
 		aud_n_para *= 4;
 		break;
 	default:
 		break;
-	}
+	}*/
 	pr_info("hdmitx aud_n_para = %d\n", aud_n_para);
 
 	/* ACR packet configuration */
@@ -2624,11 +2624,15 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 
 	hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0, tx_aud_src, 5, 1);
 	if (tx_aud_src == 1) {
-		if (GET_OUTCHN_MSK(hdev->aud_output_ch))
+		if (GET_OUTCHN_MSK(hdev->aud_output_ch)){
+			pr_info("hdmitx channel mask = %d\n", GET_OUTCHN_MSK(hdev->aud_output_ch));
 			hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0,
 				GET_OUTCHN_MSK(hdev->aud_output_ch), 0, 4);
-		else
+		}
+		else {
+			pr_info("hdmitx no channel mask");
 			hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0, 0xf, 0, 4);
+		}
 		/* Enable audi2s_fifo_overrun interrupt */
 		hdmitx_wr_reg(HDMITX_DWC_AUD_INT1,
 			hdmitx_rd_reg(HDMITX_DWC_AUD_INT1) & (~(1<<4)));
