@@ -2624,11 +2624,15 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 
 	hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0, tx_aud_src, 5, 1);
 	if (tx_aud_src == 1) {
-		if (GET_OUTCHN_MSK(hdev->aud_output_ch))
+		if (GET_OUTCHN_MSK(hdev->aud_output_ch)){
+			pr_info("hdmitx channel mask = %d\n", GET_OUTCHN_MSK(hdev->aud_output_ch));
 			hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0,
 				GET_OUTCHN_MSK(hdev->aud_output_ch), 0, 4);
-		else
+		}
+		else {
+			pr_info("hdmitx no channel mask");
 			hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0, 0xf, 0, 4);
+		}
 		/* Enable audi2s_fifo_overrun interrupt */
 		hdmitx_wr_reg(HDMITX_DWC_AUD_INT1,
 			hdmitx_rd_reg(HDMITX_DWC_AUD_INT1) & (~(1<<4)));
