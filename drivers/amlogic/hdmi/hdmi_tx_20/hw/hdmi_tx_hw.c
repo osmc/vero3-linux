@@ -3059,7 +3059,7 @@ static void hdmitx_debug(struct hdmitx_dev *hdev, const char *buf)
                 if (tmpbuf[6] == '1')
                         round = 1;
 		hd_set_reg_bits(P_VPU_HDMI_FMT_CTRL, round, 10, 1);
-                pr_info("hdmitx: adjust round = %d\n", round);
+//                pr_info("hdmitx: adjust round = %d\n", round);
 		return;
 	} else if (strncmp(tmpbuf, "do2020", 6) == 0) {
 		pr_info("hdmitx: BT2020 AVI ON\n");
