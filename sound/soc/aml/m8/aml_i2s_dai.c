@@ -397,7 +397,7 @@ static int aml_dai_i2s_startup(struct snd_pcm_substream *substream,
 static void aml_dai_i2s_shutdown(struct snd_pcm_substream *substream,
 				 struct snd_soc_dai *dai)
 {
-	if (IEC958_mode_codec == 0)
+	if (IEC958_mode_codec < 2)
 		aml_spdif_play(0);
 	return;
 }
@@ -477,7 +477,7 @@ static int aml_dai_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			dev_info(substream->pcm->card->dev, "I2S playback enable\n");
 			audio_out_i2s_enable(1);
-			if (IEC958_mode_codec == 0) {
+			if (IEC958_mode_codec < 2) {
 				dev_info(substream->pcm->card->dev, "IEC958 playback enable\n");
 				audio_hw_958_enable(1);
 			}
@@ -491,7 +491,7 @@ static int aml_dai_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			dev_info(substream->pcm->card->dev, "I2S playback disable\n");
 			audio_out_i2s_enable(0);
-			if (IEC958_mode_codec == 0) {
+			if (IEC958_mode_codec < 2) {
 				dev_info(substream->pcm->card->dev, "IEC958 playback disable\n");
 				audio_hw_958_enable(0);
 			}
