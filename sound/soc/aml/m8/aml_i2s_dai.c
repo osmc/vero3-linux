@@ -45,6 +45,8 @@
 #include "aml_audio_hw.h"
 #include <linux/amlogic/sound/aout_notify.h>
 #include "aml_spdif_dai.h"
+#include <linux/amlogic/sound/aiu_regs.h>
+#include <linux/amlogic/iomap.h>
 
 struct aml_dai_info dai_info[3] = { {0} };
 
@@ -420,6 +422,9 @@ static int aml_i2s_set_amclk(struct aml_i2s *i2s, unsigned long rate)
 		return ret;
 
 	audio_set_i2s_clk_div();
+
+	aml_cbus_update_bits(AIU_HDMI_CLK_DATA_CTRL, 0x3, 2);
+	aml_cbus_update_bits(AIU_HDMI_CLK_DATA_CTRL, 0x3 << 4, 2 << 4);
 
 	return 0;
 }
