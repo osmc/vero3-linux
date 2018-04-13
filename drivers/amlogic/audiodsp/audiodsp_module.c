@@ -811,8 +811,6 @@ static ssize_t digital_codec_store(struct class *class,
 		if (kstrtoint(buf, 10, &digital_codec))
 			pr_info("kstrtoint err %s\n", __func__);
 		if (digital_codec < SUPPORT_TYPE_NUM) {
-			pr_info("IEC958_mode_codec= %d, IEC958 type %s\n",
-				digital_codec, codec_str[digital_codec]);
 			switch (digital_codec) {
 				case 2:
 					IEC958_mode_codec = 2; //AOUT_EVENT_RAWDATA_AC_3;
@@ -823,6 +821,9 @@ static ssize_t digital_codec_store(struct class *class,
 				case 4:
 					IEC958_mode_codec = 0xa; //AOUT_EVENT_RAWDATA_DOLBY_DIGITAL_PLUS;
 					break;
+				case 5:
+					IEC958_mode_codec = 0xb; //AOUT_EVENT_RAWDATA_DTS_HD;
+					break;
 				case 8:
 					IEC958_mode_codec = 0x10b; //AOUT_EVENT_RAWDATA_DTS_HD_MA;
 					break;
@@ -832,6 +833,8 @@ static ssize_t digital_codec_store(struct class *class,
 				default:
 					IEC958_mode_codec = 1; //AOUT_EVENT_IEC_60958_PCM;
 			}
+			pr_info("IEC958_mode_codec= %d, IEC958 type %s\n",
+				IEC958_mode_codec, codec_str[digital_codec]);
 
 		} else {
 			pr_info("IEC958 type set exceed supported range\n");
