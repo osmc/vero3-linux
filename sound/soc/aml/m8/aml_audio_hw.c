@@ -562,6 +562,8 @@ void audio_set_i2s_mode(u32 mode, unsigned int channel)
 
 			aml_cbus_update_bits(AIU_I2S_SOURCE_DESC, 2 << 3,
 						2 << 3);
+			aml_cbus_update_bits(AIU_I2S_SOURCE_DESC, 1 << 5,
+						0);
 
 			aml_cbus_update_bits(AIU_CLK_CTRL_MORE, 0x1f, 0x5);
 		}
@@ -574,6 +576,9 @@ void audio_set_i2s_mode(u32 mode, unsigned int channel)
 
 			aml_cbus_update_bits(AIU_I2S_SOURCE_DESC, 2 << 3,
 						2 << 3);
+			aml_cbus_update_bits(AIU_I2S_SOURCE_DESC, 1 << 5,
+						0);
+
 		} else if (mode == AIU_I2S_MODE_PCM24) {
 			aml_cbus_update_bits(AIU_MEM_I2S_CONTROL, 1 << 6, 0);
 
@@ -1036,8 +1041,8 @@ unsigned int read_i2s_mute_swap_reg(void)
 void audio_i2s_swap_left_right(unsigned int flag)
 {
     /*only LPCM output can set aiu hw channel swap*/
-	if (ENABLE_IEC958 && (IEC958_mode_codec == 0 || IEC958_mode_codec == 9))
-		aml_cbus_update_bits(AIU_958_CTRL, 0x3 << 1, flag << 1);
+//	if (ENABLE_IEC958 && (IEC958_mode_codec == 0 || IEC958_mode_codec == 9))
+//		aml_cbus_update_bits(AIU_958_CTRL, 0x3 << 1, flag << 1);
 
 	aml_cbus_update_bits(AIU_I2S_MUTE_SWAP, 0x3, flag);
 	aml_cbus_update_bits(AIU_I2S_MUTE_SWAP, 0x3 << 2, flag << 2);

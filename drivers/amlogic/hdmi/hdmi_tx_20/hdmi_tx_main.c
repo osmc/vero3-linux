@@ -2388,7 +2388,7 @@ static unsigned char *aud_type_string[] = {
 	"CT_ATRAC",
 	"CT_ONE_BIT_AUDIO",
 	"CT_DOLBY_D",
-	"CT_DTS_HD (HRA/MA/X)",
+	"CT_DTS_HD",
 	"CT_MAT",
 	"CT_DST",
 	"CT_WMA",
@@ -2449,8 +2449,10 @@ static int hdmitx_notify_callback_a(struct notifier_block *block,
 
 	if (audio_param->type != cmd) {
 		hdmi_print(INF, AUD "aout notify format %s was %s\n",
-			aud_type_string[cmd & 0xff],
-			aud_type_string[audio_param->type & 0xff]);
+			(cmd == CT_DTS_HD_MA) ? \
+			"CT_DTS_HD (MA/X)" : aud_type_string[cmd],
+			(audio_param->type == CT_DTS_HD_MA) ? \
+			"CT_DTS_HD (MA/X)" : aud_type_string[audio_param->type]);
 		audio_param->type = cmd;
 		hdmitx_device.audio_param_update_flag = 1;
 	}
