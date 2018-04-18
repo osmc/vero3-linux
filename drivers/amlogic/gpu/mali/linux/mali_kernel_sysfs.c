@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2011-2015 ARM Limited. All rights reserved.
+ * Copyright (C) 2011-2016 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -26,7 +26,12 @@
 
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+#include <linux/uaccess.h>
+#else
 #include <asm/uaccess.h>
+#endif
 #include <linux/module.h>
 #include <linux/mali/mali_utgard.h>
 #include "mali_kernel_sysfs.h"
@@ -880,10 +885,17 @@ static const struct file_operations profiling_events_human_readable_fops = {
 
 static int memory_debugfs_show(struct seq_file *s, void *private_data)
 {
+#ifdef MALI_MEM_SWAP_TRACKING
+	seq_printf(s, "  %-25s  %-10s %-25s %-10s  %-15s  %-15s  %-10s  %-10s %-10s\n"\
+		   "=======================================================================================================================================\n",
+		   "Name (:bytes)", "pid", "pid-name", "mali_mem", "max_mali_mem",
+		   "external_mem", "ump_mem", "dma_mem", "swap_mem");
+#else
 	seq_printf(s, "  %-25s  %-10s %-25s %-10s  %-15s  %-15s  %-10s  %-10s\n"\
 		   "=======================================================================================================================================\n",
 		   "Name (:bytes)", "pid", "pid-name", "mali_mem", "max_mali_mem",
 		   "external_mem", "ump_mem", "dma_mem");
+#endif
 	mali_session_memory_tracking(s);
 	return 0;
 }
@@ -1135,6 +1147,9 @@ static ssize_t version_read(struct file *filp, char __user *buf, size_t count, l
 		break;
 	case _MALI_PRODUCT_ID_MALI450:
 		r = snprintf(buffer, 64, "Mali-450 MP\n");
+		break;
+	case _MALI_PRODUCT_ID_MALI470:
+		r = snprintf(buffer, 64, "Mali-470 MP\n");
 		break;
 	case _MALI_PRODUCT_ID_UNKNOWN:
 		return -EINVAL;

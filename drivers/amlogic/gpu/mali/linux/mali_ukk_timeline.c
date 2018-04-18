@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2015 ARM Limited. All rights reserved.
+ * Copyright (C) 2013, 2016 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -8,7 +8,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 #include <linux/fs.h>       /* file system operations */
-#include <asm/uaccess.h>    /* user space access */
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+#include <linux/uaccess.h>
+#else
+#include <asm/uaccess.h>
+#endif
 
 #include "mali_ukk.h"
 #include "mali_osk.h"
@@ -76,11 +82,11 @@ int timeline_create_sync_fence_wrapper(struct mali_session_data *session, _mali_
 	if (0 != copy_from_user(&uk_fence, &uargs->fence, sizeof(_mali_uk_fence_t))) return -EFAULT;
 	mali_timeline_fence_copy_uk_fence(&fence, &uk_fence);
 
-#if defined(CONFIG_SYNC)
+#if defined(CONFIG_SYNC) || defined(CONFIG_SYNC_FILE)
 	sync_fd = mali_timeline_sync_fence_create(session->timeline_system, &fence);
 #else
 	sync_fd = -1;
-#endif /* defined(CONFIG_SYNC) */
+#endif /* defined(CONFIG_SYNC) || defined(CONFIG_SYNC_FILE) */
 
 	if (0 != put_user(sync_fd, &uargs->sync_fd)) return -EFAULT;
 

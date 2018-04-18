@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2015 ARM Limited. All rights reserved.
+ * Copyright (C) 2011-2016 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -25,6 +25,15 @@
 #if defined(CONFIG_DMA_SHARED_BUFFER) && !defined(CONFIG_MALI_DMA_BUF_MAP_ON_ATTACH)
 #include "linux/mali_memory_dma_buf.h"
 #endif
+#if defined(CONFIG_MALI_DMA_BUF_FENCE)
+#include "linux/mali_dma_fence.h"
+#endif
+
+typedef enum pp_job_status {
+	MALI_NO_SWAP_IN,
+	MALI_SWAP_IN_FAIL,
+	MALI_SWAP_IN_SUCC,
+} pp_job_status;
 
 /**
  * This structure represents a PP job, including all sub jobs.
@@ -55,6 +64,10 @@ struct mali_pp_job {
 	u32 perf_counter_per_sub_job_src1[_MALI_PP_MAX_SUB_JOBS]; /**< Per sub job counters src1 */
 	u32 sub_jobs_num;                                  /**< Number of subjobs; set to 1 for Mali-450 if DLBU is used, otherwise equals number of PP cores */
 
+	pp_job_status swap_status;                         /**< Used to track each PP job swap status, if fail, we need to drop them in scheduler part */
+	mali_bool user_notification;                       /**< When we deferred delete PP job, we need to judge if we need to send job finish notification to user space */
+	u32 num_pp_cores_in_virtual;                       /**< How many PP cores we have when job finished */
+
 	/*
 	 * These members are used by both scheduler and executor.
 	 * They are "protected" by atomic operations.
@@ -75,6 +88,7 @@ struct mali_pp_job {
 	 */
 	_mali_osk_list_t list;                             /**< Used to link jobs together in the scheduler queue */
 	_mali_osk_list_t session_fb_lookup_list;           /**< Used to link jobs together from the same frame builder in the session */
+
 	u32 sub_jobs_started;                              /**< Total number of sub-jobs started (always started in ascending order) */
 
 	/*
@@ -84,6 +98,15 @@ struct mali_pp_job {
 	 */
 	u32 perf_counter_value0[_MALI_PP_MAX_SUB_JOBS];    /**< Value of performance counter 0 (to be returned to user space), one for each sub job */
 	u32 perf_counter_value1[_MALI_PP_MAX_SUB_JOBS];    /**< Value of performance counter 1 (to be returned to user space), one for each sub job */
+
+#if defined(CONFIG_MALI_DMA_BUF_FENCE)
+	struct mali_dma_fence_context dma_fence_context; /**< The mali dma fence context to record dma fence waiters that this job wait for */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+	struct dma_fence *rendered_dma_fence; /**< the new dma fence link to this job */
+#else
+	struct fence *rendered_dma_fence; /**< the new dma fence link to this job */
+#endif
+#endif
 };
 
 void mali_pp_job_initialize(void);
@@ -169,7 +192,7 @@ MALI_STATIC_INLINE u32 *mali_pp_job_get_dlbu_registers(struct mali_pp_job *job)
 
 MALI_STATIC_INLINE mali_bool mali_pp_job_is_virtual(struct mali_pp_job *job)
 {
-#if defined(CONFIG_MALI450)
+#if (defined(CONFIG_MALI450) || defined(CONFIG_MALI470))
 	MALI_DEBUG_ASSERT_POINTER(job);
 	return (0 == job->uargs.num_cores) ? MALI_TRUE : MALI_FALSE;
 #else
@@ -482,6 +505,13 @@ MALI_STATIC_INLINE mali_bool mali_pp_job_is_window_surface(
 {
 	MALI_DEBUG_ASSERT_POINTER(job);
 	return (job->uargs.flags & _MALI_PP_JOB_FLAG_IS_WINDOW_SURFACE)
+	       ? MALI_TRUE : MALI_FALSE;
+}
+
+MALI_STATIC_INLINE mali_bool mali_pp_job_is_protected_job(struct mali_pp_job *job)
+{
+	MALI_DEBUG_ASSERT_POINTER(job);
+	return (job->uargs.flags & _MALI_PP_JOB_FLAG_PROTECTED)
 	       ? MALI_TRUE : MALI_FALSE;
 }
 
