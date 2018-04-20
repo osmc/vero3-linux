@@ -155,7 +155,8 @@ static int get_speaker_mask(struct snd_pcm_runtime *runtime)
 {
 	struct aml_runtime_data *prtd = (struct aml_runtime_data *)runtime->private_data;
 	int speaker_mask = 0;
-	for (int i=0; i<8; i++)
+	int i;
+	for (i=0; i<8; i++)
 	{
 		if (strstr(channel_allocations[prtd->chmap_layout].speakers[i], "NA")==NULL)
 			speaker_mask |= 1 << (7-i);
