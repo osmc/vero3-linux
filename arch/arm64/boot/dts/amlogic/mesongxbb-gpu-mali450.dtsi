@@ -51,15 +51,6 @@
 		  /*control_interval x keep_count == 900 - 1000ms */
 		  control_interval = <200>;
 
-		  clk125_cfg:clk125_cfg {
-			clk_freq = <125000000>;
-			clk_parent = "fclk_div4";
-			clkp_freq = <500000000>;
-			voltage = <1150>;
-			keep_count = <5>;
-			threshold = <30 250>;
-		  };
-
 		  clk250_cfg:clk250_cfg {
 			clk_freq = <250000000>;
 			clk_parent = "fclk_div4";
