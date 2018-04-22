@@ -2544,12 +2544,15 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 	struct hdmitx_audpara *audio_param)
 {
 	unsigned int data32;
+	int aud_cfg;
 
 	if (!hdev)
 		return 0;
 	if (!audio_param)
 		return 0;
 	pr_info("hdmtix: setting audio %d\n", hdev->tx_aud_cfg);
+	aud_cfg = hdev->tx_aud_cfg;
+	audio_mute_op(0);
 	/* PCM & 8 ch */
 	if ((audio_param->type == CT_PCM) &&
 		(audio_param->channel_num == (8 - 1)))
@@ -2640,6 +2643,8 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 	udelay(10);
 	hdmitx_wr_reg(HDMITX_DWC_AUD_N1, hdmitx_rd_reg(HDMITX_DWC_AUD_N1));
 	hdmitx_set_reg_bits(HDMITX_DWC_FC_DATAUTO3, 1, 0, 1);
+	hdev->tx_aud_cfg = aud_cfg;
+	audio_mute_op(hdev->tx_aud_cfg);
 
 	return 1;
 }
