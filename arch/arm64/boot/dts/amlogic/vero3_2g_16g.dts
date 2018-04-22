@@ -1095,7 +1095,7 @@
 		#thermal-sensor-cells = <1>;
 		cooling_devices {
 			cpufreq_cool_cluster0 {
-				min_state = <1000000>;
+				min_state = <667000>;
 				dyn_coeff = <140>;
 				cluster_id = <0>;
 				node_name = "cpus";
