@@ -2502,10 +2502,8 @@ static int hdmitx_notify_callback_a(struct notifier_block *block,
 
 	if ((!hdmi_audio_off_flag) &&
 		(hdmitx_device.audio_param_update_flag)) {
-		int aud_cfg = hdmitx_device.tx_aud_cfg;
 		/* plug-in & update audio param */
 		if (hdmitx_device.hpd_state == 1) {
-			hdmitx_audio_mute_op(0);
 			hdmitx_set_audio(&hdmitx_device,
 			&(hdmitx_device.cur_audio_param), hdmitx_device.speaker_layout);
 		if ((hdmitx_device.audio_notify_flag == 1) ||
@@ -2514,7 +2512,6 @@ static int hdmitx_notify_callback_a(struct notifier_block *block,
 			hdmitx_device.audio_step = 0;
 		}
 		hdmitx_device.audio_param_update_flag = 0;
-		hdmitx_device.tx_aud_cfg = aud_cfg;
 		hdmi_print(INF, AUD "set audio param\n");
 	}
 	}
