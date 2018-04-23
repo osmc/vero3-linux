@@ -230,7 +230,7 @@ static int register_cool_dev(struct cool_dev *cool)
 	case COOL_DEV_TYPE_GPU_FREQ:
 		if (of_property_read_u32(cool->np, "num_of_pp", &pp))
 			pr_err("thermal: read num_of_pp failed\n");
-		save_gpu_cool_para(cool->coeff, cool->np, pp);
+		//save_gpu_cool_para(cool->coeff, cool->np, pp);
 		return 0;
 
 	case COOL_DEV_TYPE_GPU_CORE:

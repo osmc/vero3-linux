@@ -29,7 +29,6 @@ struct gpucore_cooling_device {
 	unsigned int gpucore_val;
 	int max_gpu_core_num;
 	unsigned int (*set_max_pp_num)(unsigned int);
-	struct device_node *np;
 	int stop_flag;
 };
 #define GPU_STOP 0x80000000
@@ -48,7 +47,6 @@ int gpucore_cooling_register(struct gpucore_cooling_device *);
  */
 void gpucore_cooling_unregister(struct thermal_cooling_device *cdev);
 struct gpucore_cooling_device *gpucore_cooling_alloc(void);
-void save_gpucore_thermal_para(struct device_node *);
 
 #else /* !CONFIG_CPU_THERMAL */
 inline struct gpucore_cooling_device *gpucore_cooling_alloc(void)
@@ -63,9 +61,6 @@ inline int gpucore_cooling_register(struct gpucore_cooling_device *gcd)
 inline void gpucore_cooling_unregister(struct thermal_cooling_device *cdev)
 {
 	return;
-}
-inline void save_gpucore_thermal_para(struct device_node *n)
-{
 }
 #endif	/* CONFIG_CPU_THERMAL */
 

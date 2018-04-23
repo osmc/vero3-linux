@@ -49,18 +49,11 @@ static DEFINE_MUTEX(cooling_gpucore_lock);
 /* notify_table passes value to the gpucore_ADJUST callback function. */
 #define NOTIFY_INVALID NULL
 
-static struct device_node *np;
 static int save_flag = -1;
 
 void save_gpucore_thermal_para(struct device_node *n)
 {
-	if (!n)
-		return;
-
-	if (save_flag == -1) {
-		save_flag = 1;
-		np = n;
-	}
+	return;
 }
 
 /**
@@ -268,8 +261,6 @@ struct gpucore_cooling_device *gpucore_cooling_alloc(void)
 		return ERR_PTR(-ENOMEM);
 	}
 	memset(gcdev, 0, sizeof(*gcdev));
-	if (save_flag == 1)
-		gcdev->np = np;
 	return gcdev;
 }
 EXPORT_SYMBOL_GPL(gpucore_cooling_alloc);
@@ -289,8 +280,6 @@ int gpucore_cooling_register(struct gpucore_cooling_device *gpucore_dev)
 		 gpucore_dev->id);
 
 	gpucore_dev->gpucore_state = 0;
-	cool_dev = thermal_of_cooling_device_register(gpucore_dev->np,
-			dev_name, gpucore_dev, &gpucore_cooling_ops);
 	if (!cool_dev) {
 		release_idr(&gpucore_idr, gpucore_dev->id);
 		kfree(gpucore_dev);
