@@ -2566,6 +2566,14 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 
 /* config IP */
 /* Configure audio */
+/* [  5] 0=select SPDIF; 1=select I2S. */
+	data32 = 0;
+	data32 |= (0 << 7);  /* [  7] sw_audio_fifo_rst */
+	data32 |= (tx_aud_src << 5);
+	data32 |= (0 << 0);  /* [3:0] i2s_in_en: enable it later in test.c */
+/* if enable it now, fifo_overrun will happen, because packet don't get sent
+ * out until initial DE detected. */
+	hdmitx_wr_reg(HDMITX_DWC_AUD_CONF0, data32);
 	/* I2S Sampler config */
 	data32 = 0;
 /* [  3] fifo_empty_mask: 0=enable int; 1=mask int. */
@@ -2579,14 +2587,6 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
  * Enable it later when audio starts. */
 	data32 |= (1 << 4);
 	hdmitx_wr_reg(HDMITX_DWC_AUD_INT1,  data32);
-/* [  5] 0=select SPDIF; 1=select I2S. */
-	data32 = 0;
-	data32 |= (0 << 7);  /* [  7] sw_audio_fifo_rst */
-	data32 |= (tx_aud_src << 5);
-	data32 |= (0 << 0);  /* [3:0] i2s_in_en: enable it later in test.c */
-/* if enable it now, fifo_overrun will happen, because packet don't get sent
- * out until initial DE detected. */
-	hdmitx_wr_reg(HDMITX_DWC_AUD_CONF0, data32);
 
 	data32 = 0;
 	data32 |= (0 << 5);  /* [7:5] i2s_mode: 0=standard I2S mode */
@@ -2621,6 +2621,12 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 	set_aud_chnls(hdev, audio_param);
 
 	hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0, tx_aud_src, 5, 1);
+	set_aud_fifo_rst();
+	udelay(10);
+	hdmitx_set_reg_bits(HDMITX_DWC_FC_DATAUTO3, 1, 0, 1);
+	hdmitx_wr_reg(HDMITX_DWC_AUD_N1, hdmitx_rd_reg(HDMITX_DWC_AUD_N1));
+	hdev->tx_aud_cfg = aud_cfg;
+	audio_mute_op(hdev->tx_aud_cfg);
 	if (tx_aud_src == 1) {
 		if (GET_OUTCHN_MSK(hdev->aud_output_ch)){
 			pr_info("hdmitx channel mask = %d\n", GET_OUTCHN_MSK(hdev->aud_output_ch));
@@ -2639,12 +2645,6 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 	}
 	else
 		hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0, 0xf, 0, 4);
-	set_aud_fifo_rst();
-	udelay(10);
-	hdmitx_wr_reg(HDMITX_DWC_AUD_N1, hdmitx_rd_reg(HDMITX_DWC_AUD_N1));
-	hdmitx_set_reg_bits(HDMITX_DWC_FC_DATAUTO3, 1, 0, 1);
-	hdev->tx_aud_cfg = aud_cfg;
-	audio_mute_op(hdev->tx_aud_cfg);
 
 	return 1;
 }
