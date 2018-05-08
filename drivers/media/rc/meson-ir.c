@@ -149,7 +149,8 @@ static int meson_ir_probe(struct platform_device *pdev)
 	ir->rc->driver_type = RC_DRIVER_IR_RAW;
 	ir->rc->allowed_protos = RC_BIT_ALL;
 	ir->rc->rx_resolution = US_TO_NS(MESON_TRATE);
-	ir->rc->timeout = MS_TO_NS(200);
+	ir->rc->timeout = MS_TO_NS(125);
+	ir->rc->max_timeout = MS_TO_NS(1250);
 	ir->rc->driver_name = DRIVER_NAME;
 
 	spin_lock_init(&ir->lock);
