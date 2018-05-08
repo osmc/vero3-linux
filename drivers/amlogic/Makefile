@@ -102,7 +102,11 @@ obj-$(CONFIG_AM_INPUT)		+= input/
 
 obj-$(CONFIG_MESON_SUSPEND)	+= pm/
 
+obj-$(CONFIG_AVL6862)		+= dvb-avl/
+
 obj-$(CONFIG_AM_DVB)		+= dvb_tv/
+
+obj-$(CONFIG_WETEK)		+= wetek/
 
 obj-$(CONFIG_MESON_MHU_MBOX)	+= mailbox/
 
