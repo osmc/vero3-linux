@@ -51,7 +51,7 @@ default:: prepare firmware
 	@echo Kernel build directory is $(OUTDIR)
 	$(MAKE) -C ../linux apply_patches
 	$(MAKE) -C $(OUTDIR) SUBDIRS=$(PWD) $(MYCFLAGS) modules
-#	./scripts/rmmod.pl check
+	./scripts/rmmod.pl check
 #	$(MAKE) checkpatch
 
 mismatch:: prepare firmware
@@ -92,6 +92,9 @@ ifneq ($(filter $(no-makefile-media-targets), $(MAKECMDGOALS)),)
 endif
 
 makefile-mm := 1
+ifeq ($(wildcard ../linux/mm/frame_vector.c),)
+	makefile-mm := 0
+endif
 
 # If version not yet detected, we can't create/have these files yet
 ifeq ($(KERNELRELEASE),)

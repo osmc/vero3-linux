@@ -25,12 +25,6 @@ add api_version.patch
 add pr_fmt.patch
 add debug.patch
 add drx39xxj.patch
-add add-terratec-s2-usb.patch
-
-[4.10.255]
-add v4.10_sched_signal.patch
-add v4.10_fault_page.patch
-add v4.10_refcount.patch
 
 [4.9.255]
 add v4.9_mm_address.patch
