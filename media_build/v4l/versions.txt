@@ -1,13 +1,16 @@
 # Use this for stuff for drivers that don't compile
 [9.255.255]
-VIDEO_S5C73M3
-DVB_CXD2880
 
 [4.7.0]
 # needs i2c_mux_alloc
+VIDEO_CX231XX
 DVB_LGDT3306A
+DVB_SI2168
+DVB_RTL2830
+DVB_RTL2832
+DVB_M88DS3103
 
-[4.4.0]
+[4.6.0]
 # needs regmap_write_bits
 DVB_CXD2820R
 
@@ -41,8 +44,6 @@ VIDEO_ADP1653
 VIDEO_TVP5150
 VIDEO_ADV7180
 VIDEO_ET8EK8
-VIDEO_OV2640
-VIDEO_OV7670
 
 [3.15.0]
 # needs reset_control_get_optional
@@ -79,10 +80,7 @@ IR_SPI
 
 [3.8.0]
 # needs regmap lock/unlock ops
-DVB_M88DS3103
 DVB_TS2020
-DVB_RTL2830
-DVB_RTL2832
 
 [3.7.0]
 # i2c_add_mux_adapter prototype change
@@ -96,6 +94,7 @@ DVB_NETUP_UNIDVB
 [3.6.0]
 # needs include/linux/sizes.h
 VIDEO_M5MOLS
+VIDEO_S5C73M3
 # needs dma_mmap_coherent and sg_alloc_table_from_pages.
 VIDEOBUF2_DMA_CONTIG
 

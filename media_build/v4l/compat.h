@@ -1579,7 +1579,7 @@ static inline __s32 sign_extend32(__u32 value, int index)
 #endif
 
 #ifdef NEED_WRITEL_RELAXED
-// #define writel_relaxed writel
+#define writel_relaxed writel
 #endif
 
 #ifdef NEED_GET_USER_PAGES_UNLOCKED
@@ -1739,9 +1739,6 @@ static inline const char* of_node_full_name(const struct device_node *np)
 	return "<no-node>";
 }
 #endif
-#elif LINUX_VERSION_CODE <= KERNEL_VERSION(3, 14, 0)
-#include <linux/of.h>
-#define of_node_full_name(p) of_node_full_name((struct device_node *)(p))
 #endif
 
 #ifdef NEED_DIV64_U64_REM
@@ -1862,7 +1859,6 @@ static inline s64 ktime_ms_delta(const ktime_t later, const ktime_t earlier)
 #endif
 
 #define SERIO_PULSE8_CEC     0x40
-#define SERIO_RAINSHADOW_CEC 0x41
 
 #ifdef NEED_KTHREAD_INIT_WORKER
 #define __kthread_init_worker __init_kthread_worker
@@ -1914,23 +1910,5 @@ static inline s64 ktime_ms_delta(const ktime_t later, const ktime_t earlier)
 #endif
 
 #define of_node_cmp(s1, s2)          strcasecmp((s1), (s2))
-
-#define BIT_ULL(nr)        (1ULL << (nr))
-#define BIT_ULL_MASK(nr)   (1ULL << ((nr) % BITS_PER_LONG_LONG))
-#define BIT_ULL_WORD(nr)   ((nr) / BITS_PER_LONG_LONG)
-
-#ifdef NEED_DMA_COERCE_MASK
-#include <linux/dma-mapping.h>
-static inline int dma_coerce_mask_and_coherent(struct device *dev, u64 mask)
-{
-	dev->dma_mask = &dev->coherent_dma_mask;
-	return dma_set_mask_and_coherent(dev, mask);
-}
-#endif
-
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 10, 0)
-#include <sound/pcm.h>
-#define snd_pcm_set_ops(pcm, dir, ops) snd_pcm_set_ops(pcm, dir, (struct snd_pcm_ops *)(ops))
-#endif
 
 #endif /*  _COMPAT_H */

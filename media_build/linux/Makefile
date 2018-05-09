@@ -68,11 +68,10 @@ TARFILES += firmware/vicam/firmware.H16
 TARFILES += firmware/ttusb-budget/dspbootcode.bin.ihex
 
 DATE := `git --git-dir $(DIR)/.git log -n1 '--pretty=format:%h %ai' |perl -ne 'print "$$2-$$1" if (m/([\da-f]+)\s+(\S+)/)'`
-#TODAY_TAR := linux-media-${DATE}.tar
-TODAY_TAR := linux-media-LATEST.tar
+TODAY_TAR := linux-media-${DATE}.tar
 TODAY_TAR_MD5 := ${TODAY_TAR}.bz2.md5
-LATEST_TAR := https://bitbucket.org/CrazyCat/media_build/downloads/linux-media-LATEST.tar.bz2
-LATEST_TAR_MD5 := https://bitbucket.org/CrazyCat/media_build/downloads/linux-media-LATEST.tar.bz2.md5
+LATEST_TAR := http://linuxtv.org/downloads/drivers/2017-02-08-9eeb0ed0f30.tar.bz2
+LATEST_TAR_MD5 := http://linuxtv.org/downloads/drivers/2017-02-08-9eeb0ed0f30.tar.bz2.md5
 
 default:
 	make -C ..
