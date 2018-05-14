@@ -28,24 +28,35 @@ enum vmode_e {
 	VMODE_480I  = 0,
 	VMODE_480I_RPT,
 	VMODE_480CVBS,
+	VMODE_NTSC_M,
 	VMODE_480P,
 	VMODE_480P_RPT,
+	VMODE_480P_120HZ,
 	VMODE_576I,
 	VMODE_576I_RPT,
 	VMODE_576CVBS,
+	VMODE_PAL_M,
+	VMODE_PAL_N,
 	VMODE_576P,
 	VMODE_576P_RPT,
+	VMODE_576P_100HZ,
 	VMODE_720P,
 	VMODE_720P_50HZ,
+	VMODE_720P_100HZ,
+	VMODE_720P_120HZ,
 	VMODE_768P,
 	VMODE_768P_50HZ,
 	VMODE_1080I,
 	VMODE_1080I_50HZ,
+	VMODE_1080I_100HZ,
+	VMODE_1080I_120HZ,
 	VMODE_1080P,
 	VMODE_1080P_30HZ,
 	VMODE_1080P_50HZ,
 	VMODE_1080P_25HZ,
 	VMODE_1080P_24HZ,
+	VMODE_1080P_100HZ,
+	VMODE_1080P_120HZ,
 	VMODE_4K2K_30HZ,
 	VMODE_4K2K_25HZ,
 	VMODE_4K2K_24HZ,
@@ -70,6 +81,34 @@ enum vmode_e {
 	VMODE_4K05K_240HZ_Y420,
 	VMODE_4K05K_200HZ,
 	VMODE_4K05K_200HZ_Y420,
+	VMODE_640x480p60hz,
+	VMODE_800x480p60hz,
+	VMODE_800x600p60hz,
+	VMODE_852x480p60hz,
+	VMODE_854x480p60hz,
+	VMODE_1024x600p60hz,
+	VMODE_1024x768p60hz,
+	VMODE_1152x864p75hz,
+	VMODE_1280x600p60hz,
+	VMODE_1280x768p60hz,
+	VMODE_1280x800p60hz,
+	VMODE_1280x960p60hz,
+	VMODE_1280x1024p60hz,
+	VMODE_1360x768p60hz,
+	VMODE_1366x768p60hz,
+	VMODE_1400x1050p60hz,
+	VMODE_1440x900p60hz,
+	VMODE_1440x2560p60hz,
+	VMODE_1440x2560p70hz,
+	VMODE_1600x900p60hz,
+	VMODE_1600x1200p60hz,
+	VMODE_1680x1050p60hz,
+	VMODE_1920x1200p60hz,
+	VMODE_2160x1200p90hz,
+	VMODE_2560x1080p60hz,
+	VMODE_2560x1440p60hz,
+	VMODE_2560x1600p60hz,
+	VMODE_3440x1440p60hz,
 	VMODE_VGA,
 	VMODE_SVGA,
 	VMODE_XGA,
@@ -94,24 +133,35 @@ enum tvmode_e {
 	TVMODE_480I = 0,
 	TVMODE_480I_RPT,
 	TVMODE_480CVBS,
+	TVMODE_NTSC_M,
 	TVMODE_480P,
 	TVMODE_480P_RPT,
+	TVMODE_480P_120HZ,
 	TVMODE_576I,
 	TVMODE_576I_RPT,
 	TVMODE_576CVBS,
+	TVMODE_PAL_M,
+	TVMODE_PAL_N,
 	TVMODE_576P,
 	TVMODE_576P_RPT,
+	TVMODE_576P_100HZ,
 	TVMODE_720P,
 	TVMODE_720P_50HZ,
+	TVMODE_720P_100HZ,
+	TVMODE_720P_120HZ,
 	TVMODE_768P,
 	TVMODE_768P_50HZ,
 	TVMODE_1080I,
 	TVMODE_1080I_50HZ,
+	TVMODE_1080I_100HZ,
+	TVMODE_1080I_120HZ,
 	TVMODE_1080P,
 	TVMODE_1080P_30HZ,
 	TVMODE_1080P_50HZ,
 	TVMODE_1080P_25HZ,
 	TVMODE_1080P_24HZ,
+	TVMODE_1080P_100HZ,
+	TVMODE_1080P_120HZ,
 	TVMODE_4K2K_30HZ,
 	TVMODE_4K2K_25HZ,
 	TVMODE_4K2K_24HZ,
@@ -136,6 +186,34 @@ enum tvmode_e {
 	TVMODE_4K05K_240HZ_Y420,
 	TVMODE_4K05K_200HZ,
 	TVMODE_4K05K_200HZ_Y420,
+	TVMODE_640x480p60hz,
+	TVMODE_800x480p60hz,
+	TVMODE_800x600p60hz,
+	TVMODE_852x480p60hz,
+	TVMODE_854x480p60hz,
+	TVMODE_1024x600p60hz,
+	TVMODE_1024x768p60hz,
+	TVMODE_1152x864p75hz,
+	TVMODE_1280x600p60hz,
+	TVMODE_1280x768p60hz,
+	TVMODE_1280x800p60hz,
+	TVMODE_1280x960p60hz,
+	TVMODE_1280x1024p60hz,
+	TVMODE_1360x768p60hz,
+	TVMODE_1366x768p60hz,
+	TVMODE_1400x1050p60hz,
+	TVMODE_1440x900p60hz,
+	TVMODE_1440x2560p60hz,
+	TVMODE_1440x2560p70hz,
+	TVMODE_1600x900p60hz,
+	TVMODE_1600x1200p60hz,
+	TVMODE_1680x1050p60hz,
+	TVMODE_1920x1200p60hz,
+	TVMODE_2160x1200p90hz,
+	TVMODE_2560x1080p60hz,
+	TVMODE_2560x1440p60hz,
+	TVMODE_2560x1600p60hz,
+	TVMODE_3440x1440p60hz,
 	TVMODE_VGA ,
 	TVMODE_SVGA,
 	TVMODE_XGA,
@@ -182,11 +260,47 @@ enum eotf_type {
 	EOTF_T_DOLBYVISION,
 	EOTF_T_HDR10,
 	EOTF_T_SDR,
+	EOTF_T_LL_MODE,
 	EOTF_T_MAX,
 };
+enum mode_type {
+	YUV422_BIT12 = 0,
+	RGB_8BIT,
+	RGB_10_12BIT,
+	YUV444_10_12BIT,
+};
 
-/* Dolby Version support information */
-/* Refer to DV Spec issue 2.6 Page 11 and 14 */
+
+#define DV_IEEE_OUI	0x00D046
+
+/* Dolby Version VSIF  parameter*/
+struct dv_vsif_para {
+	uint8_t ver; /* 0 or 1 or 2*/
+	uint8_t length;/*ver1: 15 or 12*/
+	union {
+		struct {
+			uint8_t low_latency:1;
+			uint8_t dobly_vision_signal:1;
+			uint8_t backlt_ctrl_MD_present:1;
+			uint8_t auxiliary_MD_present:1;
+			uint8_t eff_tmax_PQ_hi;
+			uint8_t eff_tmax_PQ_low;
+			uint8_t auxiliary_runmode;
+			uint8_t auxiliary_runversion;
+			uint8_t auxiliary_debug0;
+		} ver2;
+	} vers;
+};
+
+/* Dolby Version support information from EDID*/
+/* Refer to DV Spec version2.9 page26 to page39*/
+enum block_type {
+	ERROR_NULL = 0,
+	ERROR_LENGTH,
+	ERROR_OUI,
+	CORRECT,
+};
+
 struct dv_info {
 	uint32_t ieeeoui;
 	uint8_t ver; /* 0 or 1 */
@@ -223,8 +337,8 @@ struct dv_info {
 	} vers;
 };
 
-struct vinfo_s {
-	char *name;
+
+struct vinfo_base_s {
 	enum vmode_e mode;
 	u32 width;
 	u32 height;
@@ -238,12 +352,30 @@ struct vinfo_s {
 	u32 video_clk;
 	enum tvin_color_fmt_e viu_color_fmt;
 	struct hdr_info hdr_info;
+};
+
+struct vinfo_s {
+	char *name;
+	enum vmode_e mode;
+	u32 width;
+	u32 height;
+	u32 field_height;
+	u32 aspect_ratio_num;
+	u32 aspect_ratio_den;
+	u32 sync_duration_num;
+	u32 sync_duration_den;
+	u32 screen_real_width;
+	u32 screen_real_height;
+	u32 video_clk;
+	u32 htotal;
+	u32 vtotal;
+	enum tvin_color_fmt_e viu_color_fmt;
+	struct hdr_info hdr_info;
 	struct master_display_info_s
 		master_display_info;
 	const struct dv_info *dv_info;
 	/* update hdmitx hdr packet, if data is NULL, disalbe packet */
 	void (*fresh_tx_hdr_pkt)(struct master_display_info_s *data);
-	/* tunnel_mode: 1: tunneling mode, RGB 8bit  0: YCbCr422 12bit mode */
 	void (*fresh_tx_vsif_pkt)(enum eotf_type type, uint8_t tunnel_mode);
 };
 

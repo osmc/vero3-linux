@@ -271,7 +271,7 @@ struct vsdb_phyaddr {
 	unsigned char d:4;
 	unsigned char valid;
 #ifdef CONFIG_AML_AO_CEC
-	wait_queue_head_t waitq;
+       wait_queue_head_t waitq;
 #endif
 };
 

@@ -39,11 +39,13 @@
 #include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
 
 #include "hdmi_tx_reg.h"
-
+static DEFINE_MUTEX(ddc_mutex);
 static uint32_t ddc_write_1byte(uint8_t slave, uint8_t offset_addr,
 	uint8_t data)
 {
 	uint32_t st = 0;
+
+	mutex_lock(&ddc_mutex);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_SLAVE, slave);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_ADDRESS, offset_addr);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_DATAO, data);
@@ -57,6 +59,7 @@ static uint32_t ddc_write_1byte(uint8_t slave, uint8_t offset_addr,
 		st = 1;
 	hdmitx_wr_reg(HDMITX_DWC_IH_I2CM_STAT0, 0x7);
 
+	mutex_unlock(&ddc_mutex);
 	return st;
 }
 
@@ -66,6 +69,8 @@ static uint32_t ddc_readext_8byte(uint8_t slave, uint8_t offset_addr,
 {
 	uint32_t st = 0;
 	int32_t i;
+
+	mutex_lock(&ddc_mutex);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_SLAVE, slave);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_ADDRESS, offset_addr);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_SEGADDR,  EDIDSEG_ADR);
@@ -81,6 +86,8 @@ static uint32_t ddc_readext_8byte(uint8_t slave, uint8_t offset_addr,
 	hdmitx_wr_reg(HDMITX_DWC_IH_I2CM_STAT0, 0x7);
 	for (i = 0; i < 8; i++)
 		data[i] = hdmitx_rd_reg(HDMITX_DWC_I2CM_READ_BUFF0 + i);
+
+	mutex_unlock(&ddc_mutex);
 	return st;
 }
 #endif
@@ -90,6 +97,8 @@ static uint32_t ddc_read_8byte(uint8_t slave, uint8_t offset_addr,
 {
 	uint32_t st = 0;
 	int32_t i;
+
+	mutex_lock(&ddc_mutex);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_SLAVE, slave);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_ADDRESS, offset_addr);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_OPERATION, 1 << 2);
@@ -103,6 +112,8 @@ static uint32_t ddc_read_8byte(uint8_t slave, uint8_t offset_addr,
 	hdmitx_wr_reg(HDMITX_DWC_IH_I2CM_STAT0, 0x7);
 	for (i = 0; i < 8; i++)
 		data[i] = hdmitx_rd_reg(HDMITX_DWC_I2CM_READ_BUFF0 + i);
+
+	mutex_unlock(&ddc_mutex);
 	return st;
 }
 
@@ -111,6 +122,8 @@ static uint32_t ddc_readext_1byte(uint8_t slave, uint8_t address, uint8_t *data)
 {
 	uint32_t st = 0;
 	int32_t i;
+
+	mutex_lock(&ddc_mutex);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_SLAVE, slave);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_ADDRESS, offset_addr);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_SEGADDR,  EDIDSEG_ADR);
@@ -125,6 +138,8 @@ static uint32_t ddc_readext_1byte(uint8_t slave, uint8_t address, uint8_t *data)
 		st = 1;
 	hdmitx_wr_reg(HDMITX_DWC_IH_I2CM_STAT0, 0x7);
 	*data = hdmitx_rd_reg(HDMITX_DWC_I2CM_DATAI);
+
+	mutex_unlock(&ddc_mutex);
 	return st;
 }
 #endif
@@ -133,6 +148,8 @@ static uint32_t ddc_read_1byte(uint8_t slave, uint8_t offset_addr,
 	uint8_t *data)
 {
 	uint32_t st = 0;
+
+	mutex_lock(&ddc_mutex);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_SLAVE, slave);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_ADDRESS, offset_addr);
 	hdmitx_wr_reg(HDMITX_DWC_I2CM_OPERATION, 1 << 0);
@@ -145,6 +162,8 @@ static uint32_t ddc_read_1byte(uint8_t slave, uint8_t offset_addr,
 		st = 1;
 	hdmitx_wr_reg(HDMITX_DWC_IH_I2CM_STAT0, 0x7);
 	*data = hdmitx_rd_reg(HDMITX_DWC_I2CM_DATAI);
+
+	mutex_unlock(&ddc_mutex);
 	return st;
 }
 
@@ -200,3 +219,13 @@ uint32_t hdcp_rd_hdcp22_ver(void)
 
 	return 0;
 }
+
+/* only for I2C reactive using */
+void edid_read_head_8bytes(void)
+{
+	uint8_t head[8] = {0};
+
+	hdmitx_ddc_hw_op(DDC_MUX_DDC);
+	ddc_read_8byte(EDID_SLAVE, 0x00, head);
+}
+

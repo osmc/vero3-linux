@@ -26,6 +26,7 @@
 #include <linux/clk-provider.h>
 #include <linux/device.h>
 #include <linux/amlogic/vout/vinfo.h>
+#include <linux/switch.h>
 /* #include <linux/amlogic/aml_gpio_consumer.h> */
 
 /*****************************
@@ -51,13 +52,14 @@ struct rx_audiocap {
 enum hd_ctrl {
 	VID_EN, VID_DIS, AUD_EN, AUD_DIS, EDID_EN, EDID_DIS, HDCP_EN, HDCP_DIS,
 };
-
+#define VESA_MAX_TIMING 64
 struct rx_cap {
 	unsigned int native_Mode;
 	/*video*/
 	unsigned int VIC[VIC_MAX_NUM];
 	unsigned int VIC_count;
 	unsigned int native_VIC;
+	enum hdmi_vic vesa_timing[VESA_MAX_TIMING]; /* Max 64 */
 	/*audio*/
 	struct rx_audiocap RxAudioCap[AUD_MAX_NUM];
 	unsigned char AUD_count;
@@ -82,12 +84,14 @@ struct rx_cap {
 	unsigned int hdr_sup_eotf_sdr:1;
 	unsigned int hdr_sup_eotf_hdr:1;
 	unsigned int hdr_sup_eotf_smpte_st_2084:1;
-	unsigned int hdr_sup_eotf_future:1;
+	unsigned int hdr_sup_eotf_hlg:1;
 	unsigned int hdr_sup_SMD_type1:1;
 	unsigned char hdr_lum_max;
 	unsigned char hdr_lum_avg;
 	unsigned char hdr_lum_min;
-	unsigned char ReceiverBrandName[4];
+	unsigned char IDManufacturerName[4];
+	unsigned char IDProductCode[2];
+	unsigned char IDSerialNumber[4];
 	unsigned char ReceiverProductName[16];
 	unsigned char manufacture_week;
 	unsigned char manufacture_year;
@@ -158,6 +162,56 @@ struct frac_rate_table {
 	u32 sync_den_dec;
 };
 
+struct hdcp_obs_val {
+	unsigned char obs0;
+	unsigned char obs1;
+	unsigned char obs2;
+	unsigned char obs3;
+	unsigned char intstat;
+};
+
+enum hdmi_hdr_transfer {
+	T_UNKNOWN = 0,
+	T_BT709,
+	T_UNDEF,
+	T_BT601,
+	T_BT470M,
+	T_BT470BG,
+	T_SMPTE170M,
+	T_SMPTE240M,
+	T_LINEAR,
+	T_LOG100,
+	T_LOG316,
+	T_IEC61966_2_4,
+	T_BT1361E,
+	T_IEC61966_2_1,
+	T_BT2020_10,
+	T_BT2020_12,
+	T_SMPTE_ST_2084,
+	T_SMPTE_ST_28,
+	T_HLG,/*this item todo*/
+};
+
+enum hdmi_hdr_color {
+	C_UNKNOWN = 0,
+	C_BT709,
+	C_UNDEF,
+	C_BT601,
+	C_BT470M,
+	C_BT470BG,
+	C_SMPTE170M,
+	C_SMPTE240M,
+	C_FILM,
+	C_BT2020,
+};
+
+/* 2kB should be enough to record */
+#define HDCP_LOG_SIZE (1024 * 2)
+struct hdcplog_buf {
+	int idx;
+	unsigned char buf[HDCP_LOG_SIZE + 64]; /* padding 8 bytes */
+};
+
 #define EDID_MAX_BLOCK              4
 #define HDMI_TMP_BUF_SIZE           1024
 struct hdmitx_dev {
@@ -169,9 +223,11 @@ struct hdmitx_dev {
 	struct task_struct *task_cec;
 	struct notifier_block nb;
 	struct workqueue_struct *hdmi_wq;
+	struct workqueue_struct *rxsense_wq;
 	struct device *hdtx_dev;
 	struct delayed_work work_hpd_plugin;
 	struct delayed_work work_hpd_plugout;
+	struct delayed_work work_rxsense;
 	struct work_struct work_internal_intr;
 	struct work_struct work_hdr;
 	struct delayed_work work_do_hdcp;
@@ -179,9 +235,11 @@ struct hdmitx_dev {
 	struct delayed_work cec_work;
 #endif
 	struct timer_list hdcp_timer;
+	int chip_type;
 	int hdcp_try_times;
 	/* -1, no hdcp; 0, NULL; 1, 1.4; 2, 2.2 */
 	int hdcp_mode;
+	int hdcp_bcaps_repeater;
 	int ready;	/* 1, hdmi stable output, others are 0 */
 	int hdcp_hpd_stick;	/* 1 not init & reset at plugout */
 #ifdef CONFIG_AML_HDMI_TX_14
@@ -275,13 +333,19 @@ struct hdmitx_dev {
 	struct clk *clk_phy;
 	struct clk *clk_vid;
 	unsigned int gpio_i2c_enable;
+	unsigned int repeater_tx;
 	/* 0.1% clock shift, 1080p60hz->59.94hz */
 	unsigned int frac_rate_policy;
+	unsigned int rxsense_policy;
 	/* configure for I2S: 8ch in, 2ch out */
 	/* 0: default setting  1:ch0/1  2:ch2/3  3:ch4/5  4:ch6/7 */
 	unsigned int aud_output_ch;
-	unsigned int speaker_layout;
-	unsigned int hdr_src_feature;
+	enum hdmi_hdr_transfer hdr_transfer_feature;
+	enum hdmi_hdr_color hdr_color_feature;
+	unsigned int dv_src_feature;
+	unsigned int sdr_hdr_feature;
+	unsigned int vr_disp_flag:1;
+	unsigned int arc_on_flag:1;
 	unsigned int flag_3dfp:1;
 	unsigned int flag_3dtb:1;
 	unsigned int flag_3dss:1;
@@ -319,6 +383,8 @@ struct hdmitx_dev {
 #define DDC_HDCP_14_LSTORE	(CMD_DDC_OFFSET + 0x0f)
 #define DDC_HDCP_22_LSTORE	(CMD_DDC_OFFSET + 0x10)
 #define DDC_SCDC_DIV40_SCRAMB	(CMD_DDC_OFFSET + 0x20)
+#define DDC_HDCP14_GET_BCAPS_RP	(CMD_DDC_OFFSET + 0x30)
+#define DDC_HDCP14_SAVE_OBS	(CMD_DDC_OFFSET + 0x40)
 
 /***********************************************************************
  *             CONFIG CONTROL //CntlConfig
@@ -355,6 +421,9 @@ struct hdmitx_dev {
 	#define YCC_RANGE_LIM		0
 	#define YCC_RANGE_FUL		1
 	#define YCC_RANGE_RSVD		2
+#define CONF_VIDEO_MUTE_OP      (CMD_CONF_OFFSET + 0x1000 + 0x04)
+#define VIDEO_MUTE          0x1
+#define VIDEO_UNMUTE        0x2
 
 /***********************************************************************
  *             MISC control, hpd, hpll //CntlMisc
@@ -385,6 +454,8 @@ struct hdmitx_dev {
 #define MISC_HPLL_FAKE			(CMD_MISC_OFFSET + 0x0c)
 #define MISC_ESM_RESET		(CMD_MISC_OFFSET + 0x0d)
 #define MISC_HDCP_CLKDIS	(CMD_MISC_OFFSET + 0x0e)
+#define MISC_TMDS_RXSENSE	(CMD_MISC_OFFSET + 0x0f)
+#define MISC_I2C_REACTIVE       (CMD_MISC_OFFSET + 0x10)
 
 /***********************************************************************
  *                          Get State //GetState
@@ -488,7 +559,7 @@ void __attribute__((weak))rx_set_receive_hdcp(unsigned char *data, int len,
 }
 
 extern int hdmitx_set_display(struct hdmitx_dev *hdmitx_device,
-	enum hdmi_vic VideoCode);
+	enum hdmi_vic VideoCode, struct switch_dev *sd);
 
 extern int hdmi_set_3d(struct hdmitx_dev *hdmitx_device, int type,
 	unsigned int param);
@@ -523,12 +594,14 @@ extern void hdmitx_hpd_plugin_handler(struct work_struct *work);
 extern void hdmitx_hpd_plugout_handler(struct work_struct *work);
 extern void hdmitx_internal_intr_handler(struct work_struct *work);
 extern unsigned char hdmi_audio_off_flag;
+extern unsigned int get_hdcp22_base(void);
 /*
  * hdmitx_audio_mute_op() is used by external driver call
  * flag: 0: audio off   1: audio_on
  *       2: for EDID auto mode
  */
 extern void hdmitx_audio_mute_op(unsigned int flag);
+extern void hdmitx_video_mute_op(unsigned int flag);
 
 #define HDMITX_HWCMD_MUX_HPD_IF_PIN_HIGH       0x3
 #define HDMITX_HWCMD_TURNOFF_HDMIHW           0x4
@@ -561,8 +634,11 @@ extern void hdmitx_audio_mute_op(unsigned int flag);
 #define INTR_MASKN_DISABLE  1
 #define INTR_CLEAR          2
 
-#define HDMI_HDCP_DELAYTIME_AFTER_DISPLAY    20      /* unit: ms */
+#define HDMITX_HW_MUX_ARC   21
+#define ARC_CHANNEL_OFF     0
+#define ARC_CHANNEL_ON      1
 
+#define HDMI_HDCP_DELAYTIME_AFTER_DISPLAY    20      /* unit: ms */
 #define HDMITX_HDCP_MONITOR_BUF_SIZE         1024
 struct Hdcp_Sub {
 	char *hdcp_sub_name;

@@ -61,9 +61,9 @@ static void hdmi_tx_construct_aud_packet(
 	struct hdmitx_audpara *audio_param, unsigned char *AUD_DB,
 	unsigned char *CHAN_STAT_BUF, int hdmi_ch)
 {
-#ifdef PCM_USE_INFOFRAME
+#ifndef PCM_USE_INFOFRAME
 	if (audio_param->type == CT_PCM) {
-		hdmi_print(INF, AUD "Audio Type: PCM\nAudio Channels: %u hdmi_ch %u\n",audio_param->channel_num, hdmi_ch);
+		hdmi_print(INF, AUD "Audio Type: PCM\n");
 		if (AUD_DB) {
 			/*Note: HDMI Spec V1.4 Page 154*/
 			if ((audio_param->channel_num == CC_2CH) ||
@@ -210,13 +210,15 @@ static void hdmi_tx_construct_aud_packet(
 	} else {
 		;
 	}
-	AUD_DB[0] = AUD_DB[0] & 0xf;/*bit[7:4] always set to 0 in HDMI*/
-	AUD_DB[1] = 0;		/*always set to 0 in HDMI*/
+	if (AUD_DB) {
+		AUD_DB[0] = AUD_DB[0] & 0xf;/*bit[7:4] always set to 0 in HDMI*/
+		AUD_DB[1] = 0;		/*always set to 0 in HDMI*/
+	}
 #endif
 }
 
 int hdmitx_set_audio(struct hdmitx_dev *hdmitx_device,
-	struct hdmitx_audpara *audio_param, int hdmi_chs)
+	struct hdmitx_audpara *audio_param, int hdmi_ch)
 {
 	int i, ret = -1;
 	unsigned char AUD_DB[32];
@@ -225,31 +227,12 @@ int hdmitx_set_audio(struct hdmitx_dev *hdmitx_device,
 		AUD_DB[i] = 0;
 	for (i = 0; i < (24*2); i++)
 		CHAN_STAT_BUF[i] = 0;
-	// resolve speaker layouts and channel masking for PCM
-	if (audio_param->type == CT_PCM){
-		/* stereo and gets round i2s driver aborting on 2ch */
-		if (audio_param->channel_num == 1)
-			hdmitx_device->speaker_layout = 0;
-		else if (hdmitx_device->speaker_layout == 0)
-			hdmitx_device->speaker_layout = 0x13; // default if not set and not stereo
-		// parse hdmitx_device->speaker_layout to aud_output_ch
-		if (hdmitx_device->speaker_layout > 0x0b)
-			hdmitx_device->aud_output_ch = 8 << 4 | 0x0f;
-		else if (hdmitx_device->speaker_layout > 0x03)
-			hdmitx_device->aud_output_ch = 6 << 4 | 0x07;
-		else if (hdmitx_device->speaker_layout > 0x00)
-			hdmitx_device->aud_output_ch = 4 << 4 | 0x03;
-		else if (hdmitx_device->speaker_layout == 0)
-			hdmitx_device->aud_output_ch = 0; // or maybe 2 << 4 | 1
-		else hdmitx_device->aud_output_ch = 8 << 4 | 0x0f; // speaker layout not set
-	}
-	else hdmitx_device->aud_output_ch = 0; // leave this to hw driver
-
 	if (hdmitx_device->HWOp.SetAudMode(hdmitx_device,
 		audio_param) >= 0) {
 		hdmi_tx_construct_aud_packet(audio_param, AUD_DB,
-			CHAN_STAT_BUF, hdmi_chs);
-		hdmitx_device->HWOp.SetAudioInfoFrame(AUD_DB, CHAN_STAT_BUF); // this does precisely nothing
+			CHAN_STAT_BUF, hdmi_ch);
+
+		hdmitx_device->HWOp.SetAudioInfoFrame(AUD_DB, CHAN_STAT_BUF);
 		ret = 0;
 	}
 #if 0

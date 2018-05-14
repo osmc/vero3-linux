@@ -33,7 +33,7 @@
 #include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
 #include <linux/amlogic/hdmi_tx/hdmi_tx_compliance.h>
 
-unsigned char hdmi_output_rgb;
+static unsigned char hdmi_output_rgb;
 static void hdmitx_set_spd_info(struct hdmitx_dev *hdev);
 static void hdmi_set_vend_spec_infofram(struct hdmitx_dev *hdev,
 	enum hdmi_vic VideoCode);
@@ -74,6 +74,17 @@ static struct hdmitx_vidpara hdmi_tx_video_params[] = {
 	},
 	{
 		.VIC		= HDMI_480p60_16x9_rpt,
+		.color_prefer   = COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= HDMI_4_TIMES_REPEAT,
+		.aspect_ratio   = TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU601,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMI_480p120_16x9,
 		.color_prefer   = COLORSPACE_RGB444,
 		.color_depth	= COLORDEPTH_24B,
 		.bar_info	= B_BAR_VERT_HORIZ,
@@ -202,6 +213,17 @@ static struct hdmitx_vidpara hdmi_tx_video_params[] = {
 		.sc		= SC_SCALE_HORIZ_VERT,
 	},
 	{
+		.VIC		= HDMI_576p100_16x9,
+		.color_prefer   = COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio   = TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU601,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
 		.VIC		= HDMI_720p50,
 		.color_prefer   = COLORSPACE_RGB444,
 		.color_depth	= COLORDEPTH_24B,
@@ -213,7 +235,51 @@ static struct hdmitx_vidpara hdmi_tx_video_params[] = {
 		.sc		= SC_SCALE_HORIZ_VERT,
 	},
 	{
+		.VIC		= HDMI_720p100,
+		.color_prefer   = COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio   = TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMI_720p120,
+		.color_prefer   = COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio   = TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
 		.VIC		= HDMI_1080i50,
+		.color_prefer   = COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio   = TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMI_1080i100,
+		.color_prefer   = COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio   = TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMI_1080i120,
 		.color_prefer   = COLORSPACE_RGB444,
 		.color_depth	= COLORDEPTH_24B,
 		.bar_info	= B_BAR_VERT_HORIZ,
@@ -258,6 +324,28 @@ static struct hdmitx_vidpara hdmi_tx_video_params[] = {
 	},
 	{
 		.VIC		= HDMI_1080p50,
+		.color_prefer   = COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio   = TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMI_1080p100,
+		.color_prefer   = COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio   = TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMI_1080p120,
 		.color_prefer   = COLORSPACE_RGB444,
 		.color_depth	= COLORDEPTH_24B,
 		.bar_info	= B_BAR_VERT_HORIZ,
@@ -498,6 +586,314 @@ static struct hdmitx_vidpara hdmi_tx_video_params[] = {
 		.ss		= SS_SCAN_UNDER,
 		.sc		= SC_SCALE_HORIZ_VERT,
 	},
+	{
+		.VIC		= HDMIV_640x480p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_4_3,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_800x480p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_800x600p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_4_3,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_854x480p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_852x480p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1024x600p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1024x768p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_4_3,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1152x864p75hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_4_3,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1280x600p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1280x768p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1280x800p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1280x960p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1280x1024p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_4_3,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1360x768p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1366x768p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1400x1050p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1440x900p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1440x2560p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1440x2560p70hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1600x900p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1600x1200p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1680x1050p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_1920x1200p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_2160x1200p90hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_4_3,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_2560x1080p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_2560x1440p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_2560x1600p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
+	{
+		.VIC		= HDMIV_2560x1440p60hz,
+		.color_prefer	= COLORSPACE_RGB444,
+		.color_depth	= COLORDEPTH_24B,
+		.bar_info	= B_BAR_VERT_HORIZ,
+		.repeat_time	= NO_REPEAT,
+		.aspect_ratio	= TV_ASPECT_RATIO_16_9,
+		.cc		= CC_ITU709,
+		.ss		= SS_SCAN_UNDER,
+		.sc		= SC_SCALE_HORIZ_VERT,
+	},
 };
 
 static struct hdmitx_vidpara *hdmi_get_video_param(
@@ -593,19 +989,8 @@ void hdmitx_output_rgb(void)
 	hdmi_output_rgb = 1;
 }
 
-static int is_philips_2009(struct rx_cap *pRXCap)
-{
-	if ((strncmp(pRXCap->ReceiverBrandName, "PHL", strlen(pRXCap->ReceiverBrandName)) == 0) && \
-		(strncmp(pRXCap->ReceiverProductName, "Philips", strlen(pRXCap->ReceiverProductName)) == 0) && \
-		(pRXCap->manufacture_year == 19)) {
-		hdmi_print(INF, SYS, "This is a 2009 Philips TV which misreports colour caps");
-		return 1;
-	}
-	else
-		return 0;
-}
-
-int hdmitx_set_display(struct hdmitx_dev *hdev, enum hdmi_vic VideoCode)
+int hdmitx_set_display(struct hdmitx_dev *hdev,
+		enum hdmi_vic VideoCode, struct switch_dev *sd)
 {
 	struct hdmitx_vidpara *param = NULL;
 	enum hdmi_vic vic;
@@ -617,6 +1002,8 @@ int hdmitx_set_display(struct hdmitx_dev *hdev, enum hdmi_vic VideoCode)
 	AVI_HB[2] = AVI_INFOFRAMES_LENGTH;
 	for (i = 0; i < 32; i++)
 		AVI_DB[i] = 0;
+
+	switch_set_state(sd, 0);
 
 	vic = hdev->HWOp.GetState(hdev, STAT_VIDEO_VIC, 0);
 	hdmi_print(IMP, SYS "already init VIC = %d  Now VIC = %d\n",
@@ -630,7 +1017,7 @@ int hdmitx_set_display(struct hdmitx_dev *hdev, enum hdmi_vic VideoCode)
 	hdev->cur_video_param = param;
 	if (param) {
 		param->color = param->color_prefer;
-		if (hdmi_output_rgb || is_philips_2009(&hdev->RXCap)) {
+		if (hdmi_output_rgb) {
 			param->color = COLORSPACE_RGB444;
 		} else {
 			/* HDMI CT 7-24 Pixel Encoding
@@ -662,7 +1049,11 @@ int hdmitx_set_display(struct hdmitx_dev *hdev, enum hdmi_vic VideoCode)
 				hdev->para->cs = hdev->cur_video_param->color;
 				pr_info("hdmitx: rx edid only support RGB format\n");
 			}
-
+			if (VideoCode >= HDMITX_VESA_OFFSET) {
+				hdev->para->cs = COLORSPACE_RGB444;
+				hdev->para->cd = COLORDEPTH_24B;
+				pr_info("hdmitx: VESA only support RGB 8bit format\n");
+			}
 		}
 		if (hdev->HWOp.SetDispMode(hdev) >= 0) {
 			/* HDMI CT 7-33 DVI Sink, no HDMI VSDB nor any
@@ -692,6 +1083,7 @@ int hdmitx_set_display(struct hdmitx_dev *hdev, enum hdmi_vic VideoCode)
 			else /* nothing */
 				;
 			ret = 0;
+			switch_set_state(sd, 1);
 		}
 	}
 	hdmitx_set_spd_info(hdev);
@@ -711,27 +1103,34 @@ static void hdmi_set_vend_spec_infofram(struct hdmitx_dev *hdev,
 	VEN_HB[1] = 0x01;
 	VEN_HB[2] = 0x5;
 
+	if (VideoCode == 0) {	   /* For non-4kx2k mode setting */
+		hdev->HWOp.SetPacket(HDMI_PACKET_VEND, NULL, VEN_HB);
+		return;
+	}
+
 	for (i = 0; i < 0x6; i++)
 		VEN_DB[i] = 0;
 	VEN_DB[0] = 0x03;
 	VEN_DB[1] = 0x0c;
 	VEN_DB[2] = 0x00;
-	VEN_DB[3] = 0x20;    /* 4k x 2k  Spec P156 */
-	if (VideoCode == 0) {	   /* For non-4kx2k mode setting */
-		hdev->HWOp.SetPacket(HDMI_PACKET_VEND, NULL, VEN_HB);
-		return;
-	}
-	if (VideoCode == HDMI_4k2k_30)
+	VEN_DB[3] = 0x00;    /* 4k x 2k  Spec P156 */
+
+	if (VideoCode == HDMI_4k2k_30) {
+		VEN_DB[3] = 0x20;
 		VEN_DB[4] = 0x1;
-	else if (VideoCode == HDMI_4k2k_25)
+	} else if (VideoCode == HDMI_4k2k_25) {
+		VEN_DB[3] = 0x20;
 		VEN_DB[4] = 0x2;
-	else if (VideoCode == HDMI_4k2k_24)
+	} else if (VideoCode == HDMI_4k2k_24) {
+		VEN_DB[3] = 0x20;
 		VEN_DB[4] = 0x3;
-	else if (VideoCode == HDMI_4k2k_smpte_24)
+	} else if (VideoCode == HDMI_4k2k_smpte_24) {
+		VEN_DB[3] = 0x20;
 		VEN_DB[4] = 0x4;
-	else
+	} else
 		;
 	hdev->HWOp.SetPacket(HDMI_PACKET_VEND, VEN_DB, VEN_HB);
+
 }
 
 int hdmi_set_3d(struct hdmitx_dev *hdev, int type, unsigned int param)
