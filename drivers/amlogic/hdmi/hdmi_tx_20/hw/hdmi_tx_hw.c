@@ -3038,17 +3038,17 @@ static void hdmitx_debug(struct hdmitx_dev *hdev, const char *buf)
 		return;
 	} else if (strncmp(tmpbuf, "dither", 6) == 0) {
 		int dither = 0;
-		if (tmpbuf[7] == '1')
+		if (tmpbuf[6] == '1')
 			dither = 1;
 		hd_set_reg_bits(P_VPU_HDMI_FMT_CTRL, dither, 4, 1);
 		pr_info("hdmitx: adjust dither = %d\n", dither);
 		return;
         } else if (strncmp(tmpbuf, "round", 5) == 0) {
                 int round = 0;
-                if (tmpbuf[6] == '1')
+                if (tmpbuf[5] == '1')
                         round = 1;
 		hd_set_reg_bits(P_VPU_HDMI_FMT_CTRL, round, 10, 1);
-//                pr_info("hdmitx: adjust round = %d\n", round);
+                pr_info("hdmitx: adjust round = %d\n", round);
 		return;
 	} else if (strncmp(tmpbuf, "do2020", 6) == 0) {
 		pr_info("hdmitx: BT2020 AVI ON\n");
