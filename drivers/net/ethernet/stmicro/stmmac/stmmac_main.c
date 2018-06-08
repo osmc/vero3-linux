@@ -2256,7 +2256,7 @@ static void stmmac_check_ether_addr(struct stmmac_priv *priv)
  */
 static int stmmac_init_dma_engine(struct stmmac_priv *priv)
 {
-	int pbl = DEFAULT_DMA_PBL, fixed_burst = 0, burst_len = 0;
+	int pbl = 32, fixed_burst = 0, burst_len = 0;
 	int mixed_burst = 0;
 	int atds = 0;
 
