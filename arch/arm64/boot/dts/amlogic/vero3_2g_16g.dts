@@ -27,7 +27,7 @@
 #include "mesongxl.dtsi"
 / {
 	model = "Vero4K";
-	amlogic-dt-id = "vero3_2g_16g";
+	amlogic-dt-id = "gxl_p212_2g";
 	compatible = "amlogic, Gxbb";
 	interrupt-parent = <&gic>;
 	#address-cells = <2>;
