@@ -629,7 +629,8 @@ static int stmmac_hwtstamp_ioctl(struct net_device *dev, struct ifreq *ifr)
 		 * 2^x * y == (y << x), hence
 		 * 2^32 * 50000000 ==> (50000000 << 32)
 		 */
-		temp = (u64) (50000000ULL << 32);
+		temp = div_u64(1000000000ULL << 32, priv->ioaddr);
+		//temp = (u64) (50000000ULL << 32);
 		priv->default_addend = div_u64(temp, STMMAC_SYSCLOCK);
 		priv->hw->ptp->config_addend(priv->ioaddr,
 					     priv->default_addend);
