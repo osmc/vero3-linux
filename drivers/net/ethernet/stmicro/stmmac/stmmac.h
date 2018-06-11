@@ -118,6 +118,17 @@ struct stmmac_priv {
 	int irq_wake;
 	spinlock_t ptp_lock;
 	int phy_wol;
+
+	unsigned long state;
+	struct workqueue_struct *wq;
+	struct work_struct service_task;
+};
+
+enum stmmac_state {
+	STMMAC_DOWN,
+	STMMAC_RESET_REQUESTED,
+	STMMAC_RESETTING,
+	STMMAC_SERVICE_SCHED,
 };
 
 int stmmac_mdio_unregister(struct net_device *ndev);

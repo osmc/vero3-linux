@@ -2967,6 +2967,20 @@ static int stmmac_poll(struct napi_struct *napi, int budget)
 	return work_done;
 }
 
+static void stmmac_service_event_schedule(struct stmmac_priv *priv)
+{
+	if (!test_bit(STMMAC_DOWN, &priv->state) &&
+	    !test_and_set_bit(STMMAC_SERVICE_SCHED, &priv->state))
+		queue_work(priv->wq, &priv->service_task);
+}
+
+static void stmmac_global_err(struct stmmac_priv *priv)
+{
+	netif_carrier_off(priv->dev);
+	set_bit(STMMAC_RESET_REQUESTED, &priv->state);
+	stmmac_service_event_schedule(priv);
+}
+
 /**
  *  stmmac_tx_timeout
  *  @dev : Pointer to net device structure
@@ -2979,8 +2993,7 @@ static void stmmac_tx_timeout(struct net_device *dev)
 {
 	struct stmmac_priv *priv = netdev_priv(dev);
 
-	/* Clear Tx resources and restart transmitting again */
-	stmmac_tx_err(priv);
+	stmmac_global_err(priv);
 }
 
 /* Configuration changes (passed on by ifconfig) */
@@ -3105,6 +3118,10 @@ static irqreturn_t stmmac_interrupt(int irq, void *dev_id)
 		pr_err("%s: invalid dev pointer\n", __func__);
 		return IRQ_NONE;
 	}
+
+	/* Check if adapter is up */
+	if (test_bit(STMMAC_DOWN, &priv->state))
+		return IRQ_HANDLED;
 
 	/* To handle GMAC own interrupts */
 	if (priv->plat->has_gmac) {
@@ -3376,6 +3393,39 @@ static const struct net_device_ops stmmac_netdev_ops = {
 	.ndo_set_mac_address = eth_mac_addr,
 };
 
+static void stmmac_reset_subtask(struct stmmac_priv *priv)
+{
+	if (!test_and_clear_bit(STMMAC_RESET_REQUESTED, &priv->state))
+		return;
+	if (test_bit(STMMAC_DOWN, &priv->state))
+		return;
+
+	netdev_err(priv->dev, "Reset adapter.\n");
+
+	rtnl_lock();
+        stmmac_release(priv->dev);
+        stmmac_open(priv->dev);
+	while (test_and_set_bit(STMMAC_RESETTING, &priv->state))
+		usleep_range(1000, 2000);
+
+	set_bit(STMMAC_DOWN, &priv->state);
+	dev_close(priv->dev);
+	dev_open(priv->dev);
+	clear_bit(STMMAC_DOWN, &priv->state);
+	clear_bit(STMMAC_RESETTING, &priv->state);
+	rtnl_unlock();
+}
+
+static void stmmac_service_task(struct work_struct *work)
+{
+	struct stmmac_priv *priv = container_of(work, struct stmmac_priv,
+			service_task);
+
+	stmmac_reset_subtask(priv);
+	clear_bit(STMMAC_SERVICE_SCHED, &priv->state);
+}
+
+
 /**
  *  stmmac_hw_init - Init the MAC device
  *  @priv: driver private structure
@@ -3473,6 +3523,16 @@ static void moniter_tx_handler(struct work_struct *work)
 		priv = netdev_priv(c_phy_dev->attached_dev);
 		if (priv) {
 			if (c_phy_dev->link) {
+                               if (priv->dev->stats.tx_packets > 100) {
+                                       if (priv->dev->stats.rx_packets == 0) {
+                                               pr_info("rx stop, recover eth\n");
+                                               stmmac_release(priv->dev);
+                                               stmmac_open(priv->dev);
+                                       }
+                               }
+                               priv->dev->stats.tx_packets++;
+                               priv->dev->stats.tx_packets++;
+
 				if (priv->dirty_tx != priv->cur_tx &&
 						check_tx == 0) {
 					pr_debug("tx queueing\n");
@@ -3532,6 +3592,14 @@ struct stmmac_priv *stmmac_dvr_probe(struct device *device,
 
 	/* Verify driver arguments */
 	stmmac_verify_args();
+	/* Allocate workqueue */
+	priv->wq = create_singlethread_workqueue("stmmac_wq");
+	if (!priv->wq) {
+		dev_err(priv->device, "failed to create workqueue\n");
+		goto error_wq;
+	}
+
+	INIT_WORK(&priv->service_task, stmmac_service_task);
 
 	/* Override with kernel parameters if supplied XXX CRS XXX
 	 * this needs to have multiple instances
@@ -3655,7 +3723,9 @@ error_netdev_register:
 	netif_napi_del(&priv->napi);
 error_hw_init:
 	clk_disable_unprepare(priv->stmmac_clk);
+	destroy_workqueue(priv->wq);
 error_clk_get:
+error_wq:
 	free_netdev(ndev);
 
 	return NULL;
@@ -3682,6 +3752,7 @@ int stmmac_dvr_remove(struct net_device *ndev)
 	if (priv->pcs != STMMAC_PCS_RGMII && priv->pcs != STMMAC_PCS_TBI &&
 	    priv->pcs != STMMAC_PCS_RTBI)
 		stmmac_mdio_unregister(ndev);
+	destroy_workqueue(priv->wq);
 	netif_carrier_off(ndev);
 	unregister_netdev(ndev);
 	if (priv->stmmac_rst)
