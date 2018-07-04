@@ -78,14 +78,17 @@ int get_mali_freq_level(int freq)
         return level;
 
     mali_freq_num = mali_plat_data.dvfs_table_size - 1;
-    if (freq <= mali_plat_data.clk_sample[0])
+    if (freq < mali_plat_data.clk_sample[0])
         level = mali_freq_num-1;
-    if (freq >= mali_plat_data.clk_sample[mali_freq_num - 1])
+    else if (freq >= mali_plat_data.clk_sample[mali_freq_num - 1])
         level = 0;
-    for (i=0; i<mali_freq_num - 1 ;i++) {
-        if (freq >= mali_plat_data.clk_sample[i] && freq <= mali_plat_data.clk_sample[i + 1]) {
-            level = i;
-            level = mali_freq_num-level - 1;
+    else {
+        for (i=0; i<mali_freq_num - 1 ;i++) {
+            if (freq >= mali_plat_data.clk_sample[i] && freq < mali_plat_data.clk_sample[i + 1]) {
+                level = i;
+                level = mali_freq_num-level - 1;
+                break;
+            }
         }
     }
     return level;
