@@ -302,6 +302,7 @@ static int hardware_resample_enable(int input_sr)
 static int hardware_resample_disable(void)
 {
 	aml_write_cbus(AUD_RESAMPLE_CTRL0, 0);
+	aml_cbus_update_bits(AUD_RESAMPLE_CTRL2, 0 << 25, 0 << 25);
 	return 0;
 }
 
