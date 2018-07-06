@@ -28,6 +28,7 @@
 / {
 	model = "Vero4K";
 	amlogic-dt-id = "gxl_p212_2g";
+	osmc-partion-version = "1";
 	compatible = "amlogic, Gxbb";
 	interrupt-parent = <&gic>;
 	#address-cells = <2>;
