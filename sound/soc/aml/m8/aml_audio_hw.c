@@ -254,6 +254,7 @@ void audio_set_958outbuf(u32 addr, u32 size, int flag)
 #else
 		aml_cbus_update_bits(AIU_MEM_IEC958_MASKS, 0xffff, 0x303);
 #endif
+		aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL, 0x3 << 1, 0);
 		aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL, 1, 1);
 		aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL, 1, 0);
 
@@ -927,7 +928,7 @@ void audio_set_958_mode(unsigned mode, struct _aiu_958_raw_setting_t *set)
 		audio_hw_set_958_pcm24(set);
 		if (ENABLE_IEC958) {
 #ifdef CONFIG_SND_AML_SPLIT_MODE
-			aml_write_cbus(AIU_958_MISC, 0x3480);
+			aml_write_cbus(AIU_958_MISC, 0x3780);
 			/* pcm */
 			aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL, 1 << 8,
 						1 << 8);
@@ -947,7 +948,7 @@ void audio_set_958_mode(unsigned mode, struct _aiu_958_raw_setting_t *set)
 		audio_hw_set_958_pcm24(set);
 		if (ENABLE_IEC958) {
 #ifdef CONFIG_SND_AML_SPLIT_MODE
-			aml_write_cbus(AIU_958_MISC, 0x3480);
+			aml_write_cbus(AIU_958_MISC, 0x3400);
 			/* pcm */
 			aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL, 1 << 8,
 						1 << 8);

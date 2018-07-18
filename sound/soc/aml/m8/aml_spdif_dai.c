@@ -256,7 +256,7 @@ void aml_hw_iec958_init(struct snd_pcm_substream *substream, int samesrc)
 		aml_cbus_update_bits(AIU_CLK_CTRL, 3 << 4, 3 << 4);
 	} else {
 //		IEC958_mode_codec = 0;
-		pr_info("set normal 512 fs /4 fs\n");
+		pr_info("set divider = 4\n");
 		aml_cbus_update_bits(AIU_CLK_CTRL, 3 << 4, 3 << 4);
 	}
 	/* enable 958 divider */
@@ -449,7 +449,6 @@ int aml_set_spdif_clk(unsigned long rate, bool src_i2s)
 			return ret;
 		}
 	}
-
 	return 0;
 }
 
