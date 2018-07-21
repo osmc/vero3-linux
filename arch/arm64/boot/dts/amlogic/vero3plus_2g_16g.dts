@@ -1,0 +1,49 @@
+/*
+ * arch/arm64/boot/dts/amlogic/vero3plus_2g_16g.dts
+ *
+ * Copyright (C) 2015 Amlogic, Inc. All rights reserved.
+ * Copyright (C) 2018 Sam Nazarko. All rights reserved.
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+*/
+
+#include "vero3_2g_16g.dts"
+
+/ {
+    model = "Vero4KPlus";
+    amlogic-dt-id = "gxl_p230_2g";
+        sysled {
+                compatible = "amlogic, sysled";
+                dev_name = "sysled";
+                status = "okay";
+                led_gpio = <&gpio_ao GPIOAO_9 GPIO_ACTIVE_HIGH>;
+                led_active_low = <1>;
+        };
+        ethmac: ethernet@0xc9410000 {
+                        compatible = "amlogic, gxbb-rgmii-dwmac";
+                        reg = <0x0 0xc9410000 0x0 0x10000
+                        0x0 0xc8834540 0x0 0x8
+                        0x0 0xc8834558 0x0 0xc>;
+                        interrupts = <0 8 1>;
+                        phy-mode= "rgmii";
+                        pinctrl-names = "external_eth_pins";
+                        pinctrl-0 = <&external_eth_pins>;
+                        mc_val = <0x1621>;
+                        resets = <&clock GCLK_IDX_ETHERNET>;
+                        reset-names = "ethpower";
+                        interrupt-names = "macirq";
+                        clocks = <&clock CLK_81>;
+                        clock-names = "ethclk81";
+                        internal_phy=<0>;
+    };
+};
+
