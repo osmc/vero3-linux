@@ -755,12 +755,8 @@ void tx_irq_handle(void)
 	case TX_ERROR:
 		if (cec_msg_dbg_en  == 1)
 			CEC_ERR("TX ERROR!!!\n");
-		if (RX_ERROR == aocec_rd_reg(CEC_RX_MSG_STATUS)) {
-			cec_hw_reset();
-		} else {
-			aocec_wr_reg(CEC_TX_MSG_CMD, TX_NO_OP);
-		}
-		cec_tx_result = CEC_FAIL_NACK;
+		aocec_wr_reg(CEC_TX_MSG_CMD, TX_ABORT);
+		cec_hw_reset();
 		break;
 
 	case TX_IDLE:
