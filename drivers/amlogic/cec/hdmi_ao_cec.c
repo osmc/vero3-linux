@@ -774,7 +774,7 @@ void tx_irq_handle(void)
 int cec_ll_tx(const unsigned char *msg, unsigned char len)
 {
 	int ret = -1;
-	int t = msecs_to_jiffies(2000);
+	int t = msecs_to_jiffies(5000);
 
 	if (len == 0)
 		return CEC_FAIL_NONE;
