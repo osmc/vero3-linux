@@ -2340,13 +2340,13 @@ static void set_aud_info_pkt(struct hdmitx_dev *hdev,
 		if (audio_param->type == CT_DTS_HD_MA)
 			hdmi_print(INF, AUD "Audio Type: DTS HD MA\n");
 		/* CC: 8ch */
-		hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, 7, 4, 3);
+		hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, 0, 4, 3);
 		hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x13);
 		break;
 	/* DTS-HD-HRA */
 	case CT_DTS_HD:
 		hdmi_print(INF, AUD "Audio Type: DTS-HD\n");
-		hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, 7, 4, 3); // leave at 8-ch for now
+		hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, 0, 4, 3);
 		hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x13);
 		break;
 	case CT_PCM:
@@ -2483,8 +2483,8 @@ static void set_aud_samp_pkt(struct hdmitx_dev *hdev,
 	case CT_DTS_HD_MA:
 		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 1, 7, 1);
 		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 1, 6, 1);
-		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 24, 0, 5);
-		hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, 1, 0, 1);
+		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 16, 0, 5);
+		hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, 0, 0, 1);
 		break;
 	case CT_PCM: /* AudSamp */
 		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 0, 7, 1);
@@ -2506,20 +2506,19 @@ static void set_aud_samp_pkt(struct hdmitx_dev *hdev,
 			}
 		break;
 	case CT_DTS_HD:
-                /* placeholder for 2-channel config */
-/*		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 1, 7, 1);
-		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 0, 6, 1);
+		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 1, 7, 1);
+		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 1, 6, 1);
 		//hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF2, 1, 0, 1);
-		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 24, 0, 5);
+		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 16, 0, 5);
 		hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, 0, 0, 1);
-		break;*/
+		break;
 	case CT_AC_3:
 	case CT_DOLBY_D:
 	case CT_DTS:
 	default:
-		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 0, 7, 1);
+		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 1, 7, 1);
 		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 0, 6, 1);
-		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 24, 0, 5);
+		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 16, 0, 5);
 		hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, 0, 0, 1);
 		break;
 	}
