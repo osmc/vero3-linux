@@ -238,24 +238,20 @@ void aml_hw_iec958_init(struct snd_pcm_substream *substream, int samesrc)
 	/* Todo, div can be changed, for most case, div = 2 */
 	/* audio_set_spdif_clk_div(); */
 	/* 958 divisor: 0=no div; 1=div by 2; 2=div by 3; 3=div by 4. */
-	if (runtime->rate == 192000 && runtime->channels == 8 && runtime->format == SNDRV_PCM_FORMAT_S16) {
-		// IEC958_mode_codec = 8; /* TrueHD/DTS-HD MA */
-		pr_info("set 4x audio clk for 958\n");
-		aml_cbus_update_bits(AIU_CLK_CTRL, 3 << 4, 0 << 4);
-	} else if (runtime->rate == 192000 && runtime->channels == 2 && runtime->format == SNDRV_PCM_FORMAT_S16) {
-//	IEC958_mode_codec = 4; /* EAC3 */
-		pr_info("set 4x audio clk for 958\n");
-		aml_cbus_update_bits(AIU_CLK_CTRL, 3 << 4, 0 << 4);
-	} else if (samesrc) {
-//		IEC958_mode_codec = 0;
-		pr_info("share the same clock\n");
+	if (samesrc) {
+		/* LPCM */
+		pr_info("set divider = 2 for i2s shared clock\n");
 		aml_cbus_update_bits(AIU_CLK_CTRL, 3 << 4, 1 << 4);
-	} else if (runtime->rate == 48000 && runtime->channels == 2 && runtime->format == SNDRV_PCM_FORMAT_S16) {
-//		IEC958_mode_codec = 2; /* AC3/DTS */
-		pr_info("set normal 512 fs /4 fs\n");
-		aml_cbus_update_bits(AIU_CLK_CTRL, 3 << 4, 3 << 4);
+	} else if (runtime->rate == 192000 && runtime->channels == 8 && IEC958_mode_codec > 1) {
+		/* TrueHD/DTS-HD MA */
+		pr_info("set divider = 1 for TrueHD/MA\n");
+		aml_cbus_update_bits(AIU_CLK_CTRL, 3 << 4, 0 << 4);
+	} else if (runtime->rate == 192000 && runtime->channels == 2 && IEC958_mode_codec > 1) {
+		/* EAC3 and DTS-HRA */
+		pr_info("set divider = 1 for DD+/HRA\n");
+		aml_cbus_update_bits(AIU_CLK_CTRL, 3 << 4, 0 << 4);
 	} else {
-//		IEC958_mode_codec = 0;
+		/* LPCM and other passthrough formats using spdif clock */
 		pr_info("set divider = 4\n");
 		aml_cbus_update_bits(AIU_CLK_CTRL, 3 << 4, 3 << 4);
 	}
