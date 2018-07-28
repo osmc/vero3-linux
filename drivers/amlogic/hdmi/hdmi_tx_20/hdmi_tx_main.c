@@ -1681,7 +1681,7 @@ static ssize_t store_aud_ch(struct device *dev,
 {
 	int ret;
 	ret = kstrtoint(buf, 0, &hdmi_ch);
-	// limit to CEA-861-D values
+	/* limit to CEA-861-D values */
 	if (hdmi_ch > 0x13)
 		hdmi_ch = 0;
 	pr_info("sysfs set hdmi_ch to %d", hdmi_ch);
