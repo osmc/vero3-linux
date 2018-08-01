@@ -1,0 +1,52 @@
+/*
+ * arch/arm64/boot/dts/amlogic/vero3plus_2g_16g.dts
+ *
+ * Copyright (C) 2015 Amlogic, Inc. All rights reserved.
+ * Copyright (C) 2018 Sam Nazarko. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+*/
+
+#include "vero3_2g_16g.dts"
+
+/ {
+    model = "Vero4KPlus";
+    amlogic-dt-id = "gxl_p231_2g";
+        sysled {
+                compatible = "amlogic, sysled";
+                dev_name = "sysled";
+                status = "okay";
+                led_gpio = <&gpio_ao GPIOAO_9 GPIO_ACTIVE_HIGH>;
+                led_active_low = <1>;
+        };
+        ethmac: ethernet@0xc9410000 {
+                        compatible = "amlogic, gxbb-eth-dwmac";
+                        reg = <0x0 0xc9410000 0x0 0x10000
+                        0x0 0xc8834540 0x0 0x8
+                        0x0 0xc8834558 0x0 0xc>;
+                        interrupts = <0 8 4>;
+                        pinctrl-names = "external_eth_pins";
+                        pinctrl-0 = <&external_eth_pins>;
+                        rst_pin-gpios = <&gpio GPIOZ_14 0>;
+                        GPIOZ4_pin-gpios = <&gpio GPIOZ_4 0>;
+                        GPIOZ5_pin-gpios = <&gpio GPIOZ_5 0>;
+                        mc_val_internal_phy = <0x1800>;
+                        mc_val_external_phy = <0x1621>;
+                        interrupt-names = "macirq";
+                        clocks = <&clkc CLKID_ETH>;
+                        clock-names = "ethclk81";
+                        internal_phy=<0>;
+                        cali_val = <0>;
+                        phy-mode = "rgmii-txid";
+        };
+};
+
