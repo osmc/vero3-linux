@@ -1,0 +1,6 @@
+source "drivers/osmc/gpu/mali/Kconfig"
+source "drivers/osmc/gpu/mali-mg/Kconfig"
+source "drivers/osmc/gpu/mali-supp/memory_group_manager/Kconfig"
+source "drivers/osmc/wlan/Kconfig"
+source "drivers/osmc/videoenhancement/Kconfig"
+
