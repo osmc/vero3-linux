@@ -1,0 +1,2 @@
+source "drivers/osmc/wlan/bcmdhd/Kconfig"
+source "drivers/osmc/wlan/rtl8822CS/Kconfig"
