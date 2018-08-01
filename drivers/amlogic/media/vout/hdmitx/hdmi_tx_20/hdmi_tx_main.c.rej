@@ -1,0 +1,9 @@
+diff a/drivers/amlogic/media/vout/hdmitx/hdmi_tx_20/hdmi_tx_main.c b/drivers/amlogic/media/vout/hdmitx/hdmi_tx_20/hdmi_tx_main.c	(rejected hunks)
+@@ -90,6 +90,7 @@ static void edidinfo_attach_to_vinfo(struct hdmitx_dev *hdev);
+ static void edidinfo_detach_to_vinfo(struct hdmitx_dev *hdev);
+ static bool is_cur_tmds_div40(struct hdmitx_dev *hdev);
+ static void hdmitx_resend_div40(struct hdmitx_dev *hdev);
++static u32 hdr_features = 0;
+ 
+ static DEFINE_MUTEX(setclk_mutex);
+ static DEFINE_MUTEX(getedid_mutex);
