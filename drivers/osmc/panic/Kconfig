@@ -1,0 +1,6 @@
+config OSMC_PANIC
+        tristate "Enable kernel panic module"
+        default m
+        help
+          Choose this option to enable OSMC kernel panic module
+
