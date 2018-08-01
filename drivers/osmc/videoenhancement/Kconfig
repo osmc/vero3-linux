@@ -1,0 +1,6 @@
+config OSMC_VIDEOENHANCEMENT
+        bool "Enable video enhancement TA access"
+        default y
+        help
+          Choose this option to enable OSMC video enhancement support
+
