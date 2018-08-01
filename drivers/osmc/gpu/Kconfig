@@ -1,0 +1,2 @@
+source "drivers/osmc/gpu/mali/Kconfig"
+source "drivers/osmc/gpu/mali-mg/Kconfig"
