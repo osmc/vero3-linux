@@ -3831,6 +3831,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 	struct vframe_s *toggle_vf = NULL;
 	int video1_off_req = 0;
+	struct hdmitx_dev *hdmitx_device;
 
 	if (debug_flag & DEBUG_FLAG_VSYNC_DONONE)
 		return IRQ_HANDLED;
@@ -3871,7 +3872,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 
 	vf = video_vf_peek();
-	struct hdmitx_dev *hdmitx_device = get_hdmitx_device();
+   	hdmitx_device = get_hdmitx_device();
 	enum hdmi_color_depth cur_cd;
 	cur_cd = hdmitx_device->para->cd;
 	if ((vf) && ((vf->type & VIDTYPE_NO_VIDEO_ENABLE) == 0)) {
@@ -3891,12 +3892,12 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 		}
 		if (new_cd != cur_cd){
 			hdmitx_device->para->cd = new_cd;
-			pr_info(" Colourdepth set from stream as %dB in para 0x%08x (%s)\n",(int) hdmitx_device->para->cd * 6, (u32) &hdmitx_device->para, hdmitx_device->para->name); //GFH
+			pr_info(" Colourdepth set from stream as %dB in para 0x%08x (%s)\n",(int) hdmitx_device->para->cd * 6, &hdmitx_device->para, hdmitx_device->para->name);
 			pr_info(" Colourdepth in stream changed to %d\n", hdmitx_device->para->cd * 2);
 			if (hdmitx_device->cur_video_param != NULL){
 				hdmitx_device->cur_video_param->color_depth = new_cd;
 				pr_info(" Colourdepth set from stream as %d in cur_param 0x%08x (VIC: %d)\n", hdmitx_device->cur_video_param->color_depth,
-						(u32) &hdmitx_device->cur_video_param, hdmitx_device->cur_video_param->VIC);
+						&hdmitx_device->cur_video_param, hdmitx_device->cur_video_param->VIC);
 			}
 		}
 		if ((old_vmode != new_vmode) || (debug_flag == 8)) {
@@ -3911,11 +3912,11 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 		if (!vfp){
 			pr_info(" Frame provider: none\n");
 			hdmitx_device->para->cd = COLORDEPTH_24B; // assume 8-bit if not using hw accel
-			pr_info(" Colourdepth reset to %dB in para 0x%08x (%s)\n",(int) hdmitx_device->para->cd * 6, (u32) &hdmitx_device->para, hdmitx_device->para->name);
+			pr_info(" Colourdepth reset to %dB in para 0x%08x (%s)\n",(int) hdmitx_device->para->cd * 6, &hdmitx_device->para, hdmitx_device->para->name);
 			if (hdmitx_device->cur_video_param != NULL){
 				hdmitx_device->cur_video_param->color_depth = COLORDEPTH_24B;
 				pr_info(" Colourdepth reset from stream as %d in cur_param 0x%08x (VIC: %d)\n", hdmitx_device->cur_video_param->color_depth,
-						(u32) &hdmitx_device->cur_video_param, hdmitx_device->cur_video_param->VIC);
+						&hdmitx_device->cur_video_param, hdmitx_device->cur_video_param->VIC);
 			}
 		}
 	}
@@ -4008,7 +4009,8 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 		u32 system_time = timestamp_pcrscr_get();
 		video_notify_flag |= VIDEO_NOTIFY_TRICK_WAIT;
 		atomic_set(&trickmode_framedone, 1);
-		int diff = system_time - omx_pts;
+		int diff;
+		diff = system_time - omx_pts;
 		if ((diff - omx_pts_interval_upper) > 0
 			|| (diff - omx_pts_interval_lower) < 0) {
 			timestamp_pcrscr_enable(1);
@@ -6644,15 +6646,15 @@ static u32 yuv2rgb(u32 yuv)
 	r = r - 16;
 	if (r < 0)
 		r = 0;
-		r = r*1164/1000;
+	r = r*1164/1000;
 	g = g - 16;
 	if (g < 0)
 		g = 0;
-		g = g*1164/1000;
+	g = g*1164/1000;
 	b = b - 16;
 	if (b < 0)
 		b = 0;
-		b = b*1164/1000;
+	b = b*1164/1000;
 
 	r = (r <= 0) ? 0 : (r >= 255) ? 255 : r;
 	g = (g <= 0) ? 0 : (g >= 255) ? 255 : g;
@@ -7024,6 +7026,11 @@ static ssize_t frame_format_show(struct class *cla,
 {
 	ssize_t ret = 0;
 	struct vframe_s *dispbuf;
+	struct vframe_provider_s *vfp;
+	int bitdepthY;
+	int vid_format;
+	int vid_range;
+
 	if (cur_dispbuf){
 	   dispbuf = cur_dispbuf;
 	   ret = sprintf(buf, "cur_dispbuf\n");
@@ -7032,7 +7039,7 @@ static ssize_t frame_format_show(struct class *cla,
 		dispbuf = &vf_local;
 		ret = sprintf(buf, "vf_local\n");
 	}
-	struct vframe_provider_s *vfp = vf_get_provider(RECEIVER_NAME);
+	vfp = vf_get_provider(RECEIVER_NAME);
 	if (vfp)
 		ret += sprintf(buf + ret,"Frame provider: %s\n", vfp->name);
 	else
@@ -7057,21 +7064,18 @@ static ssize_t frame_format_show(struct class *cla,
 		ret += sprintf(buf + ret, "Width (compressed) %d (%d)\n", dispbuf->width, dispbuf->compWidth);
 		ret += sprintf(buf + ret, "Height (compressed) %d (%d)\n", dispbuf->height, dispbuf->compHeight);
 
-		int bitdepthY;
 		bitdepthY = (dispbuf->bitdepth >> BITDEPTH_Y_SHIFT) & 0x3;
 		if (bitdepthY == 0)
 			ret += sprintf(buf + ret, "Bit depth: 8\n");
 		else if (bitdepthY == 2)
 			ret += sprintf(buf + ret, "Bit depth: 10\n");
 
-		int vid_format;
 	   	vid_format = (dispbuf->signal_type >> 26) & 0x7;
 
 		char* vid_format_str[] = {"component", "PAL", "NTSC", "SECAM",
 			"MAC", "unspecified"}; 
 		ret += sprintf(buf + ret, "Video format: %s\n", vid_format_str[vid_format]);
 
-		int vid_range;
 	   	vid_range = (dispbuf->signal_type >> 25) & 0x1;
 
 		if (vid_range)
@@ -7087,27 +7091,28 @@ static ssize_t frame_format_show(struct class *cla,
 		else
 			ret+= sprintf(buf + ret, "No colour data present\n");
 
-			if (dispbuf->prop.bbar.bottom == 0 || dispbuf->prop.bbar.right == 0)
-				ret+= sprintf(buf + ret, "No black bar info\n");
-			else {
-				ret+= sprintf(buf + ret, "Black bars top: %d, bottom %d, left %d, right %d\n",
-						dispbuf->prop.bbar.top, dispbuf->prop.bbar.bottom,
-						dispbuf->prop.bbar.left, dispbuf->prop.bbar.right);
-			}
-			if (dispbuf->prop.master_display_colour.present_flag){
-				mdc = &dispbuf->prop.master_display_colour;
-				ret += sprintf(buf + ret, "Master display colours:\nPrimary red: 0.%04d,0.%04d, green: 0.%04d,0.%04d, blue: 0.%04d,0.%04d\nWhite:0.%04d,0.%04d, Luminance max/min: %d,0.%03d\n",
-						mdc->primaries[2][0]*2/10,mdc->primaries[2][1]*2/10,
-						mdc->primaries[0][0]*2/10,mdc->primaries[0][1]*2/10,
-						mdc->primaries[1][0]*2/10,mdc->primaries[1][1]*2/10,
-						mdc->white_point[0]*2/10,mdc->white_point[1]*2/10,
-						mdc->luminance[0]/1000,mdc->luminance[1]);
-				if (mdc->content_light_level.present_flag)
-					ret += sprintf(buf + ret,"Max content luminance: %d\nMax average luminance: %d\n",
-							mdc->content_light_level.max_content/1000, mdc->content_light_level.max_pic_average/1000);
-				else ret += sprintf(buf + ret,"No content light levels\n");
-			}
-			else ret += sprintf(buf + ret,"No master display info\n");
+
+		if (dispbuf->prop.bbar.bottom == 0 || dispbuf->prop.bbar.right == 0)
+			ret+= sprintf(buf + ret, "No black bar info\n");
+		else {
+			ret+= sprintf(buf + ret, "Black bars top: %d, bottom %d, left %d, right %d\n",
+					dispbuf->prop.bbar.top, dispbuf->prop.bbar.bottom,
+					dispbuf->prop.bbar.left, dispbuf->prop.bbar.right);
+		}
+		if (dispbuf->prop.master_display_colour.present_flag){
+			mdc = &dispbuf->prop.master_display_colour;
+			ret += sprintf(buf + ret, "Master display colours:\nPrimary red: 0.%04d,0.%04d, green: 0.%04d,0.%04d, blue: 0.%04d,0.%04d\nWhite:0.%04d,0.%04d, Luminance max/min: %d,0.%03d\n",
+					mdc->primaries[2][0]*2/10,mdc->primaries[2][1]*2/10,
+					mdc->primaries[0][0]*2/10,mdc->primaries[0][1]*2/10,
+					mdc->primaries[1][0]*2/10,mdc->primaries[1][1]*2/10,
+					mdc->white_point[0]*2/10,mdc->white_point[1]*2/10,
+					mdc->luminance[0]/1000,mdc->luminance[1]);
+			if (mdc->content_light_level.present_flag)
+				ret += sprintf(buf + ret,"Max content luminance: %d\nMax average luminance: %d\n",
+						mdc->content_light_level.max_content/1000, mdc->content_light_level.max_pic_average/1000);
+			else ret += sprintf(buf + ret,"No content light levels\n");
+		}
+		else ret += sprintf(buf + ret,"No master display info\n");
 		return ret;
 	}
 

@@ -519,6 +519,13 @@ static int set_disp_mode_auto(void)
 	struct hdmi_format_para *para = NULL;
 	unsigned char mode[32];
 	enum hdmi_vic vic = HDMI_Unkown;
+	enum hdmi_color_depth stream_cur_cd;
+	char* pix_fmt[] = {"RGB","YUV422","YUV444","YUV420"};
+	char* eotf[] = {"SDR","HDR","HDR10","HLG"};
+	char* range[] = {"default","limited","full"};
+	char* colour_str[] = {"default", "SMPTE-C", "bt709", "xvYCC601","xvYCC709",
+		"sYCC601","opYCC601","opRGB","bt2020c","bt2020nc","P3 D65","P3 theater"};
+	
 	/* vic_ready got from IP */
 	enum hdmi_vic vic_ready = hdev->HWOp.GetState(
 		hdev, STAT_VIDEO_VIC, 0);
@@ -526,13 +533,11 @@ static int set_disp_mode_auto(void)
 	memset(mode, 0, sizeof(mode));
 
 	/* save colourdepth of the stream */
-	enum hdmi_color_depth stream_cur_cd;
 	stream_cur_cd = hdev->para->cd;
 	pr_info("hdmitx: stream colourdepth was %d in para 0x%08x (%s)\n",stream_cur_cd * 2, hdev->para, hdev->para->name);
 	if (hdev->cur_video_param != NULL){
 		pr_info("hdmitx: display colourdepth was %d in cur_param 0x%08x (VIC: %d)\n",hdev->cur_video_param->color_depth * 2,
-			(u32) hdev->cur_video_param,  hdev->cur_video_param->VIC);
-		//cur_cd = hdev->cur_video_param->color_depth;
+			hdev->cur_video_param,  hdev->cur_video_param->VIC);
 	}
 
 	/* get current vinfo */
@@ -598,10 +603,10 @@ static int set_disp_mode_auto(void)
 	para = hdmi_get_fmt_name(mode, fmt_attr);
 	/* check display caps - warn but don't force - these can only be set by sysfs */
 	if (para->cs == COLORSPACE_YUV422 && !(hdev->RXCap.native_Mode && 0x10))
-		   pr_info("WARNING: colourspace is set to Y422 but display does not support it");
+		   pr_warn("Colourspace is set to Y422 but display does not support it");
 	/* only RGB is mandatory in HDMI1.4 */
 	if (para->cs == COLORSPACE_YUV444 && !(hdev->RXCap.native_Mode && 0x20))
-		   pr_info("WARNING: colourspace is set to Y444 but display does not support it");
+		   pr_warn("Colourspace is set to Y444 but display does not support it");
 	hdev->para = para;
 	pr_info("hdmitx: hdev->para now = para at 0x%08x\n",hdev->para);
 	/* going to use cur_video_param for the bitdepth we really want */
@@ -609,13 +614,13 @@ static int set_disp_mode_auto(void)
 		if (strstr(fmt_attr,"bit") != NULL){
 			hdev->cur_video_param->color_depth = para->cd;
 		pr_info("hdmitx: display colourdepth set by attr to %d in cur_param 0x%08x (VIC: %d)\n",hdev->cur_video_param->color_depth * 2,
-				(u32) hdev->cur_video_param,  hdev->cur_video_param->VIC);
+				hdev->cur_video_param,  hdev->cur_video_param->VIC);
 		} else {
 		pr_info("hdmitx: display colourdepth still %d in cur_param 0x%08x (VIC: %d)\n",hdev->cur_video_param->color_depth * 2,
-				(u32) hdev->cur_video_param,  hdev->cur_video_param->VIC);
+				hdev->cur_video_param,  hdev->cur_video_param->VIC);
 		}
 		if (hdev->cur_video_param->color_depth > COLORDEPTH_24B && !(hdev->RXCap.ColorDeepSupport & 0x78))
-			pr_info("WARNING: bitdepth is set to %d bits but display does not support deep colour",
+			pr_warn("Bitdepth is set to %d bits but display does not support deep colour",
 				hdev->cur_video_param->color_depth * 2);
 	}
 
@@ -693,11 +698,6 @@ static int set_disp_mode_auto(void)
 	hdmi_print(IMP, VID "VIC: %d (%d) %s\n",
 			(hdmitx_rd_reg(HDMITX_DWC_FC_AVIVID) > 0 ? hdmitx_rd_reg(HDMITX_DWC_FC_AVIVID) :
 			 hdmitx_rd_reg(HDMITX_DWC_FC_VSDPAYLOAD1)), hdev->cur_VIC, hdev->para->name);
-	char* pix_fmt[] = {"RGB","YUV422","YUV444","YUV420"};
-	char* eotf[] = {"SDR","HDR","HDR10","HLG"};
-	char* range[] = {"default","limited","full"};
-	char* colour_str[] = {"default", "SMPTE-C", "bt709", "xvYCC601","xvYCC709",
-		"sYCC601","opYCC601","opRGB","bt2020c","bt2020nc","P3 D65","P3 theater"};
 
 	hdmi_print(IMP, VID "Bit depth: %d-bit, Colour range: %s, Colourspace: %s\n",
 			(((hdmitx_rd_reg(HDMITX_DWC_TX_INVID0) & 0x6) >> 1) + 4 ) * 2,
