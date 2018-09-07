@@ -1863,7 +1863,7 @@ static int hdmitx_set_dispmode(struct hdmitx_dev *hdev)
 	case HDMI_4096x2160p50_256x135:
 	case HDMI_4096x2160p60_256x135:
 		if ((hdev->para->cs == COLORSPACE_YUV420)
-			&& (hdev->para->cd == COLORDEPTH_24B))
+			&& (hdev->cur_video_param->color_depth == COLORDEPTH_24B))
 			hdev->para->tmds_clk_div40 = 0;
 		else
 			hdev->para->tmds_clk_div40 = 1;
@@ -1874,7 +1874,7 @@ static int hdmitx_set_dispmode(struct hdmitx_dev *hdev)
 	case HDMI_4096x2160p60_256x135_Y420:
 	case HDMI_3840x2160p50_64x27_Y420:
 	case HDMI_3840x2160p60_64x27_Y420:
-		if (hdev->para->cd == COLORDEPTH_24B)
+		if (hdev->cur_video_param->color_depth == COLORDEPTH_24B)
 			hdev->para->tmds_clk_div40 = 0;
 		else
 			hdev->para->tmds_clk_div40 = 1;
@@ -1886,7 +1886,7 @@ static int hdmitx_set_dispmode(struct hdmitx_dev *hdev)
 	case HDMI_3840x2160p30_16x9:
 	case HDMI_3840x2160p30_64x27:
 		if ((hdev->para->cs == COLORSPACE_YUV422)
-			|| (hdev->para->cd == COLORDEPTH_24B))
+			|| (hdev->cur_video_param->color_depth == COLORDEPTH_24B))
 			hdev->para->tmds_clk_div40 = 0;
 		else
 			hdev->para->tmds_clk_div40 = 1;
@@ -1898,19 +1898,6 @@ static int hdmitx_set_dispmode(struct hdmitx_dev *hdev)
 	set_tmds_clk_div40(hdev->para->tmds_clk_div40);
 	scdc_config(hdev);
 
-	if (color_depth_f == 24)
-		hdev->cur_video_param->color_depth = COLORDEPTH_24B;
-	else if (color_depth_f == 30)
-		hdev->cur_video_param->color_depth = COLORDEPTH_30B;
-	else if (color_depth_f == 36)
-		hdev->cur_video_param->color_depth = COLORDEPTH_36B;
-	else if (color_depth_f == 48)
-		hdev->cur_video_param->color_depth = COLORDEPTH_48B;
-	hdmi_print(INF, SYS "set mode VIC %d (cd%d,cs%d,pm%d,vd%d,%x)\n",
-		hdev->cur_video_param->VIC, color_depth_f, COLORSPACE_f,
-		power_mode, power_off_vdac_flag, serial_reg_val);
-	if (COLORSPACE_f != 0)
-		hdev->cur_video_param->color = COLORSPACE_f;
 	hdmitx_set_pll(hdev);
 	/*hdmitx_set_phy(hdev);*/
 	if (hdev->flag_3dfp)
@@ -4534,14 +4521,17 @@ static void config_hdmi20_tx(enum hdmi_vic vic,
 	hdmitx_set_reg_bits(HDMITX_DWC_FC_AVICONF1, 0x8, 0, 4);
 
 	hdmitx_set_avi_colorimetry(para);
-	if (hdev->hdr_src_feature)
+	if (hdev->hdr_src_feature){
 		hdev->HWOp.CntlConfig(hdev, CONF_AVI_BT2020, SET_AVI_BT2020);
+		pr_info("hdmitx: hw set BT2020");
+	}
 
 	data32  = 0;
 	data32 |= (((0 == COLORRANGE_FUL) ? 1 : 0) << 2);
 	data32 |= (0 << 0);
 	hdmitx_wr_reg(HDMITX_DWC_FC_AVICONF3,   data32);
 
+	hdmitx_set_reg_bits(HDMITX_DWC_FC_AVICONF2, hdev->para->cr + 1, 2, 2);
 	hdmitx_wr_reg(HDMITX_DWC_FC_AVIVID, (para->vic & HDMITX_VIC_MASK));
 
 	/* write Audio Infoframe packet configuration */
@@ -4971,7 +4961,7 @@ static void hdmitx_set_hw(struct hdmitx_dev *hdev)
 
 	pr_info("%s[%d] set VIC = %d\n", __func__, __LINE__, para->vic);
 	config_hdmi20_tx(vic, hdev,
-			hdev->para->cd,
+			hdev->cur_video_param->color_depth,
 			TX_INPUT_COLOR_FORMAT,
 			hdev->para->cs);
 	return;
