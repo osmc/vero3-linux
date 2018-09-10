@@ -118,6 +118,8 @@ struct stmmac_priv {
 	int irq_wake;
 	spinlock_t ptp_lock;
 	int phy_wol;
+	struct clk *clk_ptp_ref;
+	unsigned int clk_ptp_rate;
 
 	unsigned long state;
 	struct workqueue_struct *wq;
