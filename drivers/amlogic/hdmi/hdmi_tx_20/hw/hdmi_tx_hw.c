@@ -2458,7 +2458,7 @@ static void set_aud_samp_pkt(struct hdmitx_dev *hdev,
 	case CT_PCM: /* AudSamp */
 		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 0, 7, 1);
 		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 0, 6, 1);
-		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 0x1b, 0, 5);
+		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 24, 0, 5);
 		if ((audio_param->channel_num == 0x7) && (!hdev->aud_output_ch))
 			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, 1, 0, 1);
 		else
