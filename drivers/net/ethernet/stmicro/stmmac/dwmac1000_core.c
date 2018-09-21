@@ -214,7 +214,11 @@ static int dwmac1000_irq_status(void __iomem *ioaddr,
 				struct stmmac_extra_stats *x)
 {
 	u32 intr_status = readl(ioaddr + GMAC_INT_STATUS);
+	u32 intr_mask = readl(ioaddr + GMAC_INT_MASK);
 	int ret = 0;
+
+	/* Discard masked bits */
+	intr_status &= ~intr_mask;
 
 	/* Not used events (e.g. MMC interrupts) are not handled. */
 	if ((intr_status & mmc_tx_irq))
