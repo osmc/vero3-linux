@@ -39,6 +39,7 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 {
 	int val;
 	int bmcr = 0;
+	u16 reg;
 
 	/* close CLOCK output */
 	val = phy_read(phydev, RTL821x_PHYCR2);
@@ -64,9 +65,11 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 	phy_write(phydev, RTL8211F_MMD_CTRL, 0x4007);
 	phy_write(phydev, RTL8211F_MMD_DATA, 0x0);
 
-	/* disable 1000m adv*/
-	val = phy_read(phydev, 0x9);
-	phy_write(phydev, 0x9, val&(~(1<<9)));
+	/* fix tx delay */
+	phy_write(phydev, RTL821x_EPAGSR, 0xd08);
+	reg = phy_read(phydev, 0x11);
+	reg |= 0x100;
+	phy_write(phydev, 0x11, reg);
 
 	phy_write(phydev, RTL821x_EPAGSR, 0xd04); /*set page 0xd04*/
 	phy_write(phydev, RTL821x_LCR, 0XC171); /*led configuration*/

@@ -53,6 +53,7 @@ struct stmmac_priv {
 	u32 tx_count_frames;
 	u32 tx_coal_frames;
 	u32 tx_coal_timer;
+	bool tx_timer_armed;
 	struct stmmac_tx_info *tx_skbuff_dma;
 	dma_addr_t dma_tx_phy;
 	int tx_coalesce;
