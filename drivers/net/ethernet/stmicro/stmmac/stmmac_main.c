@@ -2702,13 +2702,15 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 	 * stmmac_tx function. This approach takes care about the fragments.
 	 */
 	priv->tx_count_frames += nfrags + 1;
-	if (priv->tx_coal_frames > priv->tx_count_frames) {
+	if (priv->tx_coal_frames > priv->tx_count_frames && !priv->tx_timer_armed) {
 		priv->hw->desc->clear_tx_ic(desc);
 		priv->xstats.tx_reset_ic_bit++;
 		mod_timer(&priv->txtimer,
 			  STMMAC_COAL_TIMER(priv->tx_coal_timer));
+		priv->tx_timer_armed = true;
 	} else
 		priv->tx_count_frames = 0;
+		priv->tx_timer_armed = false;
 
 	/* To avoid raise condition */
 	priv->hw->desc->set_tx_owner(first);
