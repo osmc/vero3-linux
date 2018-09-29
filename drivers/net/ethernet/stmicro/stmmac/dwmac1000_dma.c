@@ -83,6 +83,8 @@ static int dwmac1000_dma_init(void __iomem *ioaddr, int pbl, int fb, int mb,
 	if (atds)
 		value |= DMA_BUS_MODE_ATDS;
 
+	value |= DMA_BUS_MODE_DA;
+
 	writel(value, ioaddr + DMA_BUS_MODE);
 /*close mmc interrupts this funtion is s812  chip bug*/
 	 if (is_meson_m8m2_cpu()) {
