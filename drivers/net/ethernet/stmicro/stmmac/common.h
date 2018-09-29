@@ -200,9 +200,9 @@ struct stmmac_extra_stats {
 #define MAX_DMA_RIWT		0xff
 #define MIN_DMA_RIWT		0x20
 /* Tx coalesce parameters */
-#define STMMAC_COAL_TX_TIMER	40000
+#define STMMAC_COAL_TX_TIMER	1000
 #define STMMAC_MAX_COAL_TX_TICK	100000
-#define STMMAC_TX_MAX_FRAMES	256
+#define STMMAC_TX_MAX_FRAMES	2
 #define STMMAC_TX_FRAMES	64
 
 /* Rx IPC status */
