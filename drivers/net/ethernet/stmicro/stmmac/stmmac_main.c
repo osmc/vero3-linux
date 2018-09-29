@@ -72,7 +72,7 @@ void __iomem *PREG_ETH_REG0;
 void __iomem *PREG_ETH_REG1;
 
 /* Module parameters */
-#define TX_TIMEO	10000
+#define TX_TIMEO	5000
 static int watchdog = TX_TIMEO;
 module_param(watchdog, int, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(watchdog, "Transmit timeout in milliseconds (10s)");
