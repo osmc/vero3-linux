@@ -1171,9 +1171,6 @@ struct class_attribute *attr, const char *buf, size_t count)
 	case 'D':
 		am_net_dump_phyreg();
 		break;
-	case 'p':
-		wol_test(c_phy_dev);
-		break;
 	case 'e':
 		am_net_dump_phy_extended_reg();
 		am_net_dump_phy_wol_reg();
