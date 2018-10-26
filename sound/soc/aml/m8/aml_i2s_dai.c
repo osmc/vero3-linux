@@ -246,7 +246,6 @@ static int aml_dai_i2s_chmap_ctl_get(struct snd_kcontrol *kcontrol,
     // we need 8 channels
     if (runtime->channels != 8)
     {
-        pr_err("channel count should be 8, we got %d aborting\n", runtime->channels);
         res = -EINVAL;
         goto unlock;
     }
