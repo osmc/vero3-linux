@@ -50,6 +50,7 @@
 #include <linux/dma-contiguous.h>
 #include <linux/switch.h>
 #include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
+#include <linux/amlogic/ge2d/ge2d.h>
 
 
 #include "amports_priv.h"
