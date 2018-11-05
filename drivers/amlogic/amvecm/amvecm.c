@@ -130,6 +130,7 @@ MODULE_PARM_DESC(sr1_index, "\n sr1_index\n");
 /* vpp brightness/contrast/saturation/hue */
 static int __init amvecm_load_pq_val(char *str)
 {
+	return;
 	int i = 0, err = 0;
 	char *tk = NULL, *tmp[4];
 	long val;
