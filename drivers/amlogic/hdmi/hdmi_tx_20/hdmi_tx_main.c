@@ -818,12 +818,19 @@ static ssize_t store_attr(struct device *dev,
 	if (strstr(fmt_attr,"now")){
 		struct vinfo_s *info = NULL;
 		info = hdmi_get_current_vinfo();
-		enum vmode_e tmpmode = VMODE_NULL;
-		//set_disp_mode_auto();
+		/* force a mode change */
+		enum vmode_e tmpmode = VMODE_720P;
+		if (info->mode == tmpmode)
+			tmpmode == VMODE_720P_50HZ;
 		phy_pll_off();
 		mutex_lock(&vout_mutex);
 		set_current_vmode(tmpmode);
 		vout_notifier_call_chain(VOUT_EVENT_MODE_CHANGE, &tmpmode);
+		phy_pll_off();
+		tmpmode = VMODE_NULL;
+		set_current_vmode(tmpmode);
+		vout_notifier_call_chain(VOUT_EVENT_MODE_CHANGE, &tmpmode);
+		phy_pll_off();
 		tmpmode = info->mode;
 		set_current_vmode(tmpmode);
 		vout_notifier_call_chain(VOUT_EVENT_MODE_CHANGE, &tmpmode);
