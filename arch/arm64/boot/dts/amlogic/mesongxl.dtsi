@@ -181,9 +181,9 @@
 
 	amlogic-watchdog{
 		compatible = "amlogic, gx-wdt";
-		status = "disable";
+		status = "okay";
 		default_timeout=<10>;
-		reset_watchdog_method=<1>;//0:sysfs,1:kernel
+		reset_watchdog_method=<0>;//0:sysfs,1:kernel
 		reset_watchdog_time=<2>;
 		shutdown_timeout=<10>;
 		firmware_timeout=<6>;
