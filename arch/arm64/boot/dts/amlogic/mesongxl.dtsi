@@ -185,7 +185,7 @@
 		default_timeout=<10>;
 		reset_watchdog_method=<0>;//0:sysfs,1:kernel
 		reset_watchdog_time=<2>;
-		shutdown_timeout=<10>;
+		shutdown_timeout=<0>;
 		firmware_timeout=<6>;
 		suspend_timeout=<6>;
 		reg = <0x0 0xc11098d0 0x0 0x10>;
