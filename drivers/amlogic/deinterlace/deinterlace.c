@@ -178,7 +178,7 @@ static int bypass_hd = 1;
 static int bypass_hd;
 #endif
 static int bypass_superd = 1;
-static int bypass_all = 1;
+static int bypass_all;
 /*1:enable bypass pre,ei only;
  * 2:debug force bypass pre,ei for post
  */
