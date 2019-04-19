@@ -637,10 +637,17 @@ static int set_disp_mode_auto(void)
 			pr_info("hdmitx: display colourdepth is %d in cur_param 0x%08x (VIC: %d)\n",hdev->cur_video_param->color_depth * 2,
 					hdev->cur_video_param,  hdev->cur_video_param->VIC);
 		}
-		if (hdev->cur_video_param->color_depth > COLORDEPTH_24B){
+		if (hdev->cur_video_param->color_depth > COLORDEPTH_24B && hdev->para->cs != COLORSPACE_YUV422){
 			int dc_support = 0;
-			if (hdev->RXCap.ColorDeepSupport & 0x78 && hdev->para->cs != COLORSPACE_YUV420)
-				dc_support = 1;
+			if (hdev->RXCap.ColorDeepSupport & 0x78 && hdev->para->cs != COLORSPACE_YUV420){
+				if ((hdev->para->cs == COLORSPACE_YUV444 && hdev->RXCap.ColorDeepSupport & 0x8)
+					|| hdev->para->cs == COLORSPACE_RGB444){
+					if ((hdev->RXCap.ColorDeepSupport & 0x10 && hdev->cur_video_param->color_depth == COLORDEPTH_30B) ||
+							(hdev->RXCap.ColorDeepSupport & 0x20 && hdev->cur_video_param->color_depth == COLORDEPTH_36B) ||
+							(hdev->RXCap.ColorDeepSupport & 0x40 && hdev->cur_video_param->color_depth == COLORDEPTH_48B))
+						dc_support = 1;
+				}
+			}
 			else if ((hdev->RXCap.HF_IEEEOUI) &&
 					((hdev->RXCap.dc_30bit_420 && hdev->cur_video_param->color_depth == COLORDEPTH_30B) ||
 					 (hdev->RXCap.dc_36bit_420 && hdev->cur_video_param->color_depth == COLORDEPTH_36B) ||
@@ -649,8 +656,11 @@ static int set_disp_mode_auto(void)
 			if (! dc_support){
 				pr_warn("Bitdepth is set to %d bits but display does not support deep colour",
 						hdev->cur_video_param->color_depth * 2);
-				/* drop to 8 bit unless forced */
-				if (strstr(fmt_attr,"bit") == NULL)
+				/* use YUV422 if supported */
+				if (hdev->hdmi_info.support_ycbcr422_flag == 1)
+					hdev->para->cs = COLORSPACE_YUV422;
+				/* or drop to 8 bit unless forced */
+				else if (strstr(fmt_attr,"bit") == NULL)
 					hdev->cur_video_param->color_depth = COLORDEPTH_24B;
 			}
 		}
