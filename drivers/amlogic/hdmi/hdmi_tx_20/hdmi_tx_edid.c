@@ -1257,6 +1257,24 @@ static int hdmitx_edid_3d_parse(struct rx_cap *pRXCap, unsigned char *dat,
 		pos += 1;
 		pRXCap->hdmi_vic_LEN = dat[pos] >> 5;
 		pRXCap->HDMI_3D_LEN = dat[pos] & 0x1f;
+
+		/* mandatory formats HDMI 1.4b 8.3.2 */
+		for (j = 0; (j < 16) && (j < pRXCap->VIC_count); j++) {
+			if (pRXCap->VIC[j] == HDMI_1920x1080p24_16x9
+					|| pRXCap->VIC[j] == HDMI_1280x720p60_16x9
+					|| pRXCap->VIC[j] == HDMI_1280x720p50_16x9) {
+				pRXCap->support_3d_format[pRXCap->VIC[j]].frame_packing = 1;
+				pRXCap->support_3d_format[pRXCap->VIC[j]].top_and_bottom = 1;
+			}
+			if (pRXCap->VIC[j] == HDMI_1920x1080i60_16x9
+					|| pRXCap->VIC[j] == HDMI_1920x1080i50_16x9) {
+				pRXCap->support_3d_format[pRXCap->VIC[j]].side_by_side = 1;
+			}
+		}
+
+		if (pRXCap->HDMI_3D_LEN == 0)
+			return 1;
+
 		pos += pRXCap->hdmi_vic_LEN + 1;
 
 		if (pRXCap->threeD_Multi_present == 0x01) {
@@ -1294,34 +1312,24 @@ static int hdmitx_edid_3d_parse(struct rx_cap *pRXCap, unsigned char *dat,
 			pos += 2;
 		}
 	}
-	if (pRXCap->threeD_MASK_15_0 == 0) {
-		for (j = 0; (j < 16) && (j < pRXCap->VIC_count); j++) {
-			pRXCap->support_3d_format[pRXCap->VIC[j]].frame_packing
-				= 1;
-			pRXCap->support_3d_format[pRXCap->VIC[j]].top_and_bottom
-				= 1;
-			pRXCap->support_3d_format[pRXCap->VIC[j]].side_by_side
-				= 1;
-		}
-	} else {
-		for (j = 0; j < 16; j++) {
-			if (((pRXCap->threeD_MASK_15_0) >> j) & 0x1) {
-				/* frame packing */
-				if (pRXCap->threeD_Structure_ALL_15_0
+	for (j = 0; j < 16; j++) {
+		if (((pRXCap->threeD_MASK_15_0) >> j) & 0x1
+				|| pRXCap->threeD_MASK_15_0 == 0) {
+			/* frame packing */
+			if (pRXCap->threeD_Structure_ALL_15_0
 					& (1 << 0))
-					pRXCap->support_3d_format[pRXCap->
-						VIC[j]].frame_packing = 1;
-				/* top and bottom */
-				if (pRXCap->threeD_Structure_ALL_15_0
+				pRXCap->support_3d_format[pRXCap->
+					VIC[j]].frame_packing = 1;
+			/* top and bottom */
+			if (pRXCap->threeD_Structure_ALL_15_0
 					& (1 << 6))
-					pRXCap->support_3d_format[pRXCap->
-						VIC[j]].top_and_bottom = 1;
-				/* top and bottom */
-				if (pRXCap->threeD_Structure_ALL_15_0
+				pRXCap->support_3d_format[pRXCap->
+					VIC[j]].top_and_bottom = 1;
+			/* side by side */
+			if (pRXCap->threeD_Structure_ALL_15_0
 					& (1 << 8))
-					pRXCap->support_3d_format[pRXCap->
-						VIC[j]].side_by_side = 1;
-			}
+				pRXCap->support_3d_format[pRXCap->
+					VIC[j]].side_by_side = 1;
 		}
 	}
 	return 1;
@@ -1427,9 +1435,9 @@ static int hdmitx_edid_block_parse(struct hdmitx_dev *hdmitx_device,
 			if (count > 7) {
 				tmp = BlockBuf[offset+7];
 				idx = offset + 8;
-				if (tmp & (1<<6))
+				if (tmp & (1<<6)) // latency bytes ignored
 					idx += 2;
-				if (tmp & (1<<7))
+				if (tmp & (1<<7)) // interlaced latency ignored
 					idx += 2;
 				if (tmp & (1<<5)) {
 					idx += 1;
@@ -2087,6 +2095,10 @@ int hdmitx_edid_parse(struct hdmitx_dev *hdmitx_device)
 }
 
 static struct dispmode_vic dispmode_vic_tab[] = {
+	{"480i60hz4x3", HDMI_480i60},
+	{"480p60hz4x3", HDMI_480p60},
+	{"576i50hz4x3", HDMI_576i50},
+	{"576p50hz4x3", HDMI_576p50},
 	{"480i60hz", HDMI_480i60_16x9},
 	{"480p60hz", HDMI_480p60_16x9},
 	{"576i50hz", HDMI_576i50_16x9},
