@@ -539,10 +539,10 @@ static int set_disp_mode_auto(void)
 
 	/* get current vinfo */
 	info = hdmi_get_current_vinfo();
-	hdmi_print(IMP, VID "auto - get current mode: %s vmode_e %d\n",
-		info ? info->name : "null", info ? info->mode : 0);
 	if (info == NULL)
 		return -1;
+	hdmi_print(IMP, VID "auto - get current mode: %s vmode_e %d\n",
+		info ? info->name : "null", info ? info->mode : 0);
 
 	/* save colourdepth of the stream */
 	stream_cur_cd = hdev->para->cd;
@@ -1343,27 +1343,33 @@ static ssize_t show_config(struct device *dev,
 	int pos = 0;
 	unsigned char *conf;
 	struct hdmitx_dev *hdev = &hdmitx_device;
+	char* pix_fmt[] = {"RGB","YUV422","YUV444","YUV420"};
+	char* eotf[] = {"SDR","HDR","HDR10","HLG"};
+	char* range[] = {"default","limited","full"};
+	char* aspect[] = {"no data","4:3","16:9","14:9 top","box>16:9","","","",
+		"full frame","4:3 pillarbox","16:9 letterbox","14:9 centre","",
+		"4:3 s&p 14:9","16:9 s&p 14:9","16:9 s&p 4:3"};
 
-	pos += snprintf(buf+pos, PAGE_SIZE, "cur_VIC: %d\n", hdev->cur_VIC);
+	pos += snprintf(buf+pos, PAGE_SIZE, "AVIF VIC: %d\n",hdmitx_rd_reg(HDMITX_DWC_FC_AVIVID));
 	if (hdev->para){
 		struct hdmi_format_para *para;
 		para = hdev->para;
 
 		pos += snprintf(buf+pos, PAGE_SIZE, "VIC: %d %s\n",
 				hdmitx_device.cur_VIC, para->name);
-		char* pix_fmt[] = {"RGB","YUV422","YUV444","YUV420"};
-		char* eotf[] = {"SDR","HDR","HDR10","HLG"};
-		char* range[] = {"default","limited","full"};
-		pos += snprintf(buf + pos, PAGE_SIZE, "Colour depth: %d-bit\nColourspace: %s\nColour range: %s\nEOTF: %s\nYCC colour range: %s\n",
-				(((hdmitx_rd_reg(HDMITX_DWC_TX_INVID0) & 0x6) >> 1) + 4 ) * 2,
-				pix_fmt[(hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF0) & 0x3)],
-				range[(hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF2) & 0xc) >> 2],
-				eotf[(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB00) & 7)],
-				range[((hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF3) & 0xc) >> 2) + 1]);
-		pos += snprintf(buf + pos, PAGE_SIZE, "PLL clock: 0x%08x, Vid clock div 0x%08x\n",
-				hd_read_reg(P_HHI_HDMI_PLL_CNTL),
-				hd_read_reg(P_HHI_VID_PLL_CLK_DIV));
 	}
+	pos += snprintf(buf + pos, PAGE_SIZE, "Colour depth: %d-bit\nColourspace: %s\nColour range: %s\nEOTF: %s\nYCC colour range: %s\n",
+			(((hdmitx_rd_reg(HDMITX_DWC_TX_INVID0) & 0x6) >> 1) + 4 ) * 2,
+			pix_fmt[(hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF0) & 0x3)],
+			range[(hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF2) & 0xc) >> 2],
+			eotf[(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB00) & 7)],
+			range[((hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF3) & 0xc) >> 2) + 1]);
+	pos += snprintf(buf + pos, PAGE_SIZE, "PLL clock: 0x%08x, Vid clock div 0x%08x\n",
+			hd_read_reg(P_HHI_HDMI_PLL_CNTL),
+			hd_read_reg(P_HHI_VID_PLL_CLK_DIV));
+	pos += snprintf(buf + pos, PAGE_SIZE, "Aspect ratio: %s/%s\n",
+			aspect[(hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF1) & 0x30) >> 4],
+			aspect[hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF1) & 0xf]);
 
 	switch (hdev->tx_aud_cfg) {
 	case 0:
@@ -1378,14 +1384,14 @@ static ssize_t show_config(struct device *dev,
 	default:
 		conf = "none";
 	}
-	pos += snprintf(buf+pos, PAGE_SIZE, "audio config: %s\n", conf);
+	pos += snprintf(buf+pos, PAGE_SIZE, "Audio config: %s\n", conf);
 
 	if (hdev->flag_3dfp)
 		conf = "FramePacking";
 	else if (hdev->flag_3dss)
 		conf = "SidebySide";
 	else if (hdev->flag_3dtb)
-		conf = "TopButtom";
+		conf = "TopBottom";
 	else
 		conf = "off";
 	pos += snprintf(buf+pos, PAGE_SIZE, "3D config: %s\n", conf);
@@ -1480,31 +1486,33 @@ static ssize_t store_debug(struct device *dev,
 
 /* support format lists */
 const char *disp_mode_t[] = {
+//	"480p60hz4x3",
 	"480p60hz",
+//	"576p50hz4x3",
 	"576p50hz",
+	"720p50hz",
 	"720p60hz",
+	"1080p24hz",
+	"1080p25hz",
+	"1080p30hz",
+	"1080i50hz",
+	"1080p50hz",
 	"1080i60hz",
 	"1080p60hz",
-	"720p50hz",
-	"1080i50hz",
-	"1080p30hz",
-	"1080p50hz",
-	"1080p25hz",
-	"1080p24hz",
-	"2160p30hz",
-	"2160p25hz",
 	"2160p24hz",
+	"2160p25hz",
+	"2160p30hz",
+	"2160p50hz",
+	"2160p50hz420",
+	"2160p60hz",
+	"2160p60hz420",
 	"smpte24hz",
 	"smpte25hz",
 	"smpte30hz",
 	"smpte50hz",
-	"smpte60hz",
 	"smpte50hz420",
+	"smpte60hz",
 	"smpte60hz420",
-	"2160p50hz",
-	"2160p60hz",
-	"2160p50hz420",
-	"2160p60hz420",
 	NULL
 };
 
@@ -1540,7 +1548,6 @@ static ssize_t show_disp_cap(struct device *dev,
 							"*\n");
 				} else
 					pos += snprintf(buf+pos, PAGE_SIZE, "\n");
-
 			}
 		}
 	}
@@ -1583,8 +1590,8 @@ static ssize_t show_disp_cap_3d(struct device *dev,
 	int i, pos = 0;
 	int j = 0;
 	enum hdmi_vic vic;
+	char caps_3d[60];
 
-	pos += snprintf(buf+pos, PAGE_SIZE, "3D support lists:\n");
 	for (i = 0; disp_mode_t[i]; i++) {
 		/* 3D is not supported under 4k modes */
 		if (strstr(disp_mode_t[i], "2160p") ||
@@ -1592,31 +1599,30 @@ static ssize_t show_disp_cap_3d(struct device *dev,
 			continue;
 		vic = hdmitx_edid_get_VIC(&hdmitx_device,
 			disp_mode_t[i], 0);
+		if (vic == HDMI_Unkown)
+			continue;
 		for (j = 0; j < hdmitx_device.RXCap.VIC_count; j++) {
 			if (vic == hdmitx_device.RXCap.VIC[j])
 				break;
 		}
-		pos += snprintf(buf+pos, PAGE_SIZE, "\n%s ",
-			disp_mode_t[i]);
+		caps_3d[0] = 0;
 		if (local_support_3dfp(vic)
 			&& (hdmitx_device.RXCap.support_3d_format[
 			hdmitx_device.RXCap.VIC[j]].frame_packing == 1)) {
-			pos += snprintf(buf+pos, PAGE_SIZE,
-				"FramePacking ");
+			strcat(caps_3d," FramePacking");
 		}
 		if (hdmitx_device.RXCap.support_3d_format[
 			hdmitx_device.RXCap.VIC[j]].top_and_bottom == 1) {
-			pos += snprintf(buf+pos, PAGE_SIZE,
-				"TopBottom ");
+			strcat(caps_3d," TopBottom");
 		}
 		if (hdmitx_device.RXCap.support_3d_format[
 			hdmitx_device.RXCap.VIC[j]].side_by_side == 1) {
-			pos += snprintf(buf+pos, PAGE_SIZE,
-				"SidebySide ");
+			strcat(caps_3d," SidebySide");
 		}
+		if (strlen(caps_3d) > 0)
+			pos += snprintf(buf+pos, PAGE_SIZE, "%s%s\n",
+				disp_mode_t[i], caps_3d);
 	}
-	pos += snprintf(buf+pos, PAGE_SIZE, "\n");
-
 	return pos;
 }
 
