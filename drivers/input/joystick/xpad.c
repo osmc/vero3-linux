@@ -89,6 +89,8 @@
 
 #define XPAD_PKT_LEN 64
 
+#define CONFIG_JOYSTICK_XPAD_LEDS 1
+
 /* xbox d-pads should map to buttons, as is required for DDR pads
    but we map them to axes when possible to simplify things */
 #define MAP_DPAD_TO_BUTTONS		(1 << 0)
@@ -107,9 +109,9 @@ static bool dpad_to_buttons;
 module_param(dpad_to_buttons, bool, S_IRUGO);
 MODULE_PARM_DESC(dpad_to_buttons, "Map D-PAD to buttons rather than axes for unknown pads");
 
-static bool triggers_to_buttons;
+static bool triggers_to_buttons = true;
 module_param(triggers_to_buttons, bool, S_IRUGO);
-MODULE_PARM_DESC(triggers_to_buttons, "Map triggers to buttons rather than axes for unknown pads");
+MODULE_PARM_DESC(triggers_to_buttons, "Map triggers to buttons rather than axes");
 
 static bool sticks_to_null;
 module_param(sticks_to_null, bool, S_IRUGO);
@@ -1640,11 +1642,12 @@ static int xpad_probe(struct usb_interface *intf, const struct usb_device_id *id
 
 		if (dpad_to_buttons)
 			xpad->mapping |= MAP_DPAD_TO_BUTTONS;
-		if (triggers_to_buttons)
-			xpad->mapping |= MAP_TRIGGERS_TO_BUTTONS;
 		if (sticks_to_null)
 			xpad->mapping |= MAP_STICKS_TO_NULL;
 	}
+
+	if (triggers_to_buttons)
+		xpad->mapping |= MAP_TRIGGERS_TO_BUTTONS;
 
 	if (xpad->xtype == XTYPE_XBOXONE &&
 	    intf->cur_altsetting->desc.bInterfaceNumber != 0) {
