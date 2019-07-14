@@ -666,6 +666,9 @@ static int set_disp_mode_auto(void)
 		}
 	}
 
+	if (hdev->flag_3dfp)
+		hdev->cur_video_param->color_depth = COLORDEPTH_24B;
+
 	/* set range using range_control from amcsc */
 	if (strstr(fmt_attr,"full") || get_range_control() & 2){
                hdev->para->cr = COLORRANGE_FUL;
