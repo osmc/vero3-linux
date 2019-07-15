@@ -526,10 +526,7 @@ static int set_disp_mode_auto(void)
 	enum hdmi_vic vic = HDMI_Unkown;
 	enum hdmi_color_depth stream_cur_cd;
 	char* pix_fmt[] = {"RGB","YUV422","YUV444","YUV420"};
-	char* eotf[] = {"SDR","HDR","HDR10","HLG"};
 	char* range[] = {"default","limited","full"};
-	char* colour_str[] = {"default", "SMPTE-C", "bt709", "xvYCC601","xvYCC709",
-		"sYCC601","opYCC601","opRGB","bt2020c","bt2020nc","P3 D65","P3 theater"};
 
 	/* vic_ready got from IP */
 	enum hdmi_vic vic_ready = hdev->HWOp.GetState(
@@ -760,36 +757,10 @@ static int set_disp_mode_auto(void)
 			range[((hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF3) & 4) >> 2) + 1],
 			pix_fmt[(hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF0) & 0x3)]);
 
-	if (((hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF1) & 0xc0) >> 6) < 0x3)
-		hdmi_print(IMP, VID "Colorimetry: %s\n",
-				colour_str[(hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF1) & 0xc0) >> 6]);
-	else
-		hdmi_print(IMP, VID "Colorimetry: %s\n",
-				colour_str[((hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF2) & 0x70) >> 4) + 3]);
+	hdmi_print(IMP, VID "PLL clock: 0x%08x, Vid clock div 0x%08x\n",
+			hd_read_reg(P_HHI_HDMI_PLL_CNTL),
+			hd_read_reg(P_HHI_VID_PLL_CLK_DIV));
 
-	if ((hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB00) & 3) == 0x02) {
-		hdmi_print(IMP, VID "HDR data: EOTF: %s\n", eotf[(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB00) & 7)]);
-		if (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB02) > 0x0) {
-			hdmi_print(IMP, VID "Master display colours:\nPrimary one 0.%04d,0.%04d, two 0.%04d,0.%04d, three 0.%04d,0.%04d\nWhite 0.%04d,0.%04d, Luminance max/min: %d,0.%03d\n",
-					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB02) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB03) << 8)) * 2 / 10,
-					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB04) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB05) << 8)) * 2 / 10,
-					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB06) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB07) << 8)) * 2 / 10,
-					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB08) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB09) << 8)) * 2 / 10,
-					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB10) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB11) << 8)) * 2 / 10,
-					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB12) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB13) << 8)) * 2 / 10,
-					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB14) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB15) << 8)) * 2 / 10,
-					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB16) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB17) << 8)) * 2 / 10,
-					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB18) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB19) << 8)) / 10000,
-					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB20) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB21) << 8)));
-			hdmi_print(IMP, VID "Max content luminance: %d, Max frame average luminance: %d\n",
-					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB22) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB23) << 8)) / 10000,
-					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB24) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB25) << 8)) / 10000);
-		}
-		else hdmi_print(IMP, VID "No master display info\n");
-	}		
-		hdmi_print(IMP, VID "PLL clock: 0x%08x, Vid clock div 0x%08x\n",
-				hd_read_reg(P_HHI_HDMI_PLL_CNTL),
-				hd_read_reg(P_HHI_VID_PLL_CLK_DIV));
 	return ret;
 } /* set_disp_mode_auto */
 
@@ -1252,6 +1223,39 @@ static void hdmitx_set_drm_pkt(struct master_display_info_s *data)
 	hdmitx_device.HWOp.SetPacket(HDMI_PACKET_DRM, DRM_DB, DRM_HB);
 	hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_AVI_BT2020,
 			SET_AVI_BT2020);
+
+	char* eotf[] = {"SDR","HDR","HDR10","HLG"};
+	char* colour_str[] = {"default", "SMPTE-C", "bt709", "xvYCC601","xvYCC709",
+		"sYCC601","opYCC601","opRGB","bt2020c","bt2020nc","P3 D65","P3 theater"};
+
+
+	if (((hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF1) & 0xc0) >> 6) < 0x3)
+		hdmi_print(IMP, VID "Colorimetry: %s\n",
+				colour_str[(hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF1) & 0xc0) >> 6]);
+	else
+		hdmi_print(IMP, VID "Colorimetry: %s\n",
+				colour_str[((hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF2) & 0x70) >> 4) + 3]);
+
+	if ((hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB00) & 3) == 0x02) {
+		hdmi_print(IMP, VID "HDR data: EOTF: %s\n", eotf[(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB00) & 7)]);
+		if (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB02) > 0x0) {
+			hdmi_print(IMP, VID "Master display colours:\nPrimary one 0.%04d,0.%04d, two 0.%04d,0.%04d, three 0.%04d,0.%04d\nWhite 0.%04d,0.%04d, Luminance max/min: %d,0.%03d\n",
+					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB02) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB03) << 8)) * 2 / 10,
+					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB04) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB05) << 8)) * 2 / 10,
+					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB06) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB07) << 8)) * 2 / 10,
+					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB08) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB09) << 8)) * 2 / 10,
+					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB10) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB11) << 8)) * 2 / 10,
+					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB12) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB13) << 8)) * 2 / 10,
+					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB14) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB15) << 8)) * 2 / 10,
+					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB16) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB17) << 8)) * 2 / 10,
+					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB18) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB19) << 8)) / 10000,
+					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB20) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB21) << 8)));
+			hdmi_print(IMP, VID "Max content luminance: %d, Max frame average luminance: %d\n",
+					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB22) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB23) << 8)) / 10000,
+					(hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB24) | (hdmitx_rd_reg(HDMITX_DWC_FC_DRM_PB25) << 8)) / 10000);
+		}
+		else hdmi_print(IMP, VID "No master display info\n");
+	}
 }
 
 static void hdmitx_set_vsif_pkt(enum eotf_type type, uint8_t tunnel_mode)
