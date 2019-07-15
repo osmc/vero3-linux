@@ -3903,9 +3903,12 @@ static int hdmitx_cntl_config(struct hdmitx_dev *hdev, unsigned cmd,
 		if (argv == SET_AVI_BT2020) {
 			hdmitx_set_reg_bits(HDMITX_DWC_FC_AVICONF1, 3, 6, 2);
 			hdmitx_set_reg_bits(HDMITX_DWC_FC_AVICONF2, 6, 4, 3);
+			hdmi_print(INF, VID "Signaling HDR content\n");
 		}
-		if (argv == CLR_AVI_BT2020)
+		if (argv == CLR_AVI_BT2020){
 			hdmitx_set_avi_colorimetry(hdev->para);
+			hdmi_print(INF, VID "Signaling SDR content\n");
+		}
 		break;
 	case CONF_AVI_RGBYCC_INDIC:
 		hdmitx_set_reg_bits(HDMITX_DWC_FC_AVICONF0, argv, 0, 2);
