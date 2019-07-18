@@ -2057,9 +2057,9 @@ static void hdmitx_set_packet(int type, unsigned char *DB, unsigned char *HB)
 				hdmitx_wr_reg(HDMITX_DWC_FC_VSDSIZE, 6);
 		}
 		/* Enable VSI packet */
-		hdmitx_set_reg_bits(HDMITX_DWC_FC_DATAUTO0, 1, 3, 1);
 		hdmitx_wr_reg(HDMITX_DWC_FC_DATAUTO1, 0);
 		hdmitx_wr_reg(HDMITX_DWC_FC_DATAUTO2, 0x10);
+		hdmitx_set_reg_bits(HDMITX_DWC_FC_DATAUTO0, 1, 3, 1);
 		hdmitx_set_reg_bits(HDMITX_DWC_FC_PACKET_TX_EN, 1, 4, 1);
 		break;
 	case HDMI_PACKET_DRM:
@@ -4597,7 +4597,7 @@ static void config_hdmi20_tx(enum hdmi_vic vic,
 		}
 	}
 
-	if (hdev->flag_3dfp) {
+	if (hdev->flag_3dfp || hdev->flag_3dss || hdev->flag_3dtb) {
 		hdmitx_set_reg_bits(HDMITX_DWC_FC_DATAUTO0, 1, 3, 1);
 		hdmitx_set_reg_bits(HDMITX_DWC_FC_PACKET_TX_EN, 1, 4, 1);
 	 } else {
