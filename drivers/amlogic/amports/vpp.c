@@ -1592,7 +1592,7 @@ int vpp_set_super_scaler_regs(int scaler_path_sel,
 	/* size config */
 	tmp_data = ((reg_srscl0_hsize & 0x1fff) << 16) |
 			   (reg_srscl0_vsize & 0x1fff);
-	tmp_data2 = READ_VCBUS_REG(SRSHARP0_SHARP_SR2_CTRL);
+	tmp_data2 = READ_VCBUS_REG(SRSHARP0_SHARP_HVSIZE);
 	if (tmp_data != tmp_data2)
 		VSYNC_WR_MPEG_REG(SRSHARP0_SHARP_HVSIZE, tmp_data);
 
@@ -1945,7 +1945,7 @@ vpp_get_video_source_size(u32 *src_width, u32 *src_height,
 			next_frame_par->vpp_3d_mode = VPP_3D_MODE_TB;
 			/*just for mvc 3d file */
 			if (process_3d_type & MODE_3D_MVC) {
-				next_frame_par->vpp_2pic_mode = 2;
+				next_frame_par->vpp_2pic_mode = (process_3d_type & MODE_3D_TO_2D_MASK) ? 0 : 2;
 				next_frame_par->vpp_3d_mode = VPP_3D_MODE_FA;
 			}
 			break;
@@ -2049,6 +2049,14 @@ vpp_get_video_source_size(u32 *src_width, u32 *src_height,
 			next_frame_par->vpp_2pic_mode = 0;
 		} else if (process_3d_type & MODE_3D_OUT_LR) {
 			*src_width = vf->width << 1;
+			*src_height = vf->height;
+			next_frame_par->vpp_2pic_mode = 2;
+		} else if (process_3d_type & MODE_3D_OUT_TB) {
+			*src_width = vf->width;
+			*src_height = vf->height << 1;
+			next_frame_par->vpp_2pic_mode = 2;
+		} else if (process_3d_type & MODE_3D_MVC) {
+			*src_width = vf->width;
 			*src_height = vf->height;
 			next_frame_par->vpp_2pic_mode = 2;
 		} else {
