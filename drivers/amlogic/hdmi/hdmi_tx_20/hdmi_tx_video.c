@@ -628,12 +628,12 @@ int hdmitx_set_display(struct hdmitx_dev *hdev, enum hdmi_vic VideoCode)
 
 	param = hdmi_get_video_param(VideoCode);
 	hdmi_print(IMP, SYS "params found at 0x%08x\n", param);
-	/* recover the bitdepth set in hdmi_tx_main */
-	if (hdev->cur_video_param != NULL)
-		param->color_depth = hdev->cur_video_param->color_depth;
 	if (param) {
+		/* recover the bitdepth set in hdmi_tx_main */
+		if (hdev->cur_video_param != NULL)
+			param->color_depth = hdev->cur_video_param->color_depth;
 		hdev->cur_video_param = param;
-	        hdmi_print(IMP, SYS "cur_param = param at 0x%08x colourdepth %d colourspace %d\n", 
+		hdmi_print(IMP, SYS "cur_param = param at 0x%08x colourdepth %d colourspace %d\n",
 					hdev->cur_video_param, hdev->cur_video_param->color_depth * 2, param->color);
 		param->color = hdev->para->cs;
 		if (hdmi_output_rgb || is_philips_2009(&hdev->RXCap) ||
