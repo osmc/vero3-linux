@@ -7369,8 +7369,8 @@ static ssize_t frame_aspect_ratio_show(struct class *cla,
 			return sprintf(buf, "0x%x\n", ar);
 		else
 			return sprintf(buf, "0x%x\n",
-				       (cur_dispbuf->width << 8) /
-				       cur_dispbuf->height);
+				       (cur_dispbuf->height << 8) /
+				       cur_dispbuf->width);
 	}
 
 	return sprintf(buf, "NA\n");

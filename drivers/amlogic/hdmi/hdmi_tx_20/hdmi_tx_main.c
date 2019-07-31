@@ -1256,6 +1256,7 @@ static void hdmitx_set_drm_pkt(struct master_display_info_s *data)
 		}
 		else hdmi_print(IMP, VID "No master display info\n");
 	}
+	pr_info("GFH hdmitx_set_drm_pkt: set DRM and AVI for BT2020\n");
 }
 
 static void hdmitx_set_vsif_pkt(enum eotf_type type, uint8_t tunnel_mode)
@@ -1493,9 +1494,7 @@ static ssize_t store_debug(struct device *dev,
 
 /* support format lists */
 const char *disp_mode_t[] = {
-//	"480p60hz4x3",
 	"480p60hz",
-//	"576p50hz4x3",
 	"576p50hz",
 	"720p50hz",
 	"720p60hz",
@@ -2059,6 +2058,41 @@ static ssize_t show_frac_rate(struct device *dev,
 	return pos;
 }
 
+/*
+ * set the aspect ratio in the AVI InfoFrame
+ * 0: no data, 1: 4:3, 2: 16:9
+ */
+static ssize_t store_aspect(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct hdmitx_dev *hdev = &hdmitx_device;
+
+	if (strncmp(buf, "0", 1) == 0) 
+		hdmitx_set_reg_bits(HDMITX_DWC_FC_AVICONF1, 0x08, 0, 6);
+	else if (strncmp(buf, "1", 1) == 0)
+		hdmitx_set_reg_bits(HDMITX_DWC_FC_AVICONF1, 0x18, 0, 6);
+	else if (strncmp(buf, "2", 1) == 0)
+		hdmitx_set_reg_bits(HDMITX_DWC_FC_AVICONF1, 0x28, 0, 6);
+
+	hdmi_print(SYS, VID "Aspect ratio set to 0x%02x/0x%02x\n",
+		(hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF1) & 0x30) >> 4,
+		hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF1) & 0xf);
+
+	return count;
+}
+
+static ssize_t show_aspect(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	int pos = 0;
+
+	pos += snprintf(buf + pos, PAGE_SIZE, "Aspect ratio M/R: 0x%02x/0x%02x\n",
+			(hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF1) & 0x30) >> 4,
+			hdmitx_rd_reg(HDMITX_DWC_FC_AVICONF1) & 0xf);
+
+	return pos;
+}
+
 static ssize_t store_hdcp_clkdis(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -2445,6 +2479,7 @@ static DEVICE_ATTR(vic, S_IWUSR | S_IRUGO | S_IWGRP, show_vic, store_vic);
 static DEVICE_ATTR(phy, S_IWUSR | S_IRUGO | S_IWGRP, show_phy, store_phy);
 static DEVICE_ATTR(frac_rate_policy, S_IWUSR | S_IRUGO | S_IWGRP,
 	show_frac_rate, store_frac_rate);
+static DEVICE_ATTR(aspect, S_IWUSR | S_IRUGO | S_IWGRP, show_aspect, store_aspect);
 static DEVICE_ATTR(hdcp_clkdis, S_IWUSR | S_IRUGO | S_IWGRP, show_hdcp_clkdis,
 	store_hdcp_clkdis);
 static DEVICE_ATTR(hdcp_pwr, S_IWUSR | S_IRUGO | S_IWGRP, show_hdcp_pwr,
@@ -3284,6 +3319,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
 	ret = device_create_file(dev, &dev_attr_vic);
 	ret = device_create_file(dev, &dev_attr_phy);
 	ret = device_create_file(dev, &dev_attr_frac_rate_policy);
+	ret = device_create_file(dev, &dev_attr_aspect);
 	ret = device_create_file(dev, &dev_attr_hdcp_clkdis);
 	ret = device_create_file(dev, &dev_attr_hdcp_pwr);
 	ret = device_create_file(dev, &dev_attr_hdcp_ksv_info);
@@ -3478,6 +3514,7 @@ static int amhdmitx_remove(struct platform_device *pdev)
 	device_remove_file(dev, &dev_attr_avmute);
 	device_remove_file(dev, &dev_attr_vic);
 	device_remove_file(dev, &dev_attr_frac_rate_policy);
+	device_remove_file(dev, &dev_attr_aspect);
 	device_remove_file(dev, &dev_attr_hdcp_pwr);
 	device_remove_file(dev, &dev_attr_aud_output_chs);
 	device_remove_file(dev, &dev_attr_div40);

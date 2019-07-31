@@ -1330,9 +1330,9 @@ static int hdmitx_edid_3d_parse(struct rx_cap *pRXCap, unsigned char *dat,
 					& (1 << 8))
 				pRXCap->support_3d_format[pRXCap->
 					VIC[j]].side_by_side = 1;
-		}
-	}
-	return 1;
+        }
+    }
+    return 1;
 }
 
 /* parse Sink 4k2k information */
@@ -2095,10 +2095,6 @@ int hdmitx_edid_parse(struct hdmitx_dev *hdmitx_device)
 }
 
 static struct dispmode_vic dispmode_vic_tab[] = {
-	{"480i60hz4x3", HDMI_480i60},
-	{"480p60hz4x3", HDMI_480p60},
-	{"576i50hz4x3", HDMI_576i50},
-	{"576p50hz4x3", HDMI_576p50},
 	{"480i60hz", HDMI_480i60_16x9},
 	{"480p60hz", HDMI_480p60_16x9},
 	{"576i50hz", HDMI_576i50_16x9},

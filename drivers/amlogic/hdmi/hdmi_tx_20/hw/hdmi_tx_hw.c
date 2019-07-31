@@ -4507,7 +4507,7 @@ static void config_hdmi20_tx(enum hdmi_vic vic,
 	hdmitx_set_avi_colorimetry(para);
 	if (hdev->hdr_src_feature){
 		hdev->HWOp.CntlConfig(hdev, CONF_AVI_BT2020, SET_AVI_BT2020);
-		pr_info("hdmitx: hw set BT2020");
+		pr_info("hdmitx: hw set BT2020\n");
 	}
 
 	data32  = 0;
