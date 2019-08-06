@@ -530,6 +530,10 @@ static int osd_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	color_format_pt = _find_color_format(var);
 	if (color_format_pt == NULL || color_format_pt->color_index == 0)
 		return -EFAULT;
+	if (color_format_pt->bpp == 8) {
+	   pr_err("osd: we can't do 256 colours");
+	   return 0;
+	}
 
 	osd_log_dbg("select color format :index %d, bpp %d\n",
 		    color_format_pt->color_index,
