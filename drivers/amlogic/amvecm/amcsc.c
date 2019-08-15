@@ -3990,7 +3990,7 @@ static void vpp_matrix_update(struct vframe_s *vf, struct vinfo_s *vinfo)
 				vd1_contrast_offset =
 				calculate_contrast_adj(p->luminance[0] / 10000);
 			vecm_latch_flag |= FLAG_VADJ1_CON;
-		} else {
+		} else if (vd1_contrast_offset != 0) {
 			vd1_contrast_offset = 0;
 			vecm_latch_flag |= FLAG_VADJ1_CON;
 		}
