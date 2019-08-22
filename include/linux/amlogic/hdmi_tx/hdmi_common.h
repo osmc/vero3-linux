@@ -173,6 +173,7 @@ enum hdmi_vic {
 #define HDMI_640x480p60         HDMI_640x480p60_4x3
 #define HDMI_480p60             HDMI_720x480p60_4x3
 #define HDMI_480p60_16x9        HDMI_720x480p60_16x9
+#define HDMI_480p120_16x9       HDMI_720x480p120_16x9
 #define HDMI_720p60             HDMI_1280x720p60_16x9
 #define HDMI_1080i60            HDMI_1920x1080i60_16x9
 #define HDMI_480i60             HDMI_720x480i60_4x3
@@ -183,8 +184,13 @@ enum hdmi_vic {
 #define HDMI_1080p60            HDMI_1920x1080p60_16x9
 #define HDMI_576p50             HDMI_720x576p50_4x3
 #define HDMI_576p50_16x9        HDMI_720x576p50_16x9
+#define HDMI_576p100_16x9       HDMI_720x576p100_16x9
 #define HDMI_720p50             HDMI_1280x720p50_16x9
+#define HDMI_720p100            HDMI_1280x720p100_16x9
+#define HDMI_720p120            HDMI_1280x720p120_16x9
 #define HDMI_1080i50            HDMI_1920x1080i50_16x9
+#define HDMI_1080i100           HDMI_1920x1080i100_16x9
+#define HDMI_1080i120           HDMI_1920x1080i120_16x9
 #define HDMI_576i50             HDMI_720x576i50_4x3
 #define HDMI_576i50_16x9        HDMI_720x576i50_16x9
 #define HDMI_576i50_16x9_rpt    HDMI_2880x576i50_16x9
@@ -192,6 +198,8 @@ enum hdmi_vic {
 #define HDMI_1080p24            HDMI_1920x1080p24_16x9
 #define HDMI_1080p25            HDMI_1920x1080p25_16x9
 #define HDMI_1080p30            HDMI_1920x1080p30_16x9
+#define HDMI_1080p100           HDMI_1920x1080p100_16x9
+#define HDMI_1080p120           HDMI_1920x1080p120_16x9
 #define HDMI_480p60_16x9_rpt    HDMI_2880x480p60_16x9
 #define HDMI_576p50_16x9_rpt    HDMI_2880x576p50_16x9
 #define HDMI_4k2k_24            HDMI_3840x2160p24_16x9
