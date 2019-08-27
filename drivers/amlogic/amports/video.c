@@ -421,6 +421,7 @@ atomic_t capture_use_cnt = ATOMIC_INIT(CAPTURE_STATE_OFF);
 	do { \
 		CLEAR_VCBUS_REG_MASK(VPP_MISC + cur_dev->vpp_off, \
 		VPP_VD2_PREBLEND | (0x1ff << VPP_VD2_ALPHA_BIT)); \
+		VIDEO_LAYER2_OFF(); \
 		VD2_MEM_POWER_OFF(); \
 	} while (0)
 #endif
@@ -1117,7 +1118,6 @@ static void vpp_settings_h(struct vpp_frame_par_s *framePtr)
 			((framePtr->VPP_hsc_endp & VPP_VD_SIZE_MASK)
 			<< VPP_VD1_END_BIT));
 		} else{
-
 			VSYNC_WR_MPEG_REG(VPP_POSTBLEND_VD1_H_START_END +
 			cur_dev->vpp_off,
 			((framePtr->VPP_hsc_startp & VPP_VD_SIZE_MASK)
