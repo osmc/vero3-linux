@@ -1118,6 +1118,13 @@ static void vpp_settings_h(struct vpp_frame_par_s *framePtr)
 			((framePtr->VPP_hsc_endp & VPP_VD_SIZE_MASK)
 			<< VPP_VD1_END_BIT));
 		} else{
+			VSYNC_WR_MPEG_REG(VPP_PREBLEND_VD1_H_START_END +
+			cur_dev->vpp_off,
+			((framePtr->VPP_hd_start_lines_ &
+			VPP_VD_SIZE_MASK) << VPP_VD1_START_BIT) |
+			((framePtr->VPP_hd_end_lines_ &
+			VPP_VD_SIZE_MASK) << VPP_VD1_END_BIT));
+
 			VSYNC_WR_MPEG_REG(VPP_POSTBLEND_VD1_H_START_END +
 			cur_dev->vpp_off,
 			((framePtr->VPP_hsc_startp & VPP_VD_SIZE_MASK)
