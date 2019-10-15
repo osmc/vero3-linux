@@ -739,6 +739,7 @@ int hdmitx_set_display(struct hdmitx_dev *hdev, enum hdmi_vic VideoCode)
 				param->color = COLORSPACE_YUV422;
 				break;
 			case 0x30:
+				param->color = hdev->para->cs;
 				break;
 			default:
 				param->color = COLORSPACE_RGB444;
