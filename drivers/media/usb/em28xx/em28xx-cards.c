@@ -508,6 +508,7 @@ static struct em28xx_reg_seq plex_px_bcud[] = {
 
 /*
  * 2040:0265 Hauppauge WinTV-dualHD DVB
+ * 2040:026d Hauppauge WinTV-dualHD ATSC/QAM
  * reg 0x80/0x84:
  * GPIO_0: Yellow LED tuner 1, 0=on, 1=off
  * GPIO_1: Green LED tuner 1, 0=on, 1=off
@@ -524,7 +525,7 @@ static struct em28xx_reg_seq hauppauge_dualhd_dvb[] = {
 	{EM2874_R80_GPIO_P0_CTRL,      0xff, 0xff,    100},
 	{EM2874_R80_GPIO_P0_CTRL,      0xdf, 0xff,    100}, /* demod 2 reset */
 	{EM2874_R80_GPIO_P0_CTRL,      0xff, 0xff,    100},
-	{EM2874_R5F_TS_ENABLE,         0x44, 0xff,     50},
+	{EM2874_R5F_TS_ENABLE,         0x00, 0xff,     50}, /* disable TS filters */
 	{EM2874_R5D_TS1_PKT_SIZE,      0x05, 0xff,     50},
 	{EM2874_R5E_TS2_PKT_SIZE,      0x05, 0xff,     50},
 	{-1,                             -1,   -1,     -1},
@@ -2375,7 +2376,8 @@ struct em28xx_board em28xx_boards[] = {
 		.has_dvb       = 1,
 	},
 	/*
-	 * 2040:0265 Hauppauge WinTV-dualHD (DVB version).
+	 * 2040:0265 Hauppauge WinTV-dualHD (DVB version) Isoc.
+	 * 2040:8265 Hauppauge WinTV-dualHD (DVB version) Bulk.
 	 * Empia EM28274, 2x Silicon Labs Si2168, 2x Silicon Labs Si2157
 	 */
 	[EM28174_BOARD_HAUPPAUGE_WINTV_DUALHD_DVB] = {
@@ -2386,6 +2388,24 @@ struct em28xx_board em28xx_boards[] = {
 		.tuner_type    = TUNER_ABSENT,
 		.tuner_gpio    = hauppauge_dualhd_dvb,
 		.has_dvb       = 1,
+		.has_dual_ts   = 1,
+		.ir_codes      = RC_MAP_HAUPPAUGE,
+		.leds          = hauppauge_dualhd_leds,
+	},
+	/*
+	 * 2040:026d Hauppauge WinTV-dualHD (model 01595 - ATSC/QAM) Isoc.
+	 * 2040:826d Hauppauge WinTV-dualHD (model 01595 - ATSC/QAM) Bulk.
+	 * Empia EM28274, 2x LG LGDT3306A, 2x Silicon Labs Si2157
+	 */
+	[EM28174_BOARD_HAUPPAUGE_WINTV_DUALHD_01595] = {
+		.name          = "Hauppauge WinTV-dualHD 01595 ATSC/QAM",
+		.def_i2c_bus   = 1,
+		.i2c_speed     = EM28XX_I2C_CLK_WAIT_ENABLE |
+				 EM28XX_I2C_FREQ_400_KHZ,
+		.tuner_type    = TUNER_ABSENT,
+		.tuner_gpio    = hauppauge_dualhd_dvb,
+		.has_dvb       = 1,
+		.has_dual_ts   = 1,
 		.ir_codes      = RC_MAP_HAUPPAUGE,
 		.leds          = hauppauge_dualhd_leds,
 	},
@@ -2514,6 +2534,12 @@ struct usb_device_id em28xx_id_table[] = {
 			.driver_info = EM2883_BOARD_HAUPPAUGE_WINTV_HVR_850 },
 	{ USB_DEVICE(0x2040, 0x0265),
 			.driver_info = EM28174_BOARD_HAUPPAUGE_WINTV_DUALHD_DVB },
+	{ USB_DEVICE(0x2040, 0x8265),
+			.driver_info = EM28174_BOARD_HAUPPAUGE_WINTV_DUALHD_DVB },
+	{ USB_DEVICE(0x2040, 0x026d),
+			.driver_info = EM28174_BOARD_HAUPPAUGE_WINTV_DUALHD_01595 },
+	{ USB_DEVICE(0x2040, 0x826d),
+			.driver_info = EM28174_BOARD_HAUPPAUGE_WINTV_DUALHD_01595 },
 	{ USB_DEVICE(0x0438, 0xb002),
 			.driver_info = EM2880_BOARD_AMD_ATI_TV_WONDER_HD_600 },
 	{ USB_DEVICE(0x2001, 0xf112),
@@ -2632,20 +2658,37 @@ int em28xx_tuner_callback(void *ptr, int component, int command, int arg)
 }
 EXPORT_SYMBOL_GPL(em28xx_tuner_callback);
 
+static inline void em28xx_set_xclk_i2c_speed(struct em28xx *dev)
+{
+	struct em28xx_board *board = &em28xx_boards[dev->model];
+	u8 xclk = board->xclk, i2c_speed = board->i2c_speed;
+
+	/*
+	 * Those are the default values for the majority of boards
+	 * Use those values if not specified otherwise at boards entry
+	 */
+	if (!xclk)
+		xclk = EM28XX_XCLK_IR_RC5_MODE |
+				  EM28XX_XCLK_FREQUENCY_12MHZ;
+
+	em28xx_write_reg(dev, EM28XX_R0F_XCLK, xclk);
+
+	if (!i2c_speed)
+		i2c_speed = EM28XX_I2C_CLK_WAIT_ENABLE |
+				       EM28XX_I2C_FREQ_100_KHZ;
+
+	board->i2c_speed = i2c_speed & 0x03;
+
+	if (!dev->board.is_em2800)
+		em28xx_write_reg(dev, EM28XX_R06_I2C_CLK, i2c_speed);
+	msleep(50);
+}
+
 static inline void em28xx_set_model(struct em28xx *dev)
 {
 	dev->board = em28xx_boards[dev->model];
 
-	/* Those are the default values for the majority of boards
-	   Use those values if not specified otherwise at boards entry
-	 */
-	if (!dev->board.xclk)
-		dev->board.xclk = EM28XX_XCLK_IR_RC5_MODE |
-				  EM28XX_XCLK_FREQUENCY_12MHZ;
-
-	if (!dev->board.i2c_speed)
-		dev->board.i2c_speed = EM28XX_I2C_CLK_WAIT_ENABLE |
-				       EM28XX_I2C_FREQ_100_KHZ;
+	em28xx_set_xclk_i2c_speed(dev);
 
 	/* Should be initialized early, for I2C to work */
 	dev->def_i2c_bus = dev->board.def_i2c_bus;
@@ -2686,12 +2729,11 @@ static int em28xx_wait_until_ac97_features_equals(struct em28xx *dev,
  */
 static void em28xx_pre_card_setup(struct em28xx *dev)
 {
-	/* Set the initial XCLK and I2C clock values based on the board
-	   definition */
-	em28xx_write_reg(dev, EM28XX_R0F_XCLK, dev->board.xclk & 0x7f);
-	if (!dev->board.is_em2800)
-		em28xx_write_reg(dev, EM28XX_R06_I2C_CLK, dev->board.i2c_speed);
-	msleep(50);
+	/*
+	 * Set the initial XCLK and I2C clock values based on the board
+	 * definition
+	 */
+	em28xx_set_xclk_i2c_speed(dev);
 
 	/* request some modules */
 	switch (dev->model) {
@@ -2949,6 +2991,7 @@ static void em28xx_card_setup(struct em28xx *dev)
 	case EM2883_BOARD_HAUPPAUGE_WINTV_HVR_950:
 	case EM2884_BOARD_HAUPPAUGE_WINTV_HVR_930C:
 	case EM28174_BOARD_HAUPPAUGE_WINTV_DUALHD_DVB:
+	case EM28174_BOARD_HAUPPAUGE_WINTV_DUALHD_01595:
 	{
 		struct tveeprom tv;
 
@@ -3203,7 +3246,8 @@ static void em28xx_release_resources(struct em28xx *dev)
 		em28xx_i2c_unregister(dev, 1);
 	em28xx_i2c_unregister(dev, 0);
 
-	usb_put_dev(dev->udev);
+	if (dev->ts == PRIMARY_TS)
+		usb_put_dev(dev->udev);
 
 	/* Mark device as unused */
 	clear_bit(dev->devno, em28xx_devused);
@@ -3227,7 +3271,9 @@ void em28xx_free_device(struct kref *ref)
 	if (!dev->disconnected)
 		em28xx_release_resources(dev);
 
-	kfree(dev->alt_max_pkt_size_isoc);
+	if (dev->ts == PRIMARY_TS)
+		kfree(dev->alt_max_pkt_size_isoc);
+
 	kfree(dev);
 }
 EXPORT_SYMBOL_GPL(em28xx_free_device);
@@ -3241,8 +3287,7 @@ static int em28xx_init_dev(struct em28xx *dev, struct usb_device *udev,
 			   int minor)
 {
 	int retval;
-	static const char *default_chip_name = "em28xx";
-	const char *chip_name = default_chip_name;
+	const char *chip_name = NULL;
 
 	dev->udev = udev;
 	mutex_init(&dev->ctrl_urb_lock);
@@ -3327,21 +3372,13 @@ static int em28xx_init_dev(struct em28xx *dev, struct usb_device *udev,
 			dev->wait_after_write = 0;
 			dev->eeprom_addrwidth_16bit = 1;
 			break;
-		default:
-			printk(KERN_INFO DRIVER_NAME
-			       ": unknown em28xx chip ID (%d)\n", dev->chip_id);
 		}
 	}
-
-	if (chip_name != default_chip_name)
-		printk(KERN_INFO DRIVER_NAME
-		       ": chip ID is %s\n", chip_name);
-
-	/*
-	 * For em2820/em2710, the name may change latter, after checking
-	 * if the device has a sensor (so, it is em2710) or not.
-	 */
-	snprintf(dev->name, sizeof(dev->name), "%s #%d", chip_name, dev->devno);
+	if (!chip_name)
+		dev_info(&dev->intf->dev,
+			 "unknown em28xx chip ID (%d)\n", dev->chip_id);
+	else
+		dev_info(&dev->intf->dev, "chip ID is %s\n", chip_name);
 
 	em28xx_media_device_init(dev, udev);
 
@@ -3355,17 +3392,6 @@ static int em28xx_init_dev(struct em28xx *dev, struct usb_device *udev,
 	}
 
 	em28xx_pre_card_setup(dev);
-
-	if (!dev->board.is_em2800) {
-		/* Resets I2C speed */
-		retval = em28xx_write_reg(dev, EM28XX_R06_I2C_CLK, dev->board.i2c_speed);
-		if (retval < 0) {
-			em28xx_errdev("%s: em28xx_write_reg failed!"
-				      " retval [%d]\n",
-				      __func__, retval);
-			return retval;
-		}
-	}
 
 	rt_mutex_init(&dev->i2c_bus_lock);
 
@@ -3404,8 +3430,141 @@ static int em28xx_init_dev(struct em28xx *dev, struct usb_device *udev,
 	return 0;
 }
 
+static int em28xx_duplicate_dev(struct em28xx *dev)
+{
+	int nr;
+	struct em28xx *sec_dev = kzalloc(sizeof(*sec_dev), GFP_KERNEL);
+
+	if (!sec_dev) {
+		dev->dev_next = NULL;
+		return -ENOMEM;
+	}
+	memcpy(sec_dev, dev, sizeof(*sec_dev));
+	/* Check to see next free device and mark as used */
+	do {
+		nr = find_first_zero_bit(em28xx_devused, EM28XX_MAXBOARDS);
+		if (nr >= EM28XX_MAXBOARDS) {
+			/* No free device slots */
+			dev_warn(&dev->intf->dev, ": Supports only %i em28xx boards.\n",
+				 EM28XX_MAXBOARDS);
+			kfree(sec_dev);
+			dev->dev_next = NULL;
+			return -ENOMEM;
+		}
+	} while (test_and_set_bit(nr, em28xx_devused));
+	sec_dev->devno = nr;
+	snprintf(sec_dev->name, 28, "em28xx #%d", nr);
+	sec_dev->dev_next = NULL;
+	dev->dev_next = sec_dev;
+	return 0;
+}
+
 /* high bandwidth multiplier, as encoded in highspeed endpoint descriptors */
 #define hb_mult(wMaxPacketSize) (1 + (((wMaxPacketSize) >> 11) & 0x03))
+
+static void em28xx_check_usb_descriptor(struct em28xx *dev,
+					struct usb_device *udev,
+					struct usb_interface *intf,
+					int alt, int ep,
+					bool *has_vendor_audio,
+					bool *has_video,
+					bool *has_dvb)
+{
+	const struct usb_endpoint_descriptor *e;
+	int sizedescr, size;
+
+	/*
+	 * NOTE:
+	 *
+	 * Old logic with support for isoc transfers only was:
+	 *  0x82	isoc		=> analog
+	 *  0x83	isoc		=> audio
+	 *  0x84	isoc		=> digital
+	 *
+	 * New logic with support for bulk transfers
+	 *  0x82	isoc		=> analog
+	 *  0x82	bulk		=> analog
+	 *  0x83	isoc*		=> audio
+	 *  0x84	isoc		=> digital
+	 *  0x84	bulk		=> analog or digital**
+	 *  0x85	isoc		=> digital TS2
+	 *  0x85	bulk		=> digital TS2
+	 * (*: audio should always be isoc)
+	 * (**: analog, if ep 0x82 is isoc, otherwise digital)
+	 *
+	 * The new logic preserves backwards compatibility and
+	 * reflects the endpoint configurations we have seen
+	 * so far. But there might be devices for which this
+	 * logic is not sufficient...
+	 */
+
+	e = &intf->altsetting[alt].endpoint[ep].desc;
+
+	if (!usb_endpoint_dir_in(e))
+		return;
+
+	sizedescr = le16_to_cpu(e->wMaxPacketSize);
+	size = sizedescr & 0x7ff;
+
+	if (udev->speed == USB_SPEED_HIGH)
+		size = size * hb_mult(sizedescr);
+
+	/* Only inspect input endpoints */
+
+	switch (e->bEndpointAddress) {
+	case 0x82:
+		*has_video = true;
+		if (usb_endpoint_xfer_isoc(e)) {
+			dev->analog_ep_isoc = e->bEndpointAddress;
+			dev->alt_max_pkt_size_isoc[alt] = size;
+		} else if (usb_endpoint_xfer_bulk(e)) {
+			dev->analog_ep_bulk = e->bEndpointAddress;
+		}
+		return;
+	case 0x83:
+		if (usb_endpoint_xfer_isoc(e))
+			*has_vendor_audio = true;
+		else
+			dev_err(&intf->dev,
+				"error: skipping audio endpoint 0x83, because it uses bulk transfers !\n");
+		return;
+	case 0x84:
+		if (*has_video && (usb_endpoint_xfer_bulk(e))) {
+			dev->analog_ep_bulk = e->bEndpointAddress;
+		} else {
+			if (usb_endpoint_xfer_isoc(e)) {
+				if (size > dev->dvb_max_pkt_size_isoc) {
+					/*
+					 * 2) some manufacturers (e.g. Terratec)
+					 * disable endpoints by setting
+					 * wMaxPacketSize to 0 bytes for all
+					 * alt settings. So far, we've seen
+					 * this for DVB isoc endpoints only.
+					 */
+					*has_dvb = true;
+					dev->dvb_ep_isoc = e->bEndpointAddress;
+					dev->dvb_max_pkt_size_isoc = size;
+					dev->dvb_alt_isoc = alt;
+				}
+			} else {
+				*has_dvb = true;
+				dev->dvb_ep_bulk = e->bEndpointAddress;
+			}
+		}
+		return;
+	case 0x85:
+		if (usb_endpoint_xfer_isoc(e)) {
+			if (size > dev->dvb_max_pkt_size_isoc_ts2) {
+				dev->dvb_ep_isoc_ts2 = e->bEndpointAddress;
+				dev->dvb_max_pkt_size_isoc_ts2 = size;
+				dev->dvb_alt_isoc = alt;
+			}
+		} else {
+			dev->dvb_ep_bulk_ts2 = e->bEndpointAddress;
+		}
+		return;
+	}
+}
 
 /*
  * em28xx_usb_probe()
@@ -3472,87 +3631,14 @@ static int em28xx_usb_probe(struct usb_interface *interface,
 	for (i = 0; i < interface->num_altsetting; i++) {
 		int ep;
 
-		for (ep = 0; ep < interface->altsetting[i].desc.bNumEndpoints; ep++) {
-			const struct usb_endpoint_descriptor *e;
-			int sizedescr, size;
-
-			e = &interface->altsetting[i].endpoint[ep].desc;
-
-			sizedescr = le16_to_cpu(e->wMaxPacketSize);
-			size = sizedescr & 0x7ff;
-
-			if (udev->speed == USB_SPEED_HIGH)
-				size = size * hb_mult(sizedescr);
-
-			if (usb_endpoint_dir_in(e)) {
-				switch (e->bEndpointAddress) {
-				case 0x82:
-					has_video = true;
-					if (usb_endpoint_xfer_isoc(e)) {
-						dev->analog_ep_isoc =
-							    e->bEndpointAddress;
-						dev->alt_max_pkt_size_isoc[i] = size;
-					} else if (usb_endpoint_xfer_bulk(e)) {
-						dev->analog_ep_bulk =
-							    e->bEndpointAddress;
-					}
-					break;
-				case 0x83:
-					if (usb_endpoint_xfer_isoc(e)) {
-						has_vendor_audio = true;
-					} else {
-						printk(KERN_INFO DRIVER_NAME
-						": error: skipping audio endpoint 0x83, because it uses bulk transfers !\n");
-					}
-					break;
-				case 0x84:
-					if (has_video &&
-					    (usb_endpoint_xfer_bulk(e))) {
-						dev->analog_ep_bulk =
-							    e->bEndpointAddress;
-					} else {
-						if (usb_endpoint_xfer_isoc(e)) {
-							if (size > dev->dvb_max_pkt_size_isoc) {
-								has_dvb = true; /* see NOTE (~) */
-								dev->dvb_ep_isoc = e->bEndpointAddress;
-								dev->dvb_max_pkt_size_isoc = size;
-								dev->dvb_alt_isoc = i;
-							}
-						} else {
-							has_dvb = true;
-							dev->dvb_ep_bulk = e->bEndpointAddress;
-						}
-					}
-					break;
-				}
-			}
-			/* NOTE:
-			 * Old logic with support for isoc transfers only was:
-			 *  0x82	isoc		=> analog
-			 *  0x83	isoc		=> audio
-			 *  0x84	isoc		=> digital
-			 *
-			 * New logic with support for bulk transfers
-			 *  0x82	isoc		=> analog
-			 *  0x82	bulk		=> analog
-			 *  0x83	isoc*		=> audio
-			 *  0x84	isoc		=> digital
-			 *  0x84	bulk		=> analog or digital**
-			 * (*: audio should always be isoc)
-			 * (**: analog, if ep 0x82 is isoc, otherwise digital)
-			 *
-			 * The new logic preserves backwards compatibility and
-			 * reflects the endpoint configurations we have seen
-			 * so far. But there might be devices for which this
-			 * logic is not sufficient...
-			 */
-			/*
-			 * NOTE (~): some manufacturers (e.g. Terratec) disable
-			 * endpoints by setting wMaxPacketSize to 0 bytes for
-			 * all alt settings. So far, we've seen this for
-			 * DVB isoc endpoints only.
-			 */
-		}
+		for (ep = 0;
+		     ep < interface->altsetting[i].desc.bNumEndpoints;
+		     ep++)
+			em28xx_check_usb_descriptor(dev, udev, interface,
+						    i, ep,
+						    &has_vendor_audio,
+						    &has_video,
+						    &has_dvb);
 	}
 
 	if (!(has_vendor_audio || has_video || has_dvb)) {
@@ -3605,6 +3691,10 @@ static int em28xx_usb_probe(struct usb_interface *interface,
 	dev->is_audio_only = has_vendor_audio && !(has_video || has_dvb);
 	dev->has_video = has_video;
 	dev->ifnum = ifnum;
+
+	dev->ts = PRIMARY_TS;
+	snprintf(dev->name, 28, "em28xx");
+	dev->dev_next = NULL;
 
 	if (has_vendor_audio) {
 		printk(KERN_INFO DRIVER_NAME ": Audio interface %i found %s\n",
@@ -3670,6 +3760,17 @@ static int em28xx_usb_probe(struct usb_interface *interface,
 		dev->has_video = false;
 	}
 
+	if (dev->board.has_dual_ts &&
+	    (dev->tuner_type != TUNER_ABSENT || INPUT(0)->type)) {
+		/*
+		 * The logic with sets alternate is not ready for dual-tuners
+		 * which analog modes.
+		 */
+		dev_err(&interface->dev,
+			"We currently don't support analog TV or stream capture on dual tuners.\n");
+		has_video = false;
+	}
+
 	/* Select USB transfer types to use */
 	if (has_video) {
 		if (!dev->analog_ep_isoc || (try_bulk && dev->analog_ep_bulk))
@@ -3682,6 +3783,65 @@ static int em28xx_usb_probe(struct usb_interface *interface,
 			dev->dvb_xfer_bulk = 1;
 		em28xx_info("dvb set to %s mode.\n",
 			    dev->dvb_xfer_bulk ? "bulk" : "isoc");
+	}
+
+	if (dev->board.has_dual_ts && em28xx_duplicate_dev(dev) == 0) {
+		dev->dev_next->ts = SECONDARY_TS;
+		dev->dev_next->alt   = -1;
+		dev->dev_next->is_audio_only = has_vendor_audio &&
+						!(has_video || has_dvb);
+		dev->dev_next->has_video = false;
+		dev->dev_next->ifnum = ifnum;
+		dev->dev_next->model = id->driver_info;
+
+		mutex_init(&dev->dev_next->lock);
+		retval = em28xx_init_dev(dev->dev_next, udev, interface,
+					 dev->dev_next->devno);
+		if (retval)
+			goto err_free;
+
+		dev->dev_next->board.ir_codes = NULL; /* No IR for 2nd tuner */
+		dev->dev_next->board.has_ir_i2c = 0; /* No IR for 2nd tuner */
+
+		if (usb_xfer_mode < 0) {
+			if (dev->dev_next->board.is_webcam)
+				try_bulk = 1;
+			else
+				try_bulk = 0;
+		} else {
+			try_bulk = usb_xfer_mode > 0;
+		}
+
+		/* Select USB transfer types to use */
+		if (has_dvb) {
+			if (!dev->dvb_ep_isoc_ts2 ||
+			    (try_bulk && dev->dvb_ep_bulk_ts2))
+				dev->dev_next->dvb_xfer_bulk = 1;
+			dev_info(&dev->intf->dev, "dvb ts2 set to %s mode.\n",
+				 dev->dev_next->dvb_xfer_bulk ? "bulk" : "isoc");
+		}
+
+		dev->dev_next->dvb_ep_isoc = dev->dvb_ep_isoc_ts2;
+		dev->dev_next->dvb_ep_bulk = dev->dvb_ep_bulk_ts2;
+		dev->dev_next->dvb_max_pkt_size_isoc = dev->dvb_max_pkt_size_isoc_ts2;
+		dev->dev_next->dvb_alt_isoc = dev->dvb_alt_isoc;
+
+		/* Configuare hardware to support TS2*/
+		if (dev->dvb_xfer_bulk) {
+			/* The ep4 and ep5 are configuared for BULK */
+			em28xx_write_reg(dev, 0x0b, 0x96);
+			mdelay(100);
+			em28xx_write_reg(dev, 0x0b, 0x80);
+			mdelay(100);
+		} else {
+			/* The ep4 and ep5 are configuared for ISO */
+			em28xx_write_reg(dev, 0x0b, 0x96);
+			mdelay(100);
+			em28xx_write_reg(dev, 0x0b, 0x82);
+			mdelay(100);
+		}
+
+		kref_init(&dev->dev_next->ref);
 	}
 
 	kref_init(&dev->ref);
@@ -3726,6 +3886,12 @@ static void em28xx_usb_disconnect(struct usb_interface *interface)
 	if (!dev)
 		return;
 
+	if (dev->dev_next) {
+		dev->dev_next->disconnected = 1;
+		dev_info(&dev->intf->dev, "Disconnecting secondary device\n");
+		flush_request_modules(dev->dev_next);
+	}
+
 	dev->disconnected = 1;
 
 	em28xx_info("Disconnecting %s\n", dev->name);
@@ -3734,7 +3900,14 @@ static void em28xx_usb_disconnect(struct usb_interface *interface)
 
 	em28xx_close_extension(dev);
 
+	if (dev->dev_next)
+		em28xx_release_resources(dev->dev_next);
 	em28xx_release_resources(dev);
+
+	if (dev->dev_next) {
+		kref_put(&dev->dev_next->ref, em28xx_free_device);
+		dev->dev_next = NULL;
+	}
 	kref_put(&dev->ref, em28xx_free_device);
 }
 

@@ -636,10 +636,29 @@ int em28xx_capture_start(struct em28xx *dev, int start)
 	    dev->chip_id == CHIP_ID_EM28174 ||
 	    dev->chip_id == CHIP_ID_EM28178) {
 		/* The Transport Stream Enable Register moved in em2874 */
-		rc = em28xx_write_reg_bits(dev, EM2874_R5F_TS_ENABLE,
-					   start ?
-					       EM2874_TS1_CAPTURE_ENABLE : 0x00,
-					   EM2874_TS1_CAPTURE_ENABLE);
+		if (dev->dvb_xfer_bulk) {
+			/* Max Tx Size = 188 * 256 = 48128 - LCM(188,512) * 2 */
+			em28xx_write_reg(dev, (dev->ts == PRIMARY_TS) ?
+					 EM2874_R5D_TS1_PKT_SIZE :
+					 EM2874_R5E_TS2_PKT_SIZE,
+					 0xff);
+		} else {
+			/* ISOC Maximum Transfer Size = 188 * 5 */
+			em28xx_write_reg(dev, (dev->ts == PRIMARY_TS) ?
+					 EM2874_R5D_TS1_PKT_SIZE :
+					 EM2874_R5E_TS2_PKT_SIZE,
+					 dev->dvb_max_pkt_size_isoc / 188);
+		}
+		if (dev->ts == PRIMARY_TS)
+			rc = em28xx_write_reg_bits(dev,
+						   EM2874_R5F_TS_ENABLE,
+						   start ? EM2874_TS1_CAPTURE_ENABLE : 0x00,
+						   EM2874_TS1_CAPTURE_ENABLE | EM2874_TS1_FILTER_ENABLE | EM2874_TS1_NULL_DISCARD);
+		else
+			rc = em28xx_write_reg_bits(dev,
+						   EM2874_R5F_TS_ENABLE,
+						   start ? EM2874_TS2_CAPTURE_ENABLE : 0x00,
+						   EM2874_TS2_CAPTURE_ENABLE | EM2874_TS2_FILTER_ENABLE | EM2874_TS2_NULL_DISCARD);
 	} else {
 		/* FIXME: which is the best order? */
 		/* video registers are sampled by VREF */
@@ -816,16 +835,9 @@ void em28xx_uninit_usb_xfer(struct em28xx *dev, enum em28xx_mode mode)
 			else
 				usb_unlink_urb(urb);
 
-			if (usb_bufs->transfer_buffer[i]) {
-				usb_free_coherent(dev->udev,
-						  urb->transfer_buffer_length,
-						  usb_bufs->transfer_buffer[i],
-						  urb->transfer_dma);
-			}
 			usb_free_urb(urb);
 			usb_bufs->urb[i] = NULL;
 		}
-		usb_bufs->transfer_buffer[i] = NULL;
 	}
 
 	kfree(usb_bufs->urb);
@@ -906,14 +918,13 @@ int em28xx_alloc_urbs(struct em28xx *dev, enum em28xx_mode mode, int xfer_bulk,
 
 	usb_bufs->num_bufs = num_bufs;
 
-	usb_bufs->urb = kzalloc(sizeof(void *)*num_bufs,  GFP_KERNEL);
+	usb_bufs->urb = kcalloc(num_bufs, sizeof(void *), GFP_KERNEL);
 	if (!usb_bufs->urb) {
 		em28xx_errdev("cannot alloc memory for usb buffers\n");
 		return -ENOMEM;
 	}
 
-	usb_bufs->transfer_buffer = kzalloc(sizeof(void *)*num_bufs,
-					     GFP_KERNEL);
+	usb_bufs->transfer_buffer = kcalloc(num_bufs, sizeof(void *), GFP_KERNEL);
 	if (!usb_bufs->transfer_buffer) {
 		em28xx_errdev("cannot allocate memory for usb transfer\n");
 		kfree(usb_bufs->urb);
@@ -939,17 +950,24 @@ int em28xx_alloc_urbs(struct em28xx *dev, enum em28xx_mode mode, int xfer_bulk,
 		}
 		usb_bufs->urb[i] = urb;
 
-		usb_bufs->transfer_buffer[i] = usb_alloc_coherent(dev->udev,
-			sb_size, GFP_KERNEL, &urb->transfer_dma);
+		usb_bufs->transfer_buffer[i] = kzalloc(sb_size, GFP_KERNEL);
 		if (!usb_bufs->transfer_buffer[i]) {
 			em28xx_err("unable to allocate %i bytes for transfer"
 					" buffer %i%s\n",
 					sb_size, i,
 					in_interrupt() ? " while in int" : "");
 			em28xx_uninit_usb_xfer(dev, mode);
+
+			for (i--; i >= 0; i--)
+				kfree(usb_bufs->transfer_buffer[i]);
+
+			kfree(usb_bufs->transfer_buffer);
+			usb_bufs->transfer_buffer = NULL;
+
 			return -ENOMEM;
 		}
-		memset(usb_bufs->transfer_buffer[i], 0, sb_size);
+
+		urb->transfer_flags = URB_FREE_BUFFER;
 
 		if (xfer_bulk) { /* bulk */
 			pipe = usb_rcvbulkpipe(dev->udev,
@@ -959,7 +977,6 @@ int em28xx_alloc_urbs(struct em28xx *dev, enum em28xx_mode mode, int xfer_bulk,
 			usb_fill_bulk_urb(urb, dev->udev, pipe,
 					  usb_bufs->transfer_buffer[i], sb_size,
 					  em28xx_irq_callback, dev);
-			urb->transfer_flags = URB_NO_TRANSFER_DMA_MAP;
 		} else { /* isoc */
 			pipe = usb_rcvisocpipe(dev->udev,
 					       mode == EM28XX_ANALOG_MODE ?
@@ -968,8 +985,7 @@ int em28xx_alloc_urbs(struct em28xx *dev, enum em28xx_mode mode, int xfer_bulk,
 			usb_fill_int_urb(urb, dev->udev, pipe,
 					 usb_bufs->transfer_buffer[i], sb_size,
 					 em28xx_irq_callback, dev, 1);
-			urb->transfer_flags = URB_ISO_ASAP |
-					      URB_NO_TRANSFER_DMA_MAP;
+			urb->transfer_flags |= URB_ISO_ASAP;
 			k = 0;
 			for (j = 0; j < usb_bufs->num_packets; j++) {
 				urb->iso_frame_desc[j].offset = k;
@@ -1039,7 +1055,7 @@ int em28xx_init_usb_xfer(struct em28xx *dev, enum em28xx_mode mode,
 
 	/* submit urbs and enables IRQ */
 	for (i = 0; i < usb_bufs->num_bufs; i++) {
-		rc = usb_submit_urb(usb_bufs->urb[i], GFP_ATOMIC);
+		rc = usb_submit_urb(usb_bufs->urb[i], GFP_KERNEL);
 		if (rc) {
 			em28xx_err("submit of urb %i failed (error=%i)\n", i,
 				   rc);
@@ -1072,7 +1088,11 @@ int em28xx_register_extension(struct em28xx_ops *ops)
 	mutex_lock(&em28xx_devlist_mutex);
 	list_add_tail(&ops->next, &em28xx_extension_devlist);
 	list_for_each_entry(dev, &em28xx_devlist, devlist) {
-		ops->init(dev);
+		if (ops->init) {
+			ops->init(dev);
+			if (dev->dev_next)
+				ops->init(dev->dev_next);
+		}
 	}
 	mutex_unlock(&em28xx_devlist_mutex);
 	printk(KERN_INFO "em28xx: Registered (%s) extension\n", ops->name);
@@ -1086,7 +1106,11 @@ void em28xx_unregister_extension(struct em28xx_ops *ops)
 
 	mutex_lock(&em28xx_devlist_mutex);
 	list_for_each_entry(dev, &em28xx_devlist, devlist) {
-		ops->fini(dev);
+		if (ops->fini) {
+			if (dev->dev_next)
+				ops->fini(dev->dev_next);
+			ops->fini(dev);
+		}
 	}
 	list_del(&ops->next);
 	mutex_unlock(&em28xx_devlist_mutex);
@@ -1101,8 +1125,11 @@ void em28xx_init_extension(struct em28xx *dev)
 	mutex_lock(&em28xx_devlist_mutex);
 	list_add_tail(&dev->devlist, &em28xx_devlist);
 	list_for_each_entry(ops, &em28xx_extension_devlist, next) {
-		if (ops->init)
+		if (ops->init) {
 			ops->init(dev);
+			if (dev->dev_next)
+				ops->init(dev->dev_next);
+		}
 	}
 	mutex_unlock(&em28xx_devlist_mutex);
 }
@@ -1113,8 +1140,11 @@ void em28xx_close_extension(struct em28xx *dev)
 
 	mutex_lock(&em28xx_devlist_mutex);
 	list_for_each_entry(ops, &em28xx_extension_devlist, next) {
-		if (ops->fini)
+		if (ops->fini) {
+			if (dev->dev_next)
+				ops->fini(dev->dev_next);
 			ops->fini(dev);
+		}
 	}
 	list_del(&dev->devlist);
 	mutex_unlock(&em28xx_devlist_mutex);
@@ -1127,8 +1157,11 @@ int em28xx_suspend_extension(struct em28xx *dev)
 	em28xx_info("Suspending extensions\n");
 	mutex_lock(&em28xx_devlist_mutex);
 	list_for_each_entry(ops, &em28xx_extension_devlist, next) {
-		if (ops->suspend)
+		if (ops->suspend) {
+			if (dev->dev_next)
+				ops->suspend(dev->dev_next);
 			ops->suspend(dev);
+		}
 	}
 	mutex_unlock(&em28xx_devlist_mutex);
 	return 0;
@@ -1141,8 +1174,11 @@ int em28xx_resume_extension(struct em28xx *dev)
 	em28xx_info("Resuming extensions\n");
 	mutex_lock(&em28xx_devlist_mutex);
 	list_for_each_entry(ops, &em28xx_extension_devlist, next) {
-		if (ops->resume)
+		if (ops->resume) {
 			ops->resume(dev);
+			if (dev->dev_next)
+				ops->resume(dev->dev_next);
+		}
 	}
 	mutex_unlock(&em28xx_devlist_mutex);
 	return 0;
