@@ -3375,10 +3375,17 @@ static int em28xx_init_dev(struct em28xx *dev, struct usb_device *udev,
 		}
 	}
 	if (!chip_name)
-		dev_info(&dev->intf->dev,
-			 "unknown em28xx chip ID (%d)\n", dev->chip_id);
+		printk(KERN_INFO DRIVER_NAME
+			 ": unknown em28xx chip ID (%d)\n", dev->chip_id);
 	else
-		dev_info(&dev->intf->dev, "chip ID is %s\n", chip_name);
+		printk(KERN_INFO DRIVER_NAME
+			 ": chip ID is %s\n", chip_name);
+
+	/*
+	 * For em2820/em2710, the name may change latter, after checking
+	 * if the device has a sensor (so, it is em2710) or not.
+	 */
+	snprintf(dev->name, sizeof(dev->name), "%s #%d", chip_name, dev->devno);
 
 	em28xx_media_device_init(dev, udev);
 
@@ -3445,7 +3452,7 @@ static int em28xx_duplicate_dev(struct em28xx *dev)
 		nr = find_first_zero_bit(em28xx_devused, EM28XX_MAXBOARDS);
 		if (nr >= EM28XX_MAXBOARDS) {
 			/* No free device slots */
-			dev_warn(&dev->intf->dev, ": Supports only %i em28xx boards.\n",
+			em28xx_warn(": Supports only %i em28xx boards.\n",
 				 EM28XX_MAXBOARDS);
 			kfree(sec_dev);
 			dev->dev_next = NULL;
@@ -3817,7 +3824,7 @@ static int em28xx_usb_probe(struct usb_interface *interface,
 			if (!dev->dvb_ep_isoc_ts2 ||
 			    (try_bulk && dev->dvb_ep_bulk_ts2))
 				dev->dev_next->dvb_xfer_bulk = 1;
-			dev_info(&dev->intf->dev, "dvb ts2 set to %s mode.\n",
+			em28xx_info("dvb ts2 set to %s mode.\n",
 				 dev->dev_next->dvb_xfer_bulk ? "bulk" : "isoc");
 		}
 
@@ -3888,7 +3895,7 @@ static void em28xx_usb_disconnect(struct usb_interface *interface)
 
 	if (dev->dev_next) {
 		dev->dev_next->disconnected = 1;
-		dev_info(&dev->intf->dev, "Disconnecting secondary device\n");
+		em28xx_info("Disconnecting secondary device\n");
 		flush_request_modules(dev->dev_next);
 	}
 
