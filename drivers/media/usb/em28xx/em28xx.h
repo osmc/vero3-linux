@@ -147,6 +147,7 @@
 #define EM2884_BOARD_ELGATO_EYETV_HYBRID_2008     97
 #define EM28178_BOARD_PLEX_PX_BCUD                98
 #define EM28174_BOARD_HAUPPAUGE_WINTV_DUALHD_DVB  99
+#define EM28174_BOARD_HAUPPAUGE_WINTV_DUALHD_01595 100
 
 /* Limits minimum and default number of buffers */
 #define EM28XX_MIN_BUF 4
@@ -189,31 +190,18 @@
    USB 2.0 spec says bulk packet size is always 512 bytes
  */
 #define EM28XX_BULK_PACKET_MULTIPLIER 384
-#define EM28XX_DVB_BULK_PACKET_MULTIPLIER 384
+#define EM28XX_DVB_BULK_PACKET_MULTIPLIER 94
 
 #define EM28XX_INTERLACED_DEFAULT 1
-
-/*
- * Time in msecs to wait for i2c xfers to finish.
- * 35ms is the maximum time a SMBUS device could wait when
- * clock stretching is used. As the transfer itself will take
- * some time to happen, set it to 35 ms.
- *
- * Ok, I2C doesn't specify any limit. So, eventually, we may need
- * to increase this timeout.
- *
- * FIXME: this assumes that an I2C message is not longer than 1ms.
- * This is actually dependent on the I2C bus speed, although most
- * devices use a 100kHz clock. So, this assumtion is true most of
- * the time.
- */
-#define EM28XX_I2C_XFER_TIMEOUT		36
 
 /* time in msecs to wait for AC97 xfers to finish */
 #define EM28XX_AC97_XFER_TIMEOUT	100
 
 /* max. number of button state polling addresses */
 #define EM28XX_NUM_BUTTON_ADDRESSES_MAX		5
+
+#define PRIMARY_TS	0
+#define SECONDARY_TS	1
 
 enum em28xx_mode {
 	EM28XX_SUSPEND,
@@ -455,6 +443,7 @@ struct em28xx_board {
 	unsigned int mts_firmware:1;
 	unsigned int max_range_640_480:1;
 	unsigned int has_dvb:1;
+	unsigned int has_dual_ts:1;
 	unsigned int is_webcam:1;
 	unsigned int valid:1;
 	unsigned int has_ir_i2c:1;
@@ -682,6 +671,8 @@ struct em28xx {
 	u8 ifnum;		/* number of the assigned usb interface */
 	u8 analog_ep_isoc;	/* address of isoc endpoint for analog */
 	u8 analog_ep_bulk;	/* address of bulk endpoint for analog */
+	u8 dvb_ep_isoc_ts2;	/* address of isoc endpoint for DVB TS2 */
+	u8 dvb_ep_bulk_ts2;	/* address of bulk endpoint for DVB TS2 */
 	u8 dvb_ep_isoc;		/* address of isoc endpoint for DVB */
 	u8 dvb_ep_bulk;		/* address of bulk endpoint for DVB */
 	int alt;		/* alternate setting */
@@ -694,6 +685,8 @@ struct em28xx {
 						   transfers for analog      */
 	int dvb_alt_isoc;	/* alternate setting for DVB isoc transfers */
 	unsigned int dvb_max_pkt_size_isoc;	/* isoc max packet size of the
+						   selected DVB ep at dvb_alt */
+	unsigned int dvb_max_pkt_size_isoc_ts2;	/* isoc max packet size of the
 						   selected DVB ep at dvb_alt */
 	unsigned int dvb_xfer_bulk:1;		/* use bulk instead of isoc
 						   transfers for DVB          */
@@ -726,6 +719,9 @@ struct em28xx {
 	struct media_entity input_ent[MAX_EM28XX_INPUT];
 	struct media_pad input_pad[MAX_EM28XX_INPUT];
 #endif
+
+	struct em28xx	*dev_next;
+	int ts;
 };
 
 #define kref_to_dev(d) container_of(d, struct em28xx, ref)
