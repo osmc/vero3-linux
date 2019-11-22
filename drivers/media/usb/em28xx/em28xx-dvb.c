@@ -36,6 +36,7 @@
 
 #include "lgdt330x.h"
 #include "lgdt3305.h"
+#include "lgdt3306a.h"
 #include "zl10353.h"
 #include "s5h1409.h"
 #include "mt2060.h"
@@ -916,6 +917,17 @@ static struct tda18271_config pinnacle_80e_dvb_config = {
 	.std_map = &drx_j_std_map,
 	.gate    = TDA18271_GATE_DIGITAL,
 	.role    = TDA18271_MASTER,
+};
+
+static struct lgdt3306a_config hauppauge_01595_lgdt3306a_config = {
+	.qam_if_khz         = 4000,
+	.vsb_if_khz         = 3250,
+	.spectral_inversion = 0,
+	.deny_i2c_rptr      = 0,
+	.mpeg_mode          = LGDT3306A_MPEG_SERIAL,
+	.tpclk_edge         = LGDT3306A_TPCLK_RISING_EDGE,
+	.tpvalid_polarity   = LGDT3306A_TP_VALID_HIGH,
+	.xtalMHz            = 25,
 };
 
 /* ------------------------------------------------------------------ */
