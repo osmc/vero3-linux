@@ -599,15 +599,16 @@ static ssize_t amvideocap_YUV_to_RGB(
 		return -1;
 	}
 
-	stretchblt_noalpha_noblk(ge2d_amvideocap_context,
-					   0,
-					   0,
-					   ge2d_config.src_para.width,
-					   ge2d_config.src_para.height,
-					   0,
-					   0,
-					   ge2d_config.dst_para.width,
-					   ge2d_config.dst_para.height);
+	if (priv->want.at_flags == CAP_FLAG_AT_END) {
+		stretchblt_noalpha_noblk(ge2d_amvideocap_context,
+			0, 0, ge2d_config.src_para.width, ge2d_config.src_para.height,
+			0, 0, ge2d_config.dst_para.width, ge2d_config.dst_para.height);
+	} else {
+		stretchblt_noalpha(ge2d_amvideocap_context,
+			0, 0, ge2d_config.src_para.width, ge2d_config.src_para.height,
+			0, 0, ge2d_config.dst_para.width, ge2d_config.dst_para.height);
+	}
+
 	if (canvas_idx)
 		canvas_pool_map_free_canvas(canvas_idx);
 
